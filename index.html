@@ -409,7 +409,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.03.2";</script>
+<script>window.APP_BUILD="2026.09.03.3";</script>
 </head>
 <body>
 
@@ -1560,8 +1560,22 @@ var ORDER = ['business_model','competitive_advantage','industry_attractiveness',
  'ofs_exit_structure','business_risks','financial_risks','governance_risks','regulatory_risks',
  'gmp','anchor_quality','subscription_demand'];
 
-function maxOf(key){ var p=KEYMAP[key]; return p ? SHEET[p[0]][1][p[1]][1] : 0; }
-function labelOf(key){ var p=KEYMAP[key]; return p ? SHEET[p[0]][1][p[1]][0] : key; }
+function maxOf(key){
+  var p = KEYMAP[key];
+  if(!p) return 0;
+  var block = SHEET[p[0]];
+  var row = block && block[1] && block[1][p[1]];
+  return (row && typeof row[1] === 'number') ? row[1] : 0;
+}
+/* Defensive by design. This resolves a display label, and a missing label is a
+   cosmetic problem; it must never be able to stop a payload being read. */
+function labelOf(key){
+  var p = KEYMAP[key];
+  if(!p) return key;
+  var block = SHEET[p[0]];
+  var row = block && block[1] && block[1][p[1]];
+  return (row && row[0]) ? row[0] : key;
+}
 
 /* normalise a label so "ROCE/ROE", "ROCE / ROE" and "roce roe" all match */
 function norm(t){
@@ -1697,7 +1711,11 @@ function extractJsonCandidates(raw){
       else if(c === '}'){ depth--; if(depth === 0){ end = j; break; } }
     }
     var chunk = end >= 0 ? raw.slice(i, end + 1) : raw.slice(i);   /* unterminated = truncated */
-    if(/"(schema|score_lines|meta|verdict|recommendation|gu)"\s*:/.test(chunk)){
+    /* The keys that mark an object as the payload rather than some other
+       object the model happened to print. "run" and "companies" are the equity
+       ones; without them a complete 165 KB payload scanned as zero candidates
+       and the import silently fell back to scraping the report prose. */
+    if(/"(run|companies|schema|score_lines|meta|verdict|recommendation)"\s*:/.test(chunk)){
       out.push({ text: chunk, truncated: end < 0 });
       if(end < 0) break;          /* nothing useful can follow a truncated object */
       i = end;                    /* continue after this object */
@@ -1817,6 +1835,18 @@ function unwrapPayload(j){
 }
 
 /* Parse one candidate as hard as we can. */
+/* What a payload looks like. An equity payload carries run and companies; the
+   older keys are kept so a half-finished block still reads. This test was the
+   reason a complete, valid equity payload was silently rejected and the app
+   fell back to scraping the report prose. */
+function looksLikePayload(j){
+  if(!j || typeof j !== 'object') return false;
+  if(j.run && j.companies) return true;
+  if(j.run && j.run.schemaVersion) return true;
+  if(Array.isArray(j.companies) && j.companies.length) return true;
+  return !!(j.meta || j.verdict || j.score_lines || j.schema);
+}
+
 function readOne(text){
   var san = sanitiseJson(text);
   var tries = [
@@ -1826,13 +1856,13 @@ function readOne(text){
   for(var i = 0; i < tries.length; i++){
     try{
       var j = unwrapPayload(JSON.parse(tries[i].t));
-      if(j && typeof j === 'object' && (j.meta || j.verdict || j.score_lines || j.gu || j.schema)){
+      if(looksLikePayload(j)){
         return { data:j, fixes:tries[i].note };
       }
     }catch(e){}
   }
   var sal = unwrapPayload(salvageTopLevel(san.text));
-  if(sal && (sal.meta || sal.verdict || sal.score_lines || sal.gu)){
+  if(looksLikePayload(sal)){
     return { data:sal, fixes:san.fixes.concat(['recovered the part of a cut-off reply that was complete']) };
   }
   return null;
@@ -1887,6 +1917,7 @@ function readPayloadFrom(raw){
   var baseIx = 0;
   for(var i = 0; i < parsed.length; i++){
     var d = parsed[i].data;
+    if(d.run && Array.isArray(d.companies) && d.companies.length){ baseIx = i; break; }
     if(d.score_lines && Object.keys(d.score_lines).length){ baseIx = i; break; }
     if(d.meta && baseIx === 0) baseIx = i;
   }
@@ -2126,6 +2157,27 @@ function parseImport(raw){
 
   /* --- strategy 1: the data block, read tolerantly --- */
   var j = readPayload(raw);
+
+  /* An equity payload is complete in itself: the engine validates it and
+     computes everything from it, so there is nothing to scrape and nothing to
+     reshape. It is recognised first, before any of the older handling. */
+  if(j && j.run && Array.isArray(j.companies)){
+    if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
+      + LAST_REPAIRS.join(', ') + ').');
+    out.data = j;
+    out.v3 = true;
+    out.equity = true;
+    out.how = 'the data block';
+    out.found = j.companies.length;
+    if(window.EQ){
+      var check = EQ.schema.validatePayload(j);
+      out.valid = check.valid;
+      out.errors = check.errors;
+      out.gaps = check.warnings;
+    }
+    return out;
+  }
+
   if(j){
     {
       if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
@@ -2740,7 +2792,8 @@ function showReview(res, raw){
     }
     html += '</div>';
 
-    if(res.missing.length){
+    var isEquityPayload = !!(res.data && res.data.run && res.data.run.schemaVersion);
+    if(res.missing.length && !isEquityPayload){
       html += '<div class="rvmiss"><b>' + res.missing.length + ' not found.</b> Type the values from '
             + 'the report’s scoring table, or leave blank to score them zero.</div>';
       res.missing.forEach(function(k){
@@ -2904,14 +2957,13 @@ $('#btnDelRep').addEventListener('click', function(){
    storage, so a plain string compare orders them correctly. */
 /* A rotated phone changes how much room a row has, so the fit is redone. */
 window.addEventListener('resize', function(){
-  ['#ipoPanel', '#repPanel', '#scPanel'].forEach(function(sel){
+  ['#segPanel', '#subPanel', '#repPanel', '#scPanel'].forEach(function(sel){
     try{ pkFit(sel); }catch(e){}
   });
 });
 
 
 
-window.gmpFirstSeen = gmpFirstSeen;
 
 
 
@@ -3363,8 +3415,11 @@ window.addEventListener('eq:ready', renderScoreTab);
    list to that segment's own, which is the point of having two boxes. */
 (function(){
   var segIn = $('#segment'), subIn = $('#subsegment');
-  if(!segIn || !subIn || !window.EQSegments) return;
-  var SEG = window.EQSegments;
+  if(!segIn || !subIn) return;
+  /* The taxonomy is looked up when it is used, not when the handlers are bound.
+     Binding used to be skipped entirely if segments.js had not loaded yet, and
+     the picker then stayed dead for the rest of the session with no error. */
+  function seg(){ return window.EQSegments; }
 
   function row(item){
     var main = item.kind === 'sub' ? item.sub : item.segment;
@@ -3386,12 +3441,14 @@ window.addEventListener('eq:ready', renderScoreTab);
     if($(btn)) $(btn).setAttribute('aria-expanded','false'); }
 
   function segList(q){
-    paint('#segPanel', SEG.search(q, 60),
+    if(!seg()){ paint('#segPanel', [], 'The segment list has not loaded. Type the segment instead.'); return; }
+    paint('#segPanel', seg().search(q, 60),
       'Nothing matches. You can still type your own segment.');
   }
   function subList(q){
+    if(!seg()){ paint('#subPanel', [], 'The segment list has not loaded. Type the subsegment instead.'); return; }
     var seg = segIn.value.trim();
-    var subs = SEG.subsOf(seg);
+    var subs = seg().subsOf(seg);
     var items;
     if(subs.length){
       items = subs.filter(function(x){
@@ -3400,7 +3457,7 @@ window.addEventListener('eq:ready', renderScoreTab);
     } else {
       /* No segment chosen, or one the taxonomy does not carry. Search every
          subsegment so the box is still useful rather than empty. */
-      items = SEG.search(q, 60).filter(function(x){ return x.kind === 'sub'; });
+      items = seg().search(q, 60).filter(function(x){ return x.kind === 'sub'; });
     }
     paint('#subPanel', items,
       subs.length ? 'No subsegment matches. You can still type your own.'
