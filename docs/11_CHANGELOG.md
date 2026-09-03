@@ -184,3 +184,36 @@ Added:
 - `README.md` and `VERSION.md`.
 
 Tests: 311 assertions, 0 failures.
+
+## v1.0.1 — 2026-09-03
+A real 165 KB PSU banking payload could not be imported. Three defects, all
+found by that one file.
+
+Fixed:
+- **Null at leaf level was still a type error.** The block-level rule was
+  already right, but the leaf checks were not: a macro reading with no value, a
+  budget line with no figure, an unverifiable market size, a disclosure check
+  never performed, an empty consensus block and a liquidity block with no traded
+  value all produced errors. Thirty-six of them on one honest payload. Every one
+  is now a stated gap.
+- **An empty block was read as populated because its shape was there.** A
+  consensus block of nested objects whose every leaf is null is an honest way of
+  saying no consensus exists; the emptiness check only looked one level deep.
+  It now looks at any depth.
+- **When no company cleared the kill switch, the sector report contained no
+  company analysis at all.** On the payload that surfaced this, all three banks
+  were correctly barred for having no register search, and the theses, the
+  mispricing work and the management guidance record were silently discarded.
+  The kill switch decides whether a company may be recommended, not whether it
+  may be discussed. The leading companies are now covered in full with the bar
+  stated against each. The sector report on that payload went from 19 sections
+  and 5 figures to 56 sections and 18 figures.
+
+Changed:
+- The Import panel described the marker-line format as primary. It now describes
+  the fenced json block, which is what the prompt asks for and what carries the
+  copy button.
+- The framework document leads with how null is treated, because that was the
+  thing a researcher most needed to know and could not find.
+
+Tests: 321 assertions, 0 failures.
