@@ -3,9 +3,9 @@
 Two lines change per release, and they must match.
 
 1. `index.html` — near the top:
-   `<script>window.APP_BUILD="2026.09.03.1";</script>`
+   `<script>window.APP_BUILD="2026.09.03.2";</script>`
 2. `sw.js` — line 4:
-   `var BUILD = '2026.09.03.1';`
+   `var BUILD = '2026.09.03.2';`
 
 The cache name is `equity-analyst-` plus that build, so a new build can never be
 served out of an old cache. The Setup page prints the build it is running and
@@ -26,4 +26,4 @@ behave and it is not a fault.
 
 ## Current build
 
-`2026.09.03.1` — methodology 2.0.0, payload schema 3.0.0.
+`2026.09.03.2` — methodology 2.0.0, payload schema 3.0.0.

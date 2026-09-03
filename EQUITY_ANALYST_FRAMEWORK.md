@@ -2,20 +2,37 @@
 
 Methodology 2.0.0 · payload schema 3.0.0
 
-This document is generated from the application itself: the rubric anchors, the
-register battery, the source tiers and the payload contract below are the same
-constants the app scores against. It cannot drift out of step with the software,
-because changing a rubric changes this file.
+Generated from the application itself. The rubric anchors, the register battery,
+the source tiers and the payload contract below are the same constants the app
+scores against, so this file cannot drift from the software.
 
-The app generates the prompt for you on the Analyse page, with the segment and
-horizon filled in. This file is the reference copy, for reading, for review, and
-for running by hand.
+The app builds the prompt for you on the Analyse page with the segment already
+filled in. This is the reference copy, for reading and for running by hand.
+
+## Use null freely
+
+Every field accepts null, and null means "could not be established". It is never
+an error, it never blocks the import, and the application prints the gap on the
+report instead of hiding it. A guessed number is far worse than a null.
+
+That includes the nested cases: a macro reading with no value, a budget line
+with no figure, a market size that is not verifiable, a disclosure check that
+was never performed, an empty consensus block, a liquidity block with no traded
+value. All of them import cleanly and all of them are reported as gaps.
+
+## What bars a company from the Top 3
+
+A severe accounting, governance, promoter, solvency or data-integrity finding.
+An absent forensic assessment. An absent litigation search, or any essential
+register left unsearched. Coverage below 60% of the scored components.
+
+A company barred from the Top 3 is still analysed in full and still ranked. The
+kill switch decides whether it may be recommended, not whether it may be
+discussed.
 
 ---
 
 ## 1. Segment research prompt
-
-Replace the bracketed placeholders, then run it in an assistant that can search.
 
 You are producing an institutional-grade equity research payload on the Indian listed universe.
 
@@ -809,8 +826,6 @@ including pledged shares.
 ---
 
 ## 2. Company research prompt
-
-For researching one company without screening a universe.
 
 You are producing an institutional-grade equity research payload on the Indian listed universe.
 

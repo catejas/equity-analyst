@@ -2955,6 +2955,32 @@ function eqEsg(c, lang){
   ]);
 }
 
+
+/* Which companies get a full write-up. The kill switch decides whether a
+   company may be *recommended*, not whether it may be *discussed*. When every
+   candidate is barred — which is the normal outcome of an honest first run,
+   because the register work is the last thing done — the leading companies are
+   still covered in full, each carrying the reason it cannot be recommended.
+   The alternative is a report that ranks twelve banks and then analyses none. */
+function eqCovered(rep){
+  var t = arr(rep.top3);
+  if(t.length) return { list: t, allBarred: false };
+  var scored = arr(rep.full).filter(function(c){
+    return c.overall && c.overall.score != null && c.overall.sufficient !== false;
+  });
+  if(!scored.length) scored = arr(rep.full).filter(function(c){
+    return c.overall && c.overall.score != null;
+  });
+  return { list: scored.slice(0, 3), allBarred: true };
+}
+function eqBarredBanner(cov){
+  if(!cov.allBarred || !cov.list.length) return '';
+  return '<div class="note"><b>No company cleared the kill switch, so there is no Top 3.</b> '
+    + 'The ' + cov.list.length + ' highest-ranked companies are covered in full below because '
+    + 'the research exists and is worth reading, but none of them may be recommended on this '
+    + 'run. The reason is stated against each.</div>';
+}
+
 function buildExec(p, lang){
   lang = lang || 'en';
   var rep = eqRep(p), run = rep.run || {}, out = '';
@@ -2992,9 +3018,11 @@ function buildExec(p, lang){
 
   out += sec('04', 'Ranking') + figTop3(rep) + eqRankTable(p, rep.top10, lang);
 
-  /* Each Top 3 company at summary depth. The long reports go deeper; this
-     document exists to be read in one sitting. */
-  arr(rep.top3).forEach(function(c, i){
+  /* The leading companies at summary depth. If none cleared the kill switch the
+     highest-ranked are still summarised, each carrying its bar. */
+  var covE = eqCovered(rep);
+  if(covE.allBarred) out += eqBarredBanner(covE);
+  covE.list.forEach(function(c, i){
     var no = String(5 + i);
     out += sec(no, (S(c.name) || S(c.symbol)) + ' — '
       + (c.overall && c.overall.score != null ? c.overall.score.toFixed(1) : '—') + '/100');
@@ -3025,7 +3053,7 @@ function buildExec(p, lang){
 
   var excl = arr(rep.excludedFromTop3);
   if(excl.length){
-    out += sec(String(5 + arr(rep.top3).length), 'Barred from the Top 3')
+    out += sec(String(5 + covE.list.length), 'Barred from the Top 3')
       + tbl(['Company','Score','Why'], excl.map(function(c){
           return { cells:['<span class="en">' + e(S(c.name) || S(c.symbol)) + '</span>',
             eqNum(c.overall && c.overall.score),
@@ -3037,7 +3065,7 @@ function buildExec(p, lang){
 
   var warn = arr(p && p.warnings);
   if(warn.length){
-    out += sec(String(6 + arr(rep.top3).length), 'Gaps in this research')
+    out += sec(String(6 + covE.list.length), 'Gaps in this research')
       + eqList(warn)
       + '<div class="mut">These are printed rather than hidden. A gap you can see is a gap you can close.</div>';
   }
@@ -4625,7 +4653,11 @@ function buildSector(p, lang){
   var sv = eqSectorValuation(p, lang);
   if(sv) out += S2('Where the sector trades') + sv;
 
-  /* ---------------- each Top 3 company in full ---------------- */
+  /* ---------------- the leading companies in full ---------------- */
+  var coverage = eqCovered(rep);
+  top = coverage.list;
+  if(top.length) out += S2(coverage.allBarred ? 'The leading companies' : 'The Top 3')
+    + eqBarredBanner(coverage);
   top.forEach(function(c){
     out += S2((S(c.name) || S(c.symbol)) + ' — snapshot') + eqSnapshot(c, lang);
     out += S2((S(c.name) || S(c.symbol)) + ' — the case');

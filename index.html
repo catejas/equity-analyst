@@ -409,7 +409,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.03.1";</script>
+<script>window.APP_BUILD="2026.09.03.2";</script>
 </head>
 <body>
 
@@ -607,12 +607,7 @@ body.previewing{overflow:hidden;}
 
   <div class="card hidden" id="importCard">
     <h2>Import Data</h2>
-    <p class="hint">Paste the whole reply. The data package now arrives as plain text between two
-    marker lines rather than in a code block — that is what stops the Gemini mobile app handing you
-    an empty box — but a fenced block or a bare JSON object still reads exactly the same. The reader
-    repairs the things chat models get wrong: a reply cut off mid-JSON, trailing commas, comments,
-    "..." shortcuts, a missing closing fence. Anything still missing is listed for you to complete
-    before saving.</p>
+    <p class="hint">Paste the whole reply, or just the JSON block. The payload comes back inside a fenced <b>json</b> code block, which is what gives your chat app a copy button &mdash; one tap on that and paste here. Marker lines and a bare JSON object read exactly the same, so it does not matter which form your tool produced. The reader repairs what chat models get wrong: a reply cut off mid-JSON, trailing commas, comments, "..." shortcuts, a missing closing fence. Anything still missing is listed for you before saving.</p>
     <textarea id="importText" placeholder="Paste the whole reply here — the File 7 data block if you have it, otherwise just the report text…" style="min-height:170px;"></textarea>
     <!-- Some mobile chat apps render a very large code block as an empty box with
          a copy button that copies nothing — the Gemini Android app does this. The
