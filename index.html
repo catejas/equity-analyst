@@ -1,0 +1,3489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Equity Analyst — Institutional Research</title>
+<meta name="description" content="Institutional-grade research on the Indian listed universe, by segment and company.">
+<meta name="theme-color" content="#0B1F3B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F1F4F9" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Equity Analyst">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+/* ── Navy & gold design system ──────────────────────────────────────────── */
+:root{
+  --bg:#08152B; --bg2:#0B1F3B; --surf:#102845; --surf2:#16324F; --line:#254060;
+  --ink:#F3F6FA; --ink2:#AFC0D4; --ink3:#7F94AC;
+  --navy:#1E4E8C; --navy2:#2E6BB8;
+  --gold:#F2B233; --gold2:#E08A1E; --goldink:#231704;
+  --blue:#2E6BB8; --orange:#E08A1E; --aqua:#12A085; --yellow:#F2B233;
+  --green:#18A05B; --red:#EF6A6A; --violet:#7C8CF0;
+  --indigo:#7C8CF0; --indigo-ink:#0B1226; --indigo-t:#17203F; --indigo-t2:#1D2850;
+  --r:16px; --r2:12px;
+  --shadow:0 1px 2px rgba(0,0,0,.28), 0 8px 24px rgba(0,0,0,.22);
+  --grad-gold:linear-gradient(135deg,#F5C255,#E08A1E);
+  --grad-navy:linear-gradient(135deg,#2E6BB8,#153A6B);
+  --grad-head:linear-gradient(160deg,#122E52 0%,#0B1F3B 60%,#08152B 100%);
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#F1F4F9; --bg2:#FFFFFF; --surf:#FFFFFF; --surf2:#F6F8FC; --line:#DCE4EE;
+    --ink:#0B1F3B; --ink2:#41566F; --ink3:#7286A0;
+    --navy:#1E4E8C; --navy2:#2E6BB8;
+    --gold:#E9A21B; --gold2:#C97C10; --goldink:#2B1C02;
+    --blue:#1E4E8C; --orange:#C97C10; --aqua:#0E7C66; --yellow:#B37A05;
+    --green:#0A7A42; --red:#CF3B3A; --violet:#4A3AA7;
+    --indigo:#6A5AE0; --indigo-ink:#FFFFFF; --indigo-t:#F3F1FD; --indigo-t2:#E8E4FB;
+    --shadow:0 1px 2px rgba(11,31,59,.06), 0 8px 22px rgba(11,31,59,.07);
+    --grad-head:linear-gradient(160deg,#FFFFFF 0%,#F4F7FC 100%);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* The app is a fixed-width phone layout, so pinch-zooming only ever pushed the
+   cards off-screen and left the header half-scrolled. Locked to 1x; the
+   document preview and the generated files are unaffected. */
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; touch-action:manipulation; }
+body{ touch-action:manipulation; overscroll-behavior-y:contain; }
+/* inputs at 16px so iOS does not zoom the page when a field is focused */
+input,select,textarea{ font-size:16px; }
+html,body{margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:820px;margin:0 auto;padding:0 16px 96px;}
+
+header{
+  position:sticky;top:0;z-index:50;background:var(--grad-head);
+  padding:calc(env(safe-area-inset-top) + 16px) 16px 0;
+  border-bottom:1px solid var(--line);
+  box-shadow:0 6px 18px rgba(0,0,0,.14);
+}
+header .in{max-width:820px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:12px;}
+.logo{width:40px;height:40px;border-radius:11px;flex:0 0 auto;overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.logo img{width:100%;height:100%;display:block;}
+.brand h1{font-size:19px;margin:0;letter-spacing:-.025em;font-weight:800;}
+.brand .sub{font-size:11.5px;color:var(--ink3);margin-top:1px;letter-spacing:.02em;}
+nav{display:flex;gap:6px;margin-top:14px;padding-bottom:12px;overflow-x:auto;scrollbar-width:none;}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  background:var(--surf2);border:1px solid var(--line);color:var(--ink3);font:inherit;
+  font-size:13.5px;font-weight:700;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+nav button.on{background:var(--grad-gold);border-color:transparent;color:var(--goldink);
+  box-shadow:0 2px 10px rgba(224,138,30,.35);}
+
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:16px 0;
+  box-shadow:var(--shadow);}
+.card h2{font-size:16px;margin:0 0 4px;letter-spacing:-.02em;font-weight:800;
+  display:flex;align-items:center;gap:9px;}
+.card h2::before{content:'';width:4px;height:16px;border-radius:3px;background:var(--grad-gold);flex:0 0 auto;}
+.card .hint{font-size:12.5px;color:var(--ink3);margin:0 0 12px;line-height:1.45;}
+label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--ink3);margin:14px 0 5px;}
+label:first-of-type{margin-top:0;}
+input[type=text],input[type=password],select,textarea{
+  width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surf2);
+  border:1px solid var(--line);border-radius:11px;padding:12px 13px;appearance:none;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+textarea{min-height:120px;line-height:1.45;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(242,178,51,.22);}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:7px;}
+.seg input{position:absolute;opacity:0;pointer-events:none;}
+.seg label{margin:0;text-transform:none;letter-spacing:0;font-size:13.5px;font-weight:700;color:var(--ink2);
+  background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:11px 8px;text-align:center;
+  cursor:pointer;transition:all .15s ease;}
+.seg input:checked + label{background:var(--grad-navy);border-color:transparent;color:#fff;
+  box-shadow:0 2px 10px rgba(46,107,184,.34);}
+.seg input:focus-visible + label{box-shadow:0 0 0 3px rgba(242,178,51,.35);}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;font-size:15.5px;
+  font-weight:800;letter-spacing:.01em;padding:15px;border-radius:13px;border:1px solid var(--line);
+  background:var(--surf2);color:var(--ink);cursor:pointer;margin-top:10px;
+  transition:transform .12s ease,box-shadow .15s ease,filter .15s ease;}
+.btn.pri{background:var(--grad-gold);border-color:transparent;color:var(--goldink);
+  box-shadow:0 3px 14px rgba(224,138,30,.34);}
+.btn.pri2{background:var(--grad-navy);border-color:transparent;color:#fff;
+  box-shadow:0 3px 14px rgba(46,107,184,.32);}
+.btn.ghost{background:transparent;color:var(--ink2);}
+.btn:hover:not(:disabled){filter:brightness(1.06);}
+.btn:active{transform:scale(.985);}
+.btn:disabled{opacity:.45;box-shadow:none;}
+.btn.sm{padding:11px;font-size:14px;border-radius:11px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.grid2 .btn{margin-top:0;}
+
+details{border:1px solid var(--line);border-radius:13px;background:var(--surf2);margin-top:12px;}
+summary{padding:12px 14px;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--ink2);}
+details .in{padding:0 14px 14px;}
+
+.note{font-size:12.5px;color:var(--ink3);line-height:1.5;margin-top:10px;}
+.warn{border-left:3px solid var(--yellow);background:rgba(201,133,0,.09);padding:10px 12px;border-radius:0 8px 8px 0;
+  font-size:12.5px;line-height:1.5;color:var(--ink2);margin-top:12px;}
+.warn b{color:var(--ink);}
+.ok{border-left-color:var(--green);background:rgba(42,157,74,.09);}
+.bad{border-left-color:var(--red);background:rgba(230,103,103,.09);}
+
+/* worksheet */
+.gwrap{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden;background:var(--surf2);}
+.gwrap:has(.ghead.open){border-color:var(--gold);}
+.ghead{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:var(--ink);
+  font:inherit;padding:13px 14px;cursor:pointer;text-align:left;}
+.ghead .chev{display:inline-block;font-size:19px;line-height:1;color:var(--ink3);
+  transition:transform .16s ease;transform:rotate(0deg);flex:0 0 auto;}
+.ghead.open .chev{transform:rotate(90deg);}
+.ghead .gname{flex:1;font-size:14.5px;font-weight:700;letter-spacing:-.01em;}
+.ghead .gscore{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.ghead .gscore small{font-size:11px;color:var(--ink3);font-weight:600;}
+.gbody{padding:2px 14px 10px;border-top:1px solid var(--line);}
+.srow2{display:flex;align-items:center;gap:10px;padding:7px 0;}
+.srow2 .sname{flex:1;font-size:13px;color:var(--ink2);line-height:1.25;}
+.srow2 .strack{flex:0 0 78px;height:8px;background:var(--surf);border:1px solid var(--line);
+  border-radius:5px;overflow:hidden;}
+.srow2 .strack i{display:block;height:100%;background:var(--grad-gold);border-radius:0 4px 4px 0;}
+.srow2 .sval{flex:0 0 50px;text-align:right;font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums;}
+.srow2 .sval small{font-size:10px;color:var(--ink3);font-weight:600;}
+.wrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.wrow:last-child{border-bottom:0;}
+.wrow .nm{flex:1;font-size:13.5px;line-height:1.3;}
+.wrow .nm small{display:block;color:var(--ink3);font-size:11px;}
+.wrow input[type=range]{flex:0 0 108px;width:108px;accent-color:var(--gold);background:none;border:0;padding:0;}
+.wrow .sc{flex:0 0 52px;text-align:right;font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;}
+.grp{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ink3);
+  margin:18px 0 2px;display:flex;justify-content:space-between;}
+.total{position:sticky;bottom:0;background:var(--surf);border-top:2px solid var(--gold);
+  margin:16px -16px -16px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-radius:0 0 var(--r) var(--r);}
+.total .big{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.total .band{font-size:14px;font-weight:700;margin-top:3px;}
+.bar{height:10px;background:var(--surf2);border-radius:5px;overflow:hidden;margin-top:10px;position:relative;
+  pointer-events:none;user-select:none;-webkit-user-select:none;touch-action:none;}
+.bar i{display:block;height:100%;background:var(--grad-gold);border-radius:0 5px 5px 0;}
+.bar u{position:absolute;top:0;bottom:0;width:2px;background:var(--ink3);}
+
+/* output */
+#out{white-space:pre-wrap;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:anywhere;}
+#out h1,#out h2,#out h3{font-size:16px;margin:16px 0 4px;}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.status{font-size:12.5px;color:var(--ink3);margin-top:10px;}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9px;
+  background:var(--surf2);border:1px solid var(--line);color:var(--ink2);margin-left:6px;vertical-align:2px;}
+.hidden{display:none!important;}
+.doc-row{display:flex;align-items:center;gap:8px;padding:13px 13px;margin-top:10px;
+  border:1px solid var(--line);border-radius:14px;background:var(--surf2);
+  transition:border-color .15s ease;}
+.doc-row:hover{border-color:var(--gold);}
+.doc-name{flex:1;font-size:14px;font-weight:700;line-height:1.25;}
+.doc-name small{display:block;font-size:11px;font-weight:500;color:var(--ink3);margin-top:2px;}
+.ico{flex:0 0 auto;min-width:46px;height:40px;border-radius:11px;border:1px solid var(--line);
+  background:var(--surf);color:var(--ink);font:inherit;font-size:11.5px;font-weight:800;
+  letter-spacing:.03em;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:transform .12s ease,filter .15s ease;}
+.ico:hover:not(:disabled){filter:brightness(1.08);}
+.ico:active{transform:scale(.94);}
+.ico-pdf{background:var(--grad-navy);border-color:transparent;color:#fff;
+  box-shadow:0 2px 8px rgba(46,107,184,.3);}
+.ico-png{background:var(--grad-gold);border-color:transparent;color:var(--goldink);
+  box-shadow:0 2px 8px rgba(224,138,30,.3);}
+.ico-sh{background:var(--surf);color:var(--ink2);}
+.ico-sh{font-size:17px;font-weight:600;}
+.ico:disabled{opacity:.45;}
+.rv{border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-top:12px;background:var(--surf2);}
+.rvh{font-size:14px;font-weight:800;letter-spacing:-.01em;}
+.tagx{font-size:10px;font-weight:700;background:var(--surf);border:1px solid var(--line);
+  border-radius:8px;padding:1px 7px;margin-left:6px;color:var(--ink3);vertical-align:2px;}
+.rvm{font-size:12.5px;color:var(--ink3);margin-top:3px;}
+.rvsum{font-size:12.5px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+.rvok{margin-top:8px;border-left:3px solid var(--green);background:rgba(42,157,74,.1);
+  padding:7px 10px;border-radius:0 7px 7px 0;font-size:12px;line-height:1.45;}
+.rvwarn{margin-top:8px;border-left:3px solid var(--yellow);background:rgba(201,133,0,.1);
+  padding:7px 10px;border-radius:0 7px 7px 0;font-size:12px;line-height:1.45;}
+.rvbad{margin-top:6px;border-left:3px solid var(--red);background:rgba(230,103,103,.1);
+  padding:7px 10px;border-radius:0 7px 7px 0;font-size:12px;line-height:1.45;}
+.rvmiss{font-size:12.5px;margin-top:11px;line-height:1.45;color:var(--ink2);}
+/* Import status: a fill bar, then a line per section with a state dot. */
+.rvbar{height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:9px;}
+.rvbar i{display:block;height:100%;background:var(--green);}
+.rvsec{margin-top:11px;border-top:1px solid var(--line);padding-top:8px;}
+.rvsrow{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px;}
+.rvsrow span{flex:1;color:var(--ink2);}
+.rvsrow b{font-variant-numeric:tabular-nums;font-size:12px;}
+.rvsrow b.mutb{color:var(--ink3);font-weight:600;}
+.rvsrow .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;}
+.rvsrow .dot.ok{background:var(--green);}
+.rvsrow .dot.part{background:var(--yellow);}
+.rvsrow .dot.none{background:var(--red);}
+.rvgap{font-size:11px;color:var(--ink3);margin:0 0 4px 16px;line-height:1.4;}
+.rvdocs{margin-top:11px;border-top:1px solid var(--line);padding-top:8px;}
+.rvdh{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:5px;}
+.scbad{color:var(--red);}
+.rvrow{display:flex;align-items:center;gap:9px;padding:5px 0;}
+.rvrow span{flex:1;font-size:13px;}
+.rvrow input{width:74px;flex:0 0 74px;padding:7px 9px;font-size:15px;text-align:right;}
+.rvrow small{flex:0 0 26px;color:var(--ink3);font-size:11.5px;}
+.rc{border:1px solid var(--line);border-radius:14px;padding:14px 15px;background:var(--surf2);}
+.rc .v{font-size:17px;font-weight:800;letter-spacing:-.01em;line-height:1.2;}
+.rc .m{font-size:12px;color:var(--ink3);margin-top:2px;}
+.rc .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:11px;}
+.rc .t{background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:7px 8px;text-align:center;}
+.rc .t b{display:block;font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
+.rc .t span{font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.rc .fl{margin-top:11px;font-size:12px;line-height:1.5;}
+.rc .fl i{font-style:normal;display:inline-block;font-size:9.5px;font-weight:800;padding:1px 6px;
+  border-radius:8px;color:#fff;margin-right:6px;}
+.sv-CRITICAL{background:#a81f1e;} .sv-HIGH{background:var(--red);}
+.sv-MEDIUM{background:var(--yellow);color:#3a2800!important;} .sv-LOW{background:#8e8d86;}
+
+/* Company picker. A <datalist> renders on phones as a one-line strip above the
+   keyboard, and once a value is chosen it will not reopen — so this is a real
+   vertical list that can always be reopened. */
+.pickline{display:flex;gap:8px;align-items:stretch;}
+.pickline .pickwrap{flex:1 1 auto;min-width:0;}
+.pickwrap{position:relative;display:flex;}
+.pickwrap input{width:100%;padding-right:46px;}
+.pickbtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--surf);
+  color:var(--ink2);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;padding:0;}
+.pickbtn[aria-expanded="true"]{background:var(--grad-gold);border-color:transparent;color:var(--goldink);}
+/* Taller: at 340px only four rows were visible and every list needed
+   scrolling. Three-line rows are ~74px, so this shows seven or eight. */
+.pickpanel{margin-top:8px;border:1px solid var(--line);border-radius:13px;background:var(--surf2);
+  max-height:min(72vh,620px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  box-shadow:var(--shadow);}
+.pickpanel .pk{display:block;width:100%;text-align:left;background:none;border:0;
+  border-bottom:1px solid var(--line);color:var(--ink);font:inherit;padding:12px 14px;cursor:pointer;}
+.pickpanel .pk:last-child{border-bottom:0;}
+.pickpanel .pk1{display:block;font-weight:600;}
+.pickpanel .pk2{display:block;font-size:.78rem;color:var(--mut);margin-top:2px;}
+.pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
+
+/* ---- score card: one collapsible card per scoring model ---- */
+.tiles3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px;}
+.tiles3 .t{background:var(--surf2);border:1px solid var(--line);border-radius:12px;padding:9px 10px;}
+.tiles3 .t .k{font-size:.7rem;color:var(--mut);text-transform:none;}
+.tiles3 .t .v{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.tiles3 .t .v small{font-size:.62rem;font-weight:500;color:var(--mut);}
+.tiles3 .t .s{font-size:.68rem;color:var(--mut);margin-top:1px;}
+.pill{border:1px solid var(--line);border-radius:13px;background:var(--surf2);margin-top:10px;overflow:hidden;}
+.pill > .hd{display:flex;align-items:center;gap:10px;width:100%;padding:12px 13px;
+  background:none;border:0;color:inherit;text-align:left;cursor:pointer;}
+.pill > .hd .nm{flex:1 1 auto;min-width:0;font-weight:600;font-size:.92rem;}
+.pill > .hd .sc{font-variant-numeric:tabular-nums;font-weight:700;font-size:1.02rem;}
+.pill > .hd .sc small{font-size:.66rem;font-weight:500;color:var(--mut);}
+.pill > .hd .cv{font-size:1rem;color:var(--mut);transition:transform .15s;}
+.pill.open > .hd .cv{transform:rotate(180deg);}
+.pill .pbar{height:4px;background:var(--line);}
+.pill .pbar i{display:block;height:100%;}
+.pill .bd{display:none;padding:2px 13px 12px;}
+.pill.open .bd{display:block;}
+.pill .ln{padding:9px 0;border-bottom:1px solid var(--line);}
+.pill .ln:last-child{border-bottom:0;}
+.pill .ln .r1{display:flex;gap:8px;align-items:baseline;}
+.pill .ln .r1 .n{flex:1 1 auto;font-size:.85rem;}
+.pill .ln .r1 .v{font-variant-numeric:tabular-nums;font-weight:700;font-size:.85rem;}
+.pill .ln .r1 .w{font-size:.7rem;color:var(--mut);min-width:26px;text-align:right;}
+.pill .ln .r2{font-size:.76rem;color:var(--mut);margin-top:3px;line-height:1.45;}
+.pill .ln .bd2{font-weight:700;color:var(--ink);}
+.pill .ln.miss .r2{font-style:italic;}
+
+.pickpanel .pk:active,.pickpanel .pk.on{background:var(--surf);}
+#outcomeBox{margin-top:10px;border:1px solid var(--line);border-radius:12px;
+  background:var(--surf2);padding:11px 13px;}
+#outcomeBox label{display:block;font-size:11px;font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--ink3);margin:0 0 6px;}
+#outcomeBox .outin{display:flex;gap:8px;align-items:stretch;}
+#outcomeBox .outin input{flex:1 1 auto;min-width:0;margin:0;}
+#outcomeBox .outv{margin-top:8px;font-size:12.5px;font-weight:700;}
+#outcomeBox .outv.good{color:var(--green);}
+#outcomeBox .outv.bad{color:var(--red);}
+#outcomeBox .outhr{margin-top:6px;font-size:12px;color:var(--ink3);}
+/* A company whose report is already downloaded. Indigo, because the three
+   colours a row already uses are spoken for — green OPEN, blue UPCOMING, red
+   CLOSED — and a fourth signal in any of those hues would be read as a status.
+   The rail carries the meaning; the tint is faint enough to survive being
+   printed next to a white row. */
+.pickpanel .pk{border-left:3px solid transparent;}
+.pickpanel .pk.hasrep{border-left-color:var(--indigo);background:var(--indigo-t);}
+.pickpanel .pk.hasrep.on{background:var(--indigo-t2);}
+.pkrep{display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:.3px;
+  padding:1px 5px;border-radius:6px;margin-right:6px;vertical-align:1px;
+  background:var(--indigo);color:var(--indigo-ink);}
+.pickpanel .pk b{display:block;font-size:14.5px;font-weight:700;line-height:1.3;}
+.pickpanel .pk span{display:block;font-size:11.5px;color:var(--ink3);margin-top:3px;
+  white-space:nowrap;overflow:hidden;}
+.pickpanel .pkempty{padding:14px;font-size:13px;color:var(--ink3);}
+/* Three lines per row: name, window, money. The money line carries the GMP, so
+   it is set a shade darker than the window line — it is the number being scanned. */
+.pickpanel .pk span.pkl3{color:var(--ink2);margin-top:2px;font-weight:600;}
+/* .pk span is display:block so each of the three lines stacks. Anything nested
+   inside a line has to be put back to inline, or the GMP drops onto a line of
+   its own and the row grows to five lines. */
+.pickpanel .pk span span{display:inline;font-size:inherit;margin-top:0;}
+.pickpanel .pk .pklbl{color:var(--ink3);font-weight:600;}
+.pickpanel .pk .bandlo{color:var(--red);font-weight:700;}
+.pickpanel .pk .bandhi{color:var(--green);font-weight:700;}
+.pickpanel .pk .ar{font-size:10px;vertical-align:.5px;}
+.pickpanel .pk .gmpup{color:var(--green);font-weight:700;}
+.pickpanel .pk .gmpdn{color:var(--red);font-weight:700;}
+.pickpanel .pk .gmpna{color:var(--ink3);font-weight:600;}
+.lblrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.stamp{font-size:10.5px;color:var(--ink3);text-align:right;white-space:nowrap;}
+.pkchip{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:7px;
+  margin-right:6px;vertical-align:1px;background:var(--surf);border:1px solid var(--line);color:var(--ink2);}
+.pkchip.open{background:rgba(24,160,91,.16);border-color:transparent;color:var(--green);}
+.pkchip.closed{background:rgba(239,106,106,.14);border-color:transparent;color:var(--red);}
+.pkchip.upcoming{background:rgba(31,111,178,.14);border-color:transparent;color:var(--blue,#1F6FB2);}
+
+/* All Reports row: its own language switch, so one tap produces the whole set. */
+.all-row{border-color:var(--gold);background:var(--surf);}
+.doc-lang{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--surf2);border:1px solid var(--line);border-radius:var(--r);
+  padding:9px 12px;margin-bottom:9px;}
+.doc-lang-k{font-size:12.5px;font-weight:700;color:var(--ink2);letter-spacing:.02em;}
+.langseg{display:flex;gap:4px;flex:0 0 auto;margin-right:2px;}
+.langseg .lg{border:1px solid var(--line);background:var(--surf);color:var(--ink2);
+  font:inherit;font-size:11.5px;font-weight:800;letter-spacing:.04em;padding:0 9px;height:40px;
+  border-radius:11px;cursor:pointer;}
+.langseg .lg.on{background:var(--grad-navy);border-color:transparent;color:#fff;}
+
+/* Full-screen preview. Opening the document in a new window left users with no
+   way back inside an installed PWA — there is no browser chrome there. */
+#preview{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column;}
+#preview .pvbar{display:flex;align-items:center;gap:8px;flex:0 0 auto;
+  padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;background:var(--grad-head);
+  border-bottom:1px solid var(--line);}
+#preview .pvback{display:flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:var(--surf2);color:var(--ink);font:inherit;font-size:14px;font-weight:800;
+  padding:10px 14px;border-radius:11px;cursor:pointer;}
+#preview .pvttl{flex:1;font-size:13px;font-weight:700;color:var(--ink2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+#preview .pvsave{border:0;background:var(--grad-gold);color:var(--goldink);font:inherit;
+  font-size:14px;font-weight:800;padding:10px 14px;border-radius:11px;cursor:pointer;}
+#preview .pvbody{flex:1;min-height:0;background:#E9E7E1;overflow:auto;-webkit-overflow-scrolling:touch;}
+#preview iframe{width:100%;height:100%;border:0;display:block;background:#E9E7E1;}
+body.previewing{overflow:hidden;}
+@media print{ body.previewing > *:not(#preview){display:none!important;}
+  #preview{position:static;} #preview .pvbar{display:none!important;} }
+/* When the Search button has armed the prompt, the tool row is the
+   next thing to tap — say so visually. */
+#toolRow.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
+#toolRow.armed .btn{background:var(--surf);border-color:var(--gold);}
+
+/* Setup toggles. The in-app API run is off unless the user turns it on, so the
+   button never advertises a feature they cannot use. */
+.toggle-row{display:flex;align-items:center;gap:14px;margin-top:14px;padding:13px 14px;
+  border:1px solid var(--line);border-radius:13px;background:var(--surf2);}
+.tg-label{flex:1;margin:0;font-size:13.5px;font-weight:700;text-transform:none;letter-spacing:0;
+  color:var(--ink);line-height:1.35;}
+.tg{flex:0 0 auto;width:54px;height:32px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surf);cursor:pointer;padding:0;position:relative;transition:background .18s ease;}
+.tg .tg-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;
+  background:var(--ink3);transition:transform .18s ease,background .18s ease;}
+.tg[aria-checked="true"]{background:var(--grad-gold);border-color:transparent;}
+.tg[aria-checked="true"] .tg-knob{transform:translateX(22px);background:#fff;}
+.tg:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(242,178,51,.35);}
+
+/* Verdict card, now at the foot of the Score Card. */
+.fl-row{display:flex;align-items:flex-start;gap:8px;margin:5px 0;font-size:12.5px;line-height:1.45;}
+.fl-row i{flex:0 0 auto;}
+.fl-row span{flex:1;}
+.sev-key{margin-top:13px;padding-top:11px;border-top:1px solid var(--line);}
+.sev-key-h{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink3);margin-bottom:7px;}
+.lg-row{display:flex;align-items:flex-start;gap:8px;margin:4px 0;font-size:11.5px;
+  line-height:1.4;color:var(--ink2);}
+.lg-row i{flex:0 0 auto;}
+.footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
+</style>
+<script>window.APP_BUILD="2026.09.03.1";</script>
+</head>
+<body>
+
+<header>
+ <div class="in">
+  <div class="brand">
+    <div class="logo"><img src="icons/icon-192.png" alt="Equity Analyst"></div>
+    <div>
+      <h1>Equity Analyst</h1>
+      <div class="sub">Indian listed equity &middot; segment and company research</div>
+    </div>
+  </div>
+  <nav>
+    <button class="on" data-tab="analyse">Analyse</button>
+    <button data-tab="report">Report</button>
+    <button data-tab="score">Score Card</button>
+    <button data-tab="setup">Setup</button>
+  </nav>
+ </div>
+</header>
+
+<div class="wrap">
+
+
+</div>
+
+
+<!-- ============ ANALYSE ============ -->
+<section id="tab-analyse">
+  <div class="card">
+    <div class="lblrow">
+      <label for="segment" style="margin:0;">Segment</label>
+      <span id="runStamp" class="stamp"></span>
+    </div>
+    <div class="pickwrap">
+      <input type="text" id="segment" placeholder="Type or browse — Defence and aerospace"
+             autocomplete="off" autocapitalize="words" enterkeyhint="next">
+      <button type="button" class="pickbtn" id="btnSegPick"
+              aria-label="Browse segments" aria-expanded="false">&#9662;</button>
+    </div>
+    <div id="segPanel" class="pickpanel hidden" role="listbox" aria-label="Segments"></div>
+
+    <label for="subsegment" style="margin-top:10px;">Subsegment <span class="mut">optional</span></label>
+    <div class="pickwrap">
+      <input type="text" id="subsegment" placeholder="Type or browse"
+             autocomplete="off" autocapitalize="words" enterkeyhint="done">
+      <button type="button" class="pickbtn" id="btnSubPick"
+              aria-label="Browse subsegments" aria-expanded="false">&#9662;</button>
+    </div>
+    <div id="subPanel" class="pickpanel hidden" role="listbox" aria-label="Subsegments"></div>
+
+    <label for="company" style="margin-top:10px;">Company <span class="mut">optional</span></label>
+    <input type="text" id="company" placeholder="Leave empty to research the whole segment"
+           autocomplete="off" autocapitalize="words" enterkeyhint="done">
+    <p class="note" id="modeNote" style="margin-top:6px;"></p>
+
+    <label for="horizon" style="margin-top:10px;">Holding horizon</label>
+    <select id="horizon">
+      <option value="1-3">1 to 3 years</option>
+      <option value="3-5" selected>3 to 5 years</option>
+      <option value="5-10">5 to 10 years</option>
+      <option value="10+">10 years or more</option>
+    </select>
+
+    <p style="margin-top:16px">
+      <button class="btn pri" id="btnSearch" type="button">Research segment</button>
+    </p>
+
+    <label style="margin-top:14px;">Or open a tool directly</label>
+    <p class="note" id="toolHint" style="margin-top:0;margin-bottom:8px;">One tap copies the
+    prompt and opens the tool &mdash; its app if you have it installed, otherwise the website.
+    Paste, send, then bring the reply back under Import.</p>
+    <div class="grid2" id="toolRow">
+      <button class="btn sm" data-tool="claude">Claude</button>
+      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
+      <button class="btn sm" data-tool="gemini">Gemini</button>
+      <button class="btn sm" data-tool="perplexity">Perplexity</button>
+    </div>
+
+    <p class="note" style="margin-top:14px;">The prompt is built from the scoring engine itself,
+    so the anchors, the register battery and the search rules in it are the same ones the app
+    scores against. Change a rubric and the prompt changes with it.</p>
+
+    <button class="btn pri" id="btnRun">RESEARCH IN APP &mdash; USES YOUR API KEY</button>
+  </div>
+
+  <div class="card">
+    <h2>Recent</h2>
+    <p class="hint">Saved on this device only.</p>
+    <!-- The list used to be printed on the page, twelve rows deep. It is a
+         picker now: one line of screen until you ask for it. -->
+    <label style="margin-top:0;" for="rcPick">Saved run</label>
+    <div class="pickline">
+      <div class="pickwrap">
+        <input type="text" id="rcPick" placeholder="Nothing yet"
+               autocomplete="off" readonly>
+        <button type="button" class="pickbtn" id="btnRcPick"
+                aria-label="Show recent companies" aria-expanded="false">&#9662;</button>
+      </div>
+      <button class="btn sm" id="btnRcLoad" style="margin:0;flex:0 0 84px;">Load</button>
+    </div>
+    <div id="rcPanel" class="pickpanel hidden" role="listbox" aria-label="Recent companies"></div>
+  </div>
+</section>
+
+<!-- ============ REPORT ============ -->
+<section id="tab-report" class="hidden">
+  <div class="card">
+    <h2>Report <span class="tag" id="repTag">empty</span></h2>
+    <p class="hint" id="repMeta">Run an analysis to populate this tab.</p>
+    <label style="margin-top:0;" for="repPick">Company name</label>
+    <div class="pickwrap">
+      <input type="text" id="repPick" placeholder="No analysis saved yet"
+             autocomplete="off" readonly>
+      <button type="button" class="pickbtn" id="btnRepPick"
+              aria-label="Show saved analyses" aria-expanded="false">&#9662;</button>
+    </div>
+    <div id="repPanel" class="pickpanel hidden" role="listbox" aria-label="Saved analyses"></div>
+    <!-- A2. Every analysis carries a listing-gain call. Once the issue has
+         actually listed the call can be marked, and the app can tell you what
+         your hit rate is. No broker note scores itself. -->
+    <div id="outcomeBox" class="hidden"></div>
+    <!-- The native select is kept, hidden. It is the single source of truth for
+         which analysis is current — every existing handler reads #libSel.value —
+         so the picker above sets it and dispatches change rather than the rest
+         of the app having to learn a new mechanism. -->
+    <select id="libSel" hidden><option value="">— none saved —</option></select>
+    <div class="grid2" style="margin-top:9px;">
+      <button class="btn sm pri" id="btnImport" style="margin:0;">Import Data</button>
+      <button class="btn sm" id="btnDelRep" style="margin:0;">Delete</button>
+    </div>
+
+    <button class="btn sm hidden" id="btnAddMore">ADD TO THIS ANALYSIS</button>
+    <div id="addMoreBox" class="hidden" style="margin-top:10px;">
+      <p class="hint">Only needed if a reply arrived incomplete. Paste the missing part &mdash; the
+      the rest of a reply the tool had to cut short. It is merged into the analysis
+      above; nothing already there is overwritten.</p>
+      <textarea id="addMoreText" placeholder="Paste the second data block here…" style="min-height:130px;"></textarea>
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn sm pri" id="btnAddMoreSave" style="margin:0;">MERGE</button>
+        <button class="btn sm" id="btnAddMoreCancel" style="margin:0;">Cancel</button>
+      </div>
+      <div id="addMoreMsg" class="note"></div>
+    </div>
+    <div id="docTools" class="hidden">
+      <label style="margin-top:14px;">Documents</label>
+      <!-- One switch for every document below it, rather than a pair of buttons
+           inside the All Reports row that only governed that row. -->
+      <div class="doc-lang">
+        <span class="doc-lang-k">Language</span>
+        <div class="langseg" role="group" aria-label="Language for every document">
+          
+        </div>
+      </div>
+      <div class="doc-row all-row">
+        <span class="doc-name">All Reports<small>all six documents in one go &middot; several minutes</small></span>
+        <button class="ico ico-pdf" data-doc="all" data-act="make" title="Generate all reports" aria-label="Generate all reports">PDF</button>
+        <button class="ico ico-sh" data-doc="all" data-act="share" title="Share all reports" aria-label="Share all reports">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Sector Research Report<small>30 pages &middot; A4 PDF &middot; the segment</small></span>
+        <button class="ico ico-pdf" data-doc="sector" data-act="make" title="Generate PDF" aria-label="Generate Sector Research Report">PDF</button>
+        <button class="ico ico-sh" data-doc="sector" data-act="share" title="Share PDF" aria-label="Share Sector Research Report">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Company Research Report &mdash; <b id="docCo1">Rank 1</b><small>25 pages &middot; A4 PDF</small></span>
+        <button class="ico ico-pdf" data-doc="co1" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 1">PDF</button>
+        <button class="ico ico-sh" data-doc="co1" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 1">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Company Research Report &mdash; <b id="docCo2">Rank 2</b><small>25 pages &middot; A4 PDF</small></span>
+        <button class="ico ico-pdf" data-doc="co2" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 2">PDF</button>
+        <button class="ico ico-sh" data-doc="co2" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 2">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Company Research Report &mdash; <b id="docCo3">Rank 3</b><small>25 pages &middot; A4 PDF</small></span>
+        <button class="ico ico-pdf" data-doc="co3" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 3">PDF</button>
+        <button class="ico ico-sh" data-doc="co3" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 3">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Executive Summary<small>6&ndash;8 pages &middot; A4 PDF &middot; sector and companies</small></span>
+        <button class="ico ico-pdf" data-doc="exec" data-act="make" title="Generate PDF" aria-label="Generate Executive Summary">PDF</button>
+        <button class="ico ico-sh" data-doc="exec" data-act="share" title="Share PDF" aria-label="Share Executive Summary">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Score Card<small>2 pages &middot; A4 PDF &middot; every rating with its anchor</small></span>
+        <button class="ico ico-pdf" data-doc="score" data-act="make" title="Generate PDF" aria-label="Generate Score Card">PDF</button>
+        <button class="ico ico-sh" data-doc="score" data-act="share" title="Share PDF" aria-label="Share Score Card">&#8682;</button>
+      </div>
+      <div id="docMsg" class="note"></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div id="out" class="hidden"></div>
+  </div>
+
+  <div class="card hidden" id="importCard">
+    <h2>Import Data</h2>
+    <p class="hint">Paste the whole reply. The data package now arrives as plain text between two
+    marker lines rather than in a code block — that is what stops the Gemini mobile app handing you
+    an empty box — but a fenced block or a bare JSON object still reads exactly the same. The reader
+    repairs the things chat models get wrong: a reply cut off mid-JSON, trailing commas, comments,
+    "..." shortcuts, a missing closing fence. Anything still missing is listed for you to complete
+    before saving.</p>
+    <textarea id="importText" placeholder="Paste the whole reply here — the File 7 data block if you have it, otherwise just the report text…" style="min-height:170px;"></textarea>
+    <!-- Some mobile chat apps render a very large code block as an empty box with
+         a copy button that copies nothing — the Gemini Android app does this. The
+         framework therefore asks the model to attach the same payload as a .json
+         file, and this reads that file straight into the box. -->
+    <div class="hint" style="margin-top:8px;">Copy button not working in your chat app?
+      Load the <b>.json file</b> the model attached instead:</div>
+    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain"
+           style="margin-top:6px;font-size:12.5px;">
+    <!-- The tool is stated in the payload and recognised from the reply, so this
+         is no longer a question. It stays in the markup, hidden, as the fallback
+         for a reply that identifies itself in neither way. -->
+    <div id="srcWrap" hidden>
+      <label for="importSrc">Which tool produced it</label>
+      <select id="importSrc">
+        <option>Gemini</option><option>ChatGPT</option><option>Claude</option>
+        <option>Perplexity</option><option>Other</option>
+      </select>
+    </div>
+    <div class="hint" id="srcAuto"></div>
+    <div class="grid2" style="margin-top:10px;">
+      <button class="btn sm pri" id="btnDoImport" style="margin:0;">READ IT</button>
+      <button class="btn sm" id="btnCancelImport" style="margin:0;">Cancel</button>
+    </div>
+    <div id="importMsg" class="note"></div>
+    <div id="reviewBox" class="hidden"></div>
+    <button class="btn sm pri hidden" id="btnSaveImport">SAVE TO REPORT &amp; SCORING</button>
+  </div>
+</section>
+
+<!-- ============ SCORING ============ -->
+<section id="tab-score" class="hidden">
+  <div class="card">
+    <h2>Score Card</h2>
+
+    <label for="scRun">Research run</label>
+    <div class="pickwrap">
+      <input type="text" id="scName" placeholder="No run imported yet"
+             autocomplete="off" readonly>
+      <button type="button" class="pickbtn" id="btnScPick"
+              aria-label="Show saved runs" aria-expanded="false">&#9662;</button>
+    </div>
+    <div id="scPanel" class="pickpanel hidden" role="listbox" aria-label="Saved runs"></div>
+
+    <label for="scCo" style="margin-top:10px;">Company</label>
+    <select id="scCo"><option value="">— import a run first —</option></select>
+    <p class="note" id="scNameNote">Each of the 52 components is scored against a written
+    anchor. Tap a section to see every line, the weight it carries, the band it was placed
+    in and the evidence behind it.</p>
+
+    <div id="scImport" class="note hidden"></div>
+    <div id="scTiles" class="tiles3"></div>
+    <div id="sheet"></div>
+
+    <div class="total" hidden>
+      <div class="big" id="tScore">0.0</div><div class="band" id="tBand">&mdash;</div>
+      <b id="tFund">0</b><b id="tMkt">0</b>
+      <div class="bar"><i id="tBar" style="width:0%"></i></div>
+      <button id="btnScReset" type="button">Reset</button>
+      <button id="btnScCopy" type="button">Copy summary</button>
+    </div>
+  </div>
+
+  <div id="scVerdict" class="card hidden"></div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section id="tab-setup" class="hidden">
+  <div class="card">
+    <h2>Install Application</h2>
+    <p class="hint" id="installHint">Add this page to your home screen to get an app icon and a full-screen, address-bar-free experience.</p>
+    <button class="btn sm" id="btnInstall" style="display:none;">Install app</button>
+    <div class="warn"><b>Android (Chrome):</b> tap &#8942; menu &rarr; <b>Add to Home screen</b> &rarr; Install.<br><br>
+    <b>iPhone / iPad (Safari):</b> tap the <b>Share</b> icon &rarr; scroll down &rarr; <b>Add to Home Screen</b> &rarr; Add. This must be done in Safari, not Chrome.</div>
+  </div>
+
+
+  <div class="card">
+    <h2>In-app AI</h2>
+    <p class="hint">Off by default. Turn this on only if you have an Anthropic API plan and want the
+    app to run the research itself. With it off, the app works entirely through Claude, ChatGPT,
+    Gemini or Perplexity and the <b>Run analysis in-app</b> button is hidden.</p>
+
+    <div class="toggle-row">
+      <label class="tg-label" for="tgApi">Use my own API key to run analyses in-app</label>
+      <button type="button" class="tg" id="tgApi" role="switch" aria-checked="false"
+              aria-labelledby="tgApiLbl"><span class="tg-knob"></span></button>
+    </div>
+    <span id="tgApiLbl" class="hidden">Use my own API key to run analyses in-app</span>
+
+    <div id="apiFields" class="hidden">
+    <p class="note" style="margin-top:12px;">Your key is stored in this browser's local storage and
+    sent directly to Anthropic — it never passes through any server of mine.</p>
+
+    <label for="key">Anthropic API key</label>
+    <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+
+    <label for="model">Model</label>
+    <select id="model">
+      <option value="claude-opus-4-5-20251101">Claude Opus — deepest analysis, slowest</option>
+      <option value="claude-sonnet-4-5-20250929" selected>Claude Sonnet — balanced (recommended)</option>
+      <option value="claude-haiku-4-5-20251001">Claude Haiku — fastest, cheapest</option>
+    </select>
+
+    <label for="promptMode">Prompt delivery</label>
+    <select id="promptMode">
+      <option value="full">Full text — paste the whole protocol into the tool</option>
+      <option value="link">Private link — paste only a short pointer</option>
+    </select>
+    <div id="linkBox" class="hidden">
+      <label for="baseUrl">Where your app is hosted</label>
+      <input type="text" id="baseUrl" placeholder="https://your-site.netlify.app" autocomplete="off" spellcheck="false">
+      <div class="warn"><b>What this does.</b> Instead of pasting 29,000 characters of protocol into
+      Gemini, the app pastes three lines telling it to fetch <b>protocol.md</b> from your own site and
+      follow it. Your method stays off the screen and out of the chat transcript.
+      <br><br><b>What it does not do.</b> The file still has to be publicly readable for the AI to fetch
+      it, so anyone with the URL can open it, and the AI provider still processes its contents. This
+      hides your prompt from over-the-shoulder view and from the chat history &mdash; it is not secrecy.
+      For real confidentiality use <b>RUN ANALYSIS IN APP</b>, where the protocol goes straight to the
+      API and is never pasted anywhere.
+      <br><br>Requires the tool to have browsing on, and it will refuse if the URL is unreachable.</div>
+    </div>
+
+    <label for="searches">Max web searches per run</label>
+    <select id="searches">
+      <option value="12">12 — quick pass</option>
+      <option value="25" selected>25 — standard</option>
+      <option value="40">40 — exhaustive</option>
+    </select>
+
+    <button class="btn sm" id="btnTest">Test key</button>
+    <div class="warn"><b>Cost warning.</b> A full run makes 12&ndash;40 web searches and produces a very long report. Expect roughly &#8377;25&ndash;&#8377;150 of API usage per analysis depending on model and depth. Set a spend limit in your Anthropic console.</div>
+    <div class="warn bad"><b>Key safety.</b> Anyone with access to this device or browser profile can read the stored key. Use a dedicated key with a low monthly cap, and revoke it if the device is lost. If you would rather not store a key at all, use "Copy prompt" and paste into a chat app instead.</div>
+    <p class="note">Get a key at <b>console.anthropic.com</b> &rarr; API Keys. Model names above may need updating as new versions ship; edit the value in the dropdown if a call returns "model not found".</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Data &amp; privacy</h2>
+    <p class="hint">Everything lives on this device: your key, saved analyses and worksheet scores. There is no backend and no analytics.</p>
+    <button class="btn sm" id="btnWipe">Erase all local data</button>
+    <p class="note">Removes the API key, every saved analysis and the reports built from it, the
+    imported runs, the worksheet scores and all settings. Files you have already downloaded to
+    your phone are yours and are not touched.</p>
+  </div>
+
+  
+<div class="footer">
+    Equity Analyst <span id="verApp">v1.0</span> &middot; Framework <span id="verFw">v3.0</span> &middot; Build <span id="verBuild">-</span><br>
+    Research tool only. Not investment advice, not a recommendation, and not a substitute for a SEBI-registered adviser.
+    AI output can be wrong or out of date &mdash; verify every figure against the RHP, SEBI filings and the exchanges before acting.
+    Equity investment carries the risk of permanent capital loss.
+  </div>
+</section>
+
+</div>
+
+<!-- ======================= PROMPT TEMPLATE ======================= -->
+<!-- The IPO framework prompt template lived here. The research prompt is now
+     generated by the engine from its own constants, so a template in the page
+     could only drift out of step with the scoring it is meant to feed. -->
+
+
+<script src="segments.js"></script>
+<script>
+/* ============================== state ============================== */
+var LS = {
+  key:'eq.key', model:'ipo.model', searches:'eq.searches',
+  form:'eq.form', recent:'eq.recent', score:'eq.score', report:'ipo.report'
+};
+function get(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+function set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function $(s){ return document.querySelector(s); }
+function $$(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+/* ============================== tabs ============================== */
+$$('nav button').forEach(function(b){
+  b.addEventListener('click', function(){
+    $$('nav button').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    ['analyse','report','score','setup'].forEach(function(t){
+      $('#tab-'+t).classList.toggle('hidden', t !== b.dataset.tab);
+    });
+    window.scrollTo(0,0);
+  });
+});
+function goTab(name){
+  var b = document.querySelector('nav button[data-tab="'+name+'"]');
+  if(b) b.click();
+}
+
+/* ============================== segmented controls ============== */
+var SEGS = {
+  /* Empty by design. Type, horizon and investor type were removed — see the
+     comment where their markup used to be. Language is not here either: the
+     prompt always asks for both editions and the Report page decides which one
+     you generate. The loop below still runs, so adding a control back is a
+     one-line change. */
+};
+Object.keys(SEGS).forEach(function(id){
+  var s = SEGS[id], host = $('#'+id), html='';
+  s.opts.forEach(function(o,i){
+    var uid = id+'_'+i;
+    var guCls = /[\u0A80-\u0AFF]/.test(o) ? ' class="gu"' : '';
+    html += '<input type="radio" name="'+s.name+'" id="'+uid+'" value="'+o+'"'+(o===s.def?' checked':'')+'>'
+          + '<label for="'+uid+'"'+guCls+'>'+o+'</label>';
+  });
+  host.innerHTML = html;
+});
+
+/* ============================== prompt build ==================== */
+function typeText(t){
+  return t==='Both'
+    ? 'Mainboard or SME — determine which from the RHP/exchange listing yourself and state it'
+    : t;
+}
+function investorText(i){
+  return i === 'All'
+    ? 'Retail, HNI and UHNI — cover all three, and say where the answer differs between them'
+    : i;
+}
+function horizonText(h){
+  if(h==='Both') return 'BOTH listing gain and long term (analyse both separately)';
+  if(h==='Listing gain') return 'LISTING GAIN';
+  return h.toUpperCase();
+}
+/* The output contract is fixed — six documents, all of them
+   document types, every run. There is deliberately no selector for this. */
+/* One language. These used to choose an edition; nothing chooses now. */
+function langCode(){ return 'en'; }
+function isGu(){ return false; }
+function langText(){ return 'English'; }
+/* The three research settings are fixed now. They are still substituted into
+   the prompt, and still recorded in the payload's meta, so anything reading
+   them keeps working — they are simply no longer presented as choices that do
+   not exist. */
+var FIXED = { type:'Both', horizon:'Both', investor:'All' };
+function formVals(){
+  var co = ($('#company') && $('#company').value ? $('#company').value.trim() : '');
+  return {
+    segment:    ($('#segment')    && $('#segment').value)    ? $('#segment').value.trim()    : '',
+    subsegment: ($('#subsegment') && $('#subsegment').value) ? $('#subsegment').value.trim() : '',
+    company:    co,
+    /* Naming a company changes what is being researched, not just a filter on
+       it: there is no universe to screen and no Top 3 to rank, so the prompt,
+       the payload and the document set are all different. */
+    mode:       co ? 'company' : 'segment',
+    horizon:    ($('#horizon') && $('#horizon').value) || '3-5'
+  };
+}
+function requireCompany(){
+  var v = formVals();
+  if(!v.segment){
+    alert('Enter a segment first. A company still needs its industry, its policy regime and its peers to be judged against.');
+    if($('#segment')) $('#segment').focus();
+    return false;
+  }
+  return true;
+}
+function renderMode(){
+  var v = formVals(), el = $('#modeNote');
+  if(!el) return;
+  el.innerHTML = v.mode === 'company'
+    ? '<b>Company mode.</b> One Company Research Report on ' + esc(v.company)
+      + ', with a two-page segment backdrop. No universe is screened and nothing is ranked.'
+    : '<b>Segment mode.</b> The listed universe for this segment is screened and ranked, '
+      + 'producing a Sector Research Report, three Company Research Reports, an Executive '
+      + 'Summary and a Score Card.';
+  ['sector','co1','co2','co3','exec'].forEach(function(k){
+    var b = document.querySelector('[data-doc="' + k + '"]');
+    if(b && b.parentNode) b.parentNode.classList.toggle('dim', v.mode === 'company' && k !== 'co1');
+  });
+}
+
+/* The prompt is generated by the engine from its own constants — the rubric
+   anchors, the register battery, the source tiers and the payload contract.
+   There is no template in this page to drift out of step with the scoring. */
+function buildPrompt(){
+  var v = formVals();
+  if(!window.EQ) return 'Loading the research engine\u2026';
+  try{
+    return EQ.buildPrompt({
+      segment: v.segment || '[SEGMENT]',
+      subsegment: v.subsegment,
+      company: v.company,
+      mode: v.mode,
+      horizon: v.horizon
+    });
+  }catch(err){
+    return 'Enter a segment to generate the prompt.';
+  }
+}
+function refresh(){
+  var pv=$('#preview'); if(pv) pv.value = buildPrompt();
+  set(LS.form, JSON.stringify(formVals()));
+}
+['#segment','#subsegment','#company'].forEach(function(sel){ var el=$(sel); if(el) el.addEventListener('input', function(){ renderMode(); refresh(); }); });
+if($('#horizon')) $('#horizon').addEventListener('change', refresh);
+/* The engine loads as a module, so it may arrive after this script runs. */
+window.addEventListener('eq:ready', function(){ refresh(); });
+$$('.seg input').forEach(function(i){ i.addEventListener('change', refresh); });
+
+/* restore form */
+(function(){
+  try{
+    var f = JSON.parse(get(LS.form,'null'));
+    if(f){
+      if($('#segment'))    $('#segment').value    = f.segment    || '';
+      if($('#subsegment')) $('#subsegment').value = f.subsegment || '';
+      if($('#horizon') && f.horizon) $('#horizon').value = f.horizon;
+      ['type','horizon','investor'].forEach(function(k){
+        if(!f[k]) return;
+        var el = document.querySelector('input[name='+k+'][value="'+f[k]+'"]');
+        if(el) el.checked = true;
+      });
+    }
+  }catch(e){}
+  refresh();
+})();
+
+/* ============================== clipboard ======================= */
+function copyText(t, okMsg){
+  function fallback(){
+    var ta=document.createElement('textarea');
+    ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(t).catch(fallback);
+  }
+  fallback(); return Promise.resolve();
+}
+function flash(btn, msg){
+  var old = btn.textContent; btn.textContent = msg;
+  setTimeout(function(){ btn.textContent = old; }, 1600);
+}
+/* Each tool carries what is needed to reach its INSTALLED app first:
+     pkg    — Android package name, used in an intent:// URL
+     scheme — iOS custom scheme, tried before the website
+     url    — the website, used as the fallback everywhere
+   A browser cannot ask the phone which apps are installed, so this is done the
+   only way that actually works: hand the OS a link that resolves to the app when
+   it is there, and carry the website as the declared fallback when it is not. */
+var TOOLS = {
+  claude:     { url:'https://claude.ai/new', host:'claude.ai', path:'/new',
+                pkg:'com.anthropic.claude', scheme:'claude://',
+                name:'Claude',     search:'web search is on by default' },
+  chatgpt:    { url:'https://chatgpt.com/', host:'chatgpt.com', path:'/',
+                pkg:'com.openai.chatgpt', scheme:'chatgpt://',
+                name:'ChatGPT',    search:'turn on Search in the composer' },
+  gemini:     { url:'https://gemini.google.com/app', host:'gemini.google.com', path:'/app',
+                pkg:'com.google.android.apps.bard', scheme:'googlegemini://',
+                name:'Gemini',     search:'use a model with Google Search grounding' },
+  perplexity: { url:'https://www.perplexity.ai/', host:'www.perplexity.ai', path:'/',
+                pkg:'ai.perplexity.app.android', scheme:'perplexity://',
+                name:'Perplexity', search:'search is always on' }
+};
+
+function isAndroid(){ return /Android/i.test(navigator.userAgent); }
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/* Open the tool's app if the phone has it, otherwise its website.
+
+   Android: an intent:// URL with S.browser_fallback_url — Chrome hands it to the
+   app when the package is installed and loads the fallback URL when it is not.
+   That is a single hop with no guessing.
+
+   iOS: the https address is a universal link, so iOS opens the app when it is
+   installed and Safari when it is not. We try the custom scheme first and fall
+   back on a timer, because a universal link opened from an installed PWA does
+   not always hand off.
+
+   Desktop: just open the site. */
+/* One indirection for every navigation the launcher performs, so the launch
+   logic can be exercised in a test without the browser actually leaving. */
+var GO = function(u){ window.location.href = u; };
+
+function openTool(t){
+  if(isAndroid() && t.pkg){
+    var intent = 'intent://' + t.host + t.path + '#Intent;scheme=https;package=' + t.pkg
+               + ';S.browser_fallback_url=' + encodeURIComponent(t.url) + ';end';
+    GO(intent);
+    return;
+  }
+  if(isIOS() && t.scheme){
+    var left = false;
+    var away = function(){ left = true; };
+    window.addEventListener('pagehide', away, { once:true });
+    document.addEventListener('visibilitychange', function vc(){
+      if(document.hidden){ left = true; document.removeEventListener('visibilitychange', vc); }
+    });
+    var t0 = Date.now();
+    GO(t.scheme);
+    setTimeout(function(){
+      window.removeEventListener('pagehide', away);
+      /* Still here after the timeout, and no time jump from being suspended:
+         the app is not installed, so use the website. */
+      if(!left && Date.now() - t0 < 2200) GO(t.url);
+    }, 1400);
+    return;
+  }
+  window.open(t.url, '_blank', 'noopener');
+}
+window.IPOTools = { TOOLS:TOOLS, openTool:openTool, isAndroid:isAndroid, isIOS:isIOS,
+                    setGo:function(f){ GO = f; } };
+/* Which prompt the tool buttons should carry. Set to 'search' by the Search
+   button so the same four buttons serve both jobs — finding IPOs and analysing
+   one — instead of the search flow dumping the user on a Google results page. */
+var PENDING = 'analysis';
+
+/* The Search button copies the research prompt. There is no second question
+   any more: the tool row only ever carries the prompt the engine generated. */
+function searchIntent(){ return 'research'; }
+
+function syncSearchButton(){
+  var b = $('#btnSearch'); if(!b) return;
+  var v = formVals();
+  b.textContent = v.mode === 'company' ? 'Research company' : 'Research segment';
+  b.title = 'Copy the full research prompt';
+  b.classList.add('pri');
+}
+
+function setPending(kind){
+  PENDING = 'analysis';
+  var lbl = $('#toolHint');
+  if(lbl) lbl.innerHTML = kind === 'armed'
+    ? '<b>The research prompt is copied.</b> Pick a tool below \u2014 the app opens if it is '
+      + 'installed, otherwise the website. Paste, send, then bring the reply back with '
+      + '<b>Import Data</b> on the Report tab.'
+    : 'One tap copies the prompt and opens the tool \u2014 its app if you have it installed, '
+      + 'otherwise the website. Paste, send, then bring the reply back under Import.';
+  var row = $('#toolRow');
+  if(row) row.classList.toggle('armed', kind === 'armed');
+}
+
+$$('[data-tool]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var t = TOOLS[b.dataset.tool];
+
+    if(!requireCompany()) return;
+    var payload = buildPrompt(), mode = get('eq.mode','full'), base = get('eq.base','');
+    if(mode === 'link'){
+      if(!base){ alert('Set your hosted address under Setup first, or switch back to full text.');
+                 goTab('setup'); return; }
+      var v = formVals();
+      payload = 'Fetch and follow every instruction in this document, in full:\n'
+        + base + '/protocol.md\n\n'
+        + 'Company: ' + v.company + '\nIPO type: ' + v.type
+        + '\nHorizon: ' + v.horizon + '\nInvestor: ' + v.investor
+        + '\n\nTurn web search on. Produce all six files and the File 7 import block exactly as the document specifies.';
+    }
+    copyText(payload).then(function(){
+      saveRecent();
+      b.textContent = 'Copied — opening…';
+      setTimeout(function(){ b.textContent = t.name; }, 2500);
+      openTool(t);
+    });
+  });
+});
+function requireCompany(){
+  if(!$('#segment').value.trim()){
+    $('#segment').focus();
+    $('#segment').style.outline='2px solid var(--red)';
+    setTimeout(function(){ $('#segment').style.outline=''; },1400);
+    return false;
+  }
+  return true;
+}
+
+/* ============================== recent ========================== */
+function saveRecent(){
+  var v = formVals(); if(!v.company) return;
+  var list=[]; try{ list = JSON.parse(get(LS.recent,'[]')); }catch(e){}
+  list = list.filter(function(x){ return x.company.toLowerCase() !== v.company.toLowerCase(); });
+  list.unshift({ company:v.company, type:v.type, horizon:v.horizon, investor:v.investor, ts:Date.now() });
+  set(LS.recent, JSON.stringify(list.slice(0,12)));
+  drawRecent();
+}
+/* RC_I is the row the Load button will act on: the one shown in the box, not
+   whatever the finger last brushed past. Choosing in the panel sets it and
+   loads immediately — the button is for loading the same company again after
+   you have typed over the field. */
+var RC_I = -1;
+function recentList(){
+  var list=[]; try{ list = JSON.parse(get(LS.recent,'[]')); }catch(e){}
+  return Array.isArray(list) ? list : [];
+}
+function drawRecent(){
+  var list = recentList(), host = $('#rcPanel');
+  if(RC_I >= list.length) RC_I = -1;
+  $('#rcPick').value = (RC_I >= 0 && list[RC_I]) ? str(list[RC_I].company) : '';
+  $('#rcPick').placeholder = list.length ? 'Tap to choose' : 'Nothing yet';
+  $('#btnRcLoad').disabled = !(RC_I >= 0 && list[RC_I]);
+  if(!host) return;
+  if(!list.length){
+    host.innerHTML = '<div class="pkempty">Nothing yet — run an analysis and it '
+      + 'will be remembered here.</div>';
+    return;
+  }
+  host.innerHTML = list.map(function(x, i){
+    var d = new Date(x.ts).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+    return '<button type="button" class="pk' + (i === RC_I ? ' on' : '') + '" role="option"'
+      + ' data-re="' + i + '"><b>' + esc(x.company) + '</b>'
+      + '<span>' + esc(x.subsegment || x.segment || '') + ' &middot; ' + esc(x.horizon || '') + ' &middot; ' + d
+      + '</span></button>';
+  }).join('');
+  pkFit(host);
+}
+function rcLoad(i){
+  var list = recentList(), x = list[i];
+  if(!x) return;
+  RC_I = i;
+  $('#segment').value = str(x.company);
+  ['type','horizon','investor'].forEach(function(k){
+    var el = document.querySelector('input[name=' + k + '][value="' + x[k] + '"]');
+    if(el) el.checked = true;
+  });
+  drawRecent();
+  refresh();
+  window.scrollTo(0, 0);
+}
+function rcPanelOpen(){ return !$('#rcPanel').classList.contains('hidden'); }
+function openRcPanel(){
+  if(!recentList().length) return;
+  drawRecent();
+  $('#rcPanel').classList.remove('hidden');
+  pkFit('#rcPanel');
+  $('#btnRcPick').setAttribute('aria-expanded','true');
+}
+function closeRcPanel(){
+  $('#rcPanel').classList.add('hidden');
+  $('#btnRcPick').setAttribute('aria-expanded','false');
+}
+function rcToggle(ev){
+  ev.preventDefault(); ev.stopPropagation();
+  if(rcPanelOpen()) closeRcPanel(); else openRcPanel();
+}
+$('#btnRcPick').addEventListener('click', rcToggle);
+$('#rcPick').addEventListener('click', rcToggle);
+$('#rcPanel').addEventListener('click', function(ev){
+  var b = ev.target.closest && ev.target.closest('[data-re]');
+  if(!b) return;
+  closeRcPanel();
+  rcLoad(+b.dataset.re);
+});
+$('#btnRcLoad').addEventListener('click', function(){ rcLoad(RC_I); });
+document.addEventListener('click', function(ev){
+  if(rcPanelOpen() && !ev.target.closest('#rcPanel') && !ev.target.closest('#btnRcPick')
+     && !ev.target.closest('#rcPick')) closeRcPanel();
+});
+/* An AI may return an object where a string was asked for. Coerce sensibly
+   instead of letting "[object Object]" reach the screen. */
+function str(v){
+  if(v==null) return '';
+  if(typeof v === 'string') return v;
+  if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if(Array.isArray(v)) return v.map(str).filter(Boolean).join(', ');
+  if(typeof v === 'object'){
+    var keys = ['name','company','legal_name','full_name','value','text','title','label','en'];
+    for(var i=0;i<keys.length;i++){ if(typeof v[keys[i]]==='string' && v[keys[i]]) return v[keys[i]]; }
+    for(var k in v){ if(typeof v[k]==='string' && v[k]) return v[k]; }
+  }
+  return '';
+}
+function esc(s){ return str(s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+drawRecent();
+
+/* ============================== settings ======================== */
+$('#key').value = get(LS.key,'');
+$('#model').value = get(LS.model, $('#model').value);
+$('#searches').value = get(LS.searches,'25');
+$('#promptMode').value = get('eq.mode','full');
+$('#baseUrl').value = get('eq.base','');
+function syncMode(){ $('#linkBox').classList.toggle('hidden', $('#promptMode').value!=='link'); }
+$('#promptMode').addEventListener('change', function(){ set('eq.mode', this.value); syncMode(); });
+$('#baseUrl').addEventListener('change', function(){ set('eq.base', this.value.trim().replace(/\/+$/,'')); });
+syncMode();
+$('#key').addEventListener('change', function(){ set(LS.key, this.value.trim()); });
+$('#model').addEventListener('change', function(){ set(LS.model, this.value); });
+$('#searches').addEventListener('change', function(){ set(LS.searches, this.value); });
+
+$('#btnWipe').addEventListener('click', function(){
+  if(!confirm('Erase everything this app has stored on this device — your API key, every saved '
+            + 'analysis and its generated reports, the imported runs, the worksheet scores and '
+            + 'all settings?\n\nThis cannot be undone.')) return;
+  /* Remove every key this app owns by PREFIX, not from a hand-kept list. The
+     list had drifted: eq.library (the saved analyses and everything the
+     documents are built from), ipo.list, ipo.base and ipo.mode were never in
+     it, so Erase left the reports behind — and the worksheet was then refilled
+     from the surviving library on the next load, which is why the Score Card
+     appeared not to reset either. */
+  try{
+    var doomed = [];
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(k && k.indexOf('ipo.') === 0) doomed.push(k);
+    }
+    doomed.forEach(function(k){ localStorage.removeItem(k); });
+  }catch(e){}
+  /* belt and braces for anything the loop could not see */
+  Object.keys(LS).forEach(function(k){ try{ localStorage.removeItem(LS[k]); }catch(e){} });
+  ['eq.library','eq.list','eq.base','eq.mode'].forEach(function(k){
+    try{ localStorage.removeItem(k); }catch(e){} });
+  try{ sessionStorage.clear(); }catch(e){}
+  location.reload();
+});
+
+$('#btnTest').addEventListener('click', function(){
+  var b=this, k=$('#key').value.trim();
+  if(!k){ alert('Enter your API key first.'); return; }
+  b.disabled=true; b.textContent='Testing...';
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key':k,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:$('#model').value, max_tokens:16,
+      messages:[{role:'user',content:'Reply with the single word: ok'}] })
+  }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+   .then(function(res){
+      b.disabled=false; b.textContent='Test key';
+      if(res.ok){ alert('Key works. Model responded successfully.'); set(LS.key,k); }
+      else { alert('Failed: ' + ((res.j.error&&res.j.error.message)||JSON.stringify(res.j))); }
+   })
+   .catch(function(e){ b.disabled=false; b.textContent='Test key';
+      alert('Network error: '+e.message+'\n\nIf this says CORS or "Failed to fetch", the page must be served over HTTPS.'); });
+});
+
+/* ============================== run in-app ====================== */
+var running=false;
+/* Six documents will not fit in one response. We keep the conversation so a
+   CONTINUE marker can be answered with "continue" and the model resumes from
+   exactly where it stopped, rather than compressing to fit. */
+var convo=[];
+$('#btnRun').addEventListener('click', function(){
+  if(running) return;
+  if(!requireCompany()) return;
+  var k = ($('#key').value||get(LS.key,'')).trim();
+  if(!k){
+    alert('No API key set.\n\nEither add one under Setup, or use "Copy prompt" and paste into Claude / ChatGPT / Gemini.');
+    goTab('setup'); return;
+  }
+  saveRecent();
+  convo = [{ role:'user', content: buildPrompt() }];
+  runAnalysis(k, true);
+});
+
+if($('#btnContinue')) $('#btnContinue').addEventListener('click', function(){
+  if(running) return;
+  var k = ($('#key').value||get(LS.key,'')).trim();
+  if(!k){ alert('No API key set.'); goTab('setup'); return; }
+  if(!convo.length){ alert('No run in progress. Start an analysis first.'); return; }
+  convo.push({ role:'user', content:'continue' });
+  runAnalysis(k, false);
+});
+
+function runAnalysis(key, fresh){
+  running = true;
+  var btn=$('#btnRun');
+  btn.innerHTML='<span class="spin"></span> Researching&hellip;';
+  btn.disabled=true;
+  if($('#btnContinue')) $('#btnContinue').disabled=true;
+  goTab('report');
+  var v = formVals();
+  $('#repTag').textContent='live';
+  $('#repMeta').textContent = (v.mode === 'company' ? v.company : v.segment)
+    + (v.subsegment ? ' · ' + v.subsegment : '')
+    + ' · ' + v.horizon
+    + ' · started ' + new Date().toLocaleTimeString('en-IN');
+  if(fresh){ $('#out').textContent=''; } else { $('#out').textContent += '\n\n'; }
+  var turnStart = $('#out').textContent.length;
+  var status=$('#status'); var searches=0; var started=Date.now();
+  function tick(msg){
+    var s=Math.round((Date.now()-started)/1000);
+    status.textContent = msg+' · '+searches+' searches · '+s+'s elapsed';
+  }
+  tick('Starting');
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key':key,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({
+      model: $('#model').value,
+      max_tokens: 32000,
+      stream: true,
+      tools: [{ type:'web_search_20250305', name:'web_search', max_uses: parseInt($('#searches').value,10) }],
+      messages: convo
+    })
+  }).then(function(r){
+    if(!r.ok){ return r.text().then(function(t){ throw new Error(t); }); }
+    var reader = r.body.getReader(), dec = new TextDecoder(), buf='';
+    function pump(){
+      return reader.read().then(function(res){
+        if(res.done){ finish(); return; }
+        buf += dec.decode(res.value,{stream:true});
+        var lines = buf.split('\n'); buf = lines.pop();
+        lines.forEach(function(line){
+          if(line.indexOf('data: ')!==0) return;
+          var payload = line.slice(6);
+          if(payload==='[DONE]') return;
+          var ev; try{ ev = JSON.parse(payload); }catch(e){ return; }
+          if(ev.type==='content_block_start' && ev.content_block && ev.content_block.type==='server_tool_use'){
+            searches++; tick('Searching the web');
+          }
+          if(ev.type==='content_block_delta' && ev.delta){
+            if(ev.delta.type==='text_delta'){
+              $('#out').textContent += ev.delta.text;
+              tick('Writing the report');
+              window.scrollTo(0, document.body.scrollHeight);
+            }
+          }
+        });
+        return pump();
+      });
+    }
+    return pump();
+  }).catch(function(e){
+    $('#out').textContent += '\n\n--- ERROR ---\n' + e.message +
+      '\n\nCommon causes:\n• Invalid or expired API key\n• Model name no longer available (change it under Setup)\n• Insufficient credit on the Anthropic account\n• Page not served over HTTPS';
+    finish(true);
+  });
+
+  function finish(err){
+    running=false;
+    btn.disabled=false; btn.textContent='RUN ANALYSIS IN APP';
+    var thisTurn = $('#out').textContent.slice(turnStart);
+    if(!err && thisTurn.trim()){ convo.push({ role:'assistant', content: thisTurn }); }
+    var more = /\u27EA\s*CONTINUE/i.test(thisTurn);
+    if($('#btnContinue')){
+      $('#btnContinue').disabled = !!err || !convo.length;
+      $('#btnContinue').classList.toggle('pri2', more);
+      $('#btnContinue').textContent = more ? 'Continue \u2014 more files to come' : 'Continue';
+    }
+    $('#repTag').textContent = err ? 'error' : (more ? 'paused' : 'done');
+    tick(err ? 'Stopped' : (more ? 'Paused \u2014 tap Continue' : 'Complete'));
+    try{ set(LS.report, JSON.stringify({ company:v.company, text:$('#out').textContent,
+          gu:true, ts:Date.now() })); }catch(e){}
+    if(!err && !more){
+      var parsed = parseImport($('#out').textContent);
+      if(parsed.data && parsed.found){
+        ORDER.forEach(function(k){ if(parsed.data.score_lines[k]===undefined) parsed.data.score_lines[k]=0; });
+        saveToLibrary({ id:'r'+Date.now(), ts:Date.now(), source:'in-app',
+                        company:coNameOf(parsed.data)||v.company, data:parsed.data,
+                        text:$('#out').textContent });
+        applyToWorksheet(parsed.data, v.company);
+      }
+    }
+  }
+}
+
+/* restore last report */
+(function(){
+  try{
+    var r = JSON.parse(get(LS.report,'null'));
+    if(r && r.text){
+      $('#out').textContent = r.text;
+      $('#out').classList.toggle('gu', !!r.gu);
+      $('#repTag').textContent = 'saved';
+      $('#repMeta').textContent = r.company+' · '+new Date(r.ts).toLocaleString('en-IN');
+    }
+  }catch(e){}
+})();
+
+if($('#btnCopyOut')) $('#btnCopyOut').addEventListener('click', function(){
+  var t=$('#out').textContent;
+  if(!t.trim()){ alert('Nothing to copy yet.'); return; }
+  copyText(t).then(function(){ flash($('#btnCopyOut'),'COPIED'); });
+});
+if($('#btnPrint')) $('#btnPrint').addEventListener('click', function(){
+  var t=$('#out').textContent;
+  if(!t.trim()){ alert('Nothing to save yet.'); return; }
+  var w=window.open('','_blank');
+  if(!w){ alert('Allow pop-ups to use this.'); return; }
+  var stack = '-apple-system,Helvetica,Arial';
+  var lead = '12px/1.55';
+  w.document.write('<!DOCTYPE html><meta charset="utf-8"><title>'+esc(formVals().segment||'Equity Report')
+   +'</title><style>body{font:'+lead+' '+stack+';margin:22mm 16mm;white-space:pre-wrap;}'
+   +'h1{font:700 18px/1.25 '+stack+';margin:0 0 4px}small{color:#666}</style>'
+   +'<h1>'+esc(formVals().segment||'Equity Report')+'</h1><small>Generated by Equity Analyst · '
+   +new Date().toLocaleString('en-IN')+' · Research only, not investment advice</small><hr>'+esc(t));
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 400);
+});
+
+/* ============================== worksheet ======================= */
+var SHEET = [
+ ['Business Quality',[
+   ['Business Model',4],['Competitive Advantage',4],['Industry Attractiveness',4],
+   ['Growth Runway',4],['Revenue Quality',4]]],
+ ['Financial Quality',[
+   ['Revenue Growth',4],['Profit Growth',4],['Margins',3],
+   ['ROCE / ROE',3],['Cash Flow',3],['Balance Sheet',3]]],
+ ['Management & Governance',[
+   ['Promoter Track Record',5],['Governance',5],['Capital Allocation',5]]],
+ ['Valuation',[
+   ['Absolute Valuation',5],['Peer Valuation',5],['Growth-Adjusted Valuation',5],['Margin Of Safety',5]]],
+ ['Risk',[
+   ['Business Risks',3],['Financial Risks',3],['Governance Risks',2],['Regulatory / Industry Risks',2]]],
+ ['Market Signals',[
+   ['GMP',2],['Anchor Quality',1],['Subscription / Demand',2]]]
+];
+var scoreState = {};
+try{ scoreState = JSON.parse(get(LS.score,'{}')) || {}; }catch(e){ scoreState = {}; }
+/* The Score Card used to follow whatever was chosen on the Report tab. It now
+   owns its selection: SC_ID is the record it is showing, remembered across
+   reloads, and it is the ONLY thing the worksheet reads. Nothing selected means
+   every line is zero — not the last company's figures left on screen. */
+var SC_ID = get('eq.scid', '') || '';
+$('#scName').value = '';
+function scRecord(){
+  if(!SC_ID) return null;
+  return libRead().filter(function(x){ return x.id === SC_ID; })[0] || null;
+}
+function scSelect(id){
+  SC_ID = id || '';
+  if(SC_ID) set('eq.scid', SC_ID);
+  var r = scRecord();
+  if(!r){
+    SC_ID = '';
+    scoreState = {};
+    $('#scName').value = '';
+    /* Nothing selected is not a state worth storing. Writing empty values here
+       put ipo.scid and ipo.score straight back after Erase all local data —
+       the wipe ran, then the boot re-created the keys it had just removed. */
+    try{ localStorage.removeItem('eq.scid'); localStorage.removeItem(LS.score); }catch(e){}
+    buildSheet(); drawScImport();
+    drawAnalysisPanel('#scPanel', '');
+    if($('#scVerdict')){ $('#scVerdict').innerHTML=''; $('#scVerdict').classList.add('hidden'); }
+    return 0;
+  }
+  var n = applyToWorksheet(r.data || {}, recName(r));
+  drawAnalysisPanel('#scPanel', SC_ID);
+  showScVerdict(r);
+  return n;
+}
+
+var openGroups = {};
+function buildSheet(){
+  var html='';
+  SHEET.forEach(function(grp,gi){
+    var max = grp[1].reduce(function(a,b){return a+b[1];},0);
+    var got = grp[1].reduce(function(a,b,ii){ return a + (scoreState['s'+gi+'_'+ii]||0); },0);
+    var open = !!openGroups[gi];
+    html += '<div class="gwrap">'
+      + '<button class="ghead'+(open?' open':'')+'" data-g="'+gi+'" aria-expanded="'+open+'">'
+      +   '<span class="chev">\u203A</span>'
+      +   '<span class="gname">'+esc(grp[0])+'</span>'
+      +   '<span class="gscore">'+got.toFixed(1)+'<small>/'+max+'</small></span>'
+      + '</button>'
+      + '<div class="gbody'+(open?'':' hidden')+'">';
+    grp[1].forEach(function(it,ii){
+      var id='s'+gi+'_'+ii, v = scoreState[id]!==undefined ? scoreState[id] : 0;
+      var pct = it[1] ? (v/it[1]*100) : 0;
+      html += '<div class="srow2">'
+        + '<div class="sname">'+esc(it[0])+'</div>'
+        + '<div class="strack"><i style="width:'+pct+'%"></i></div>'
+        + '<div class="sval" id="v'+id+'">'+v.toFixed(1)+'<small>/'+it[1]+'</small></div>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  });
+  $('#sheet').innerHTML = html;
+  $$('#sheet .ghead').forEach(function(b){
+    b.addEventListener('click', function(){
+      var g = b.dataset.g;
+      openGroups[g] = !openGroups[g];
+      buildSheet(); recalc();
+    });
+  });
+  recalc();
+}
+buildSheet();
+setTimeout(function(){ try{ drawScImport(); }catch(e){} }, 0);
+function persistScore(){ set(LS.score, JSON.stringify(scoreState)); }
+function recalc(){
+  var total=0, mkt=0;
+  SHEET.forEach(function(grp,gi){
+    var g=0;
+    grp[1].forEach(function(it,ii){ g += scoreState['s'+gi+'_'+ii] || 0; });
+    total += g; if(gi===6) mkt = g;
+  });
+  var band, col;
+  if(total>=85){ band='Exceptional'; col='var(--green)'; }
+  else if(total>=75){ band='Strong'; col='var(--green)'; }
+  else if(total>=65){ band='Attractive'; col='var(--aqua)'; }
+  else if(total>=55){ band='Selective'; col='var(--yellow)'; }
+  else if(total>=45){ band='Weak'; col='var(--orange)'; }
+  else { band='Avoid'; col='var(--red)'; }
+  $('#tScore').textContent = total.toFixed(1);
+  $('#tBand').textContent = band;
+  $('#tBand').style.color = col;
+  $('#tBar').style.width = total+'%';
+  $('#tBar').style.background = col;
+  $('#tFund').textContent = (total-mkt).toFixed(1);
+  $('#tMkt').textContent = mkt.toFixed(1);
+}
+$('#btnScReset').addEventListener('click', function(){
+  if(!confirm('Reset all scores to zero?')) return;
+  scoreState={}; $('#scName').value=''; persistScore(); buildSheet();
+});
+$('#btnScCopy').addEventListener('click', function(){
+  var lines=[], total=0, mkt=0;
+  lines.push('SCORE — '+($('#scName').value||'(unnamed)'));
+  lines.push(new Date().toLocaleString('en-IN'));
+  lines.push('');
+  SHEET.forEach(function(grp,gi){
+    var g=0;
+    grp[1].forEach(function(it,ii){ g += scoreState['s'+gi+'_'+ii]||0; });
+    lines.push(grp[0]+' — '+g.toFixed(1)+'/'+grp[1].reduce(function(a,b){return a+b[1];},0));
+    grp[1].forEach(function(it,ii){
+      lines.push('  '+it[0]+': '+(scoreState['s'+gi+'_'+ii]||0).toFixed(1)+'/'+it[1]);
+    });
+    total+=g; if(gi===6) mkt=g;
+  });
+  lines.push('');
+  lines.push('TOTAL: '+total.toFixed(1)+'/100 — '+$('#tBand').textContent);
+  lines.push('Fundamentals only: '+(total-mkt).toFixed(1)+'/95');
+  copyText(lines.join('\n')).then(function(){ flash($('#btnScCopy'),'Copied'); });
+});
+
+
+/* ==================================================================
+   IMPORT — reverse an outside AI tool's output back into the app.
+   Designed to work on whatever Gemini / ChatGPT / Perplexity actually
+   returns, not only on a perfectly formed data block.
+   ================================================================== */
+var LIB = 'eq.library';
+var KEYMAP = {
+  business_model:[0,0], competitive_advantage:[0,1], industry_attractiveness:[0,2],
+  growth_runway:[0,3], revenue_quality:[0,4],
+  revenue_growth:[1,0], profit_growth:[1,1], margins:[1,2], roce_roe:[1,3],
+  cash_flow:[1,4], balance_sheet:[1,5],
+  promoter_track_record:[2,0], governance:[2,1], capital_allocation:[2,2],
+  absolute_valuation:[3,0], peer_valuation:[3,1], growth_adjusted_valuation:[3,2],
+  margin_of_safety:[3,3],
+  fresh_issue_quality:[4,0], use_of_proceeds:[4,1], ofs_exit_structure:[4,2],
+  business_risks:[5,0], financial_risks:[5,1], governance_risks:[5,2], regulatory_risks:[5,3],
+  gmp:[6,0], anchor_quality:[6,1], subscription_demand:[6,2]
+};
+var ORDER = ['business_model','competitive_advantage','industry_attractiveness','growth_runway',
+ 'revenue_quality','revenue_growth','profit_growth','margins','roce_roe','cash_flow','balance_sheet',
+ 'promoter_track_record','governance','capital_allocation','absolute_valuation','peer_valuation',
+ 'growth_adjusted_valuation','margin_of_safety','fresh_issue_quality','use_of_proceeds',
+ 'ofs_exit_structure','business_risks','financial_risks','governance_risks','regulatory_risks',
+ 'gmp','anchor_quality','subscription_demand'];
+
+function maxOf(key){ var p=KEYMAP[key]; return p ? SHEET[p[0]][1][p[1]][1] : 0; }
+function labelOf(key){ var p=KEYMAP[key]; return p ? SHEET[p[0]][1][p[1]][0] : key; }
+
+/* normalise a label so "ROCE/ROE", "ROCE / ROE" and "roce roe" all match */
+function norm(t){
+  return String(t).toLowerCase()
+    .replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+var ALIASES = {};
+(function(){
+  var A = {
+    business_model:['business model'],
+    competitive_advantage:['competitive advantage','moat','competitive moat'],
+    industry_attractiveness:['industry attractiveness','industry'],
+    growth_runway:['growth runway','runway'],
+    revenue_quality:['revenue quality','quality of revenue'],
+    revenue_growth:['revenue growth','sales growth','topline growth'],
+    profit_growth:['profit growth','pat growth','earnings growth'],
+    margins:['margins','margin','profitability margins'],
+    roce_roe:['roce roe','roe roce','roce','roe','return on capital','returns on capital'],
+    cash_flow:['cash flow','cashflow','operating cash flow','cash flows'],
+    balance_sheet:['balance sheet'],
+    promoter_track_record:['promoter track record','promoter record','promoter management track record','management track record','promoter quality'],
+    governance:['governance','corporate governance'],
+    capital_allocation:['capital allocation'],
+    absolute_valuation:['absolute valuation','absolute'],
+    peer_valuation:['peer valuation','peer relative valuation','relative valuation','peer'],
+    growth_adjusted_valuation:['growth adjusted valuation','growth adjusted','peg'],
+    margin_of_safety:['margin of safety','safety margin'],
+    fresh_issue_quality:['fresh issue quality','fresh issue'],
+    use_of_proceeds:['use of proceeds','objects of the issue','use of funds'],
+    ofs_exit_structure:['ofs exit structure','ofs exit','ofs','exit structure','ofs structure'],
+    business_risks:['business risks','business risk'],
+    financial_risks:['financial risks','financial risk'],
+    governance_risks:['governance risks','governance risk'],
+    regulatory_risks:['regulatory industry risks','regulatory risks','regulatory risk','industry risks','regulatory and industry risks'],
+    gmp:['gmp','grey market premium'],
+    anchor_quality:['anchor quality','anchor','anchor investors','anchor participation'],
+    subscription_demand:['subscription demand','subscription','demand','subscription and demand']
+  };
+  Object.keys(A).forEach(function(k){ A[k].forEach(function(a){ ALIASES[norm(a)] = k; }); });
+})();
+
+function matchLabel(text){
+  var n = norm(text);
+  if(!n || n.length < 3) return null;
+  if(ALIASES[n]) return ALIASES[n];
+  /* tolerate trailing notes: "Cash flow (CFO/PAT)" */
+  var best = null, bestLen = 0;
+  Object.keys(ALIASES).forEach(function(a){
+    if(a.length > bestLen && (n === a || n.indexOf(a + ' ') === 0 || n === a)){
+      best = ALIASES[a]; bestLen = a.length;
+    }
+  });
+  return best;
+}
+
+/* Pull the awarded score off one line, using the known maximum to tell
+   the score apart from the max. This is what the old parser got wrong —
+   in "| Business model | 4 | 3.0 |" it read the 4. */
+function scoreFromLine(line, key){
+  var max = maxOf(key);
+  var body = line.replace(/\*\*/g,'').replace(/`/g,'');
+  /* strip the label so its own digits can't be mistaken for a score */
+  var afterLabel = body;
+  var nums = (afterLabel.match(/-?\d+(?:\.\d+)?/g) || []).map(parseFloat);
+  if(!nums.length) return null;
+
+  /* 1. explicit "3.0 / 4" or "3 of 4" where the denominator is the max */
+  var frac = body.match(/(\d+(?:\.\d+)?)\s*(?:\/|of|out of)\s*(\d+(?:\.\d+)?)/i);
+  if(frac && Math.abs(parseFloat(frac[2]) - max) < 0.01){
+    var v = parseFloat(frac[1]);
+    if(v <= max + 0.01) return v;
+  }
+  /* 2. table cells — find the cell holding the max, take the next numeric cell */
+  if(body.indexOf('|') !== -1){
+    var cells = body.split('|').map(function(c){ return c.trim(); });
+    var numIdx = [];
+    cells.forEach(function(c,ix){
+      if(/^-?\d+(\.\d+)?$/.test(c)) numIdx.push([ix, parseFloat(c)]);
+    });
+    for(var a=0; a<numIdx.length; a++){
+      if(Math.abs(numIdx[a][1] - max) < 0.01){
+        if(numIdx[a+1] && numIdx[a+1][1] <= max + 0.01) return numIdx[a+1][1];   // | max | score |
+        if(numIdx[a-1] && numIdx[a-1][1] <= max + 0.01) return numIdx[a-1][1];   // | score | max |
+      }
+    }
+    var only = numIdx.filter(function(x){ return x[1] <= max + 0.01; });
+    if(only.length === 1) return only[0][1];
+  }
+  /* 3. a single plausible number on the line */
+  var plausible = nums.filter(function(v){ return v >= 0 && v <= max + 0.01; });
+  if(plausible.length === 1) return plausible[0];
+  /* 4. max appears alongside exactly one smaller number */
+  var hasMax = nums.some(function(v){ return Math.abs(v-max) < 0.01; });
+  if(hasMax && plausible.length){
+    var cand = plausible.filter(function(v){ return Math.abs(v-max) > 0.01; });
+    if(cand.length === 1) return cand[0];
+  }
+  return null;   /* ambiguous — never guess */
+}
+
+
+/* ============================================================================
+   Tolerant JSON reader.
+
+   Real chat models truncate long replies, leave trailing commas, add // notes,
+   elide arrays with "...", and wrap output in fences they sometimes forget to
+   close. Any one of those used to make JSON.parse throw, and the importer then
+   fell back to scraping the prose — which produced no meta and no verdict, so
+   the Documents section and every PDF/share button stayed hidden. That is the
+   bug this replaces. We now try hard to recover the object, and we say plainly
+   what had to be repaired.
+   ========================================================================== */
+var LAST_REPAIRS = [];
+
+/* Pull the outermost JSON object out of a reply, brace-matched and
+   string-aware, without needing a closing fence. */
+function extractJsonCandidates(raw){
+  var out = [], i, n = raw.length;
+  /* prefer objects that mention the things we care about */
+  for(i = 0; i < n; i++){
+    if(raw.charAt(i) !== '{') continue;
+    var depth = 0, inStr = false, esc = false, end = -1;
+    for(var j = i; j < n; j++){
+      var c = raw.charAt(j);
+      if(inStr){
+        if(esc){ esc = false; }
+        else if(c === '\\'){ esc = true; }
+        else if(c === '"'){ inStr = false; }
+        continue;
+      }
+      if(c === '"'){ inStr = true; continue; }
+      if(c === '{') depth++;
+      else if(c === '}'){ depth--; if(depth === 0){ end = j; break; } }
+    }
+    var chunk = end >= 0 ? raw.slice(i, end + 1) : raw.slice(i);   /* unterminated = truncated */
+    if(/"(schema|score_lines|meta|verdict|recommendation|gu)"\s*:/.test(chunk)){
+      out.push({ text: chunk, truncated: end < 0 });
+      if(end < 0) break;          /* nothing useful can follow a truncated object */
+      i = end;                    /* continue after this object */
+    }
+  }
+  /* longest first — the full payload beats a nested fragment */
+  out.sort(function(a,b){ return b.text.length - a.text.length; });
+  return out;
+}
+
+/* Remove the things models add that JSON does not allow. */
+function sanitiseJson(t){
+  var fixes = [];
+  var before;
+
+  before = t;
+  t = t.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  if(t !== before) fixes.push('curly quotes');
+
+  /* strip // and /* *\/ comments, but never inside a string */
+  before = t;
+  t = stripComments(t);
+  if(t !== before) fixes.push('comments');
+
+  before = t;
+  t = t.replace(/,(\s*[}\]])/g, '$1');
+  if(t !== before) fixes.push('trailing commas');
+
+  /* "..." / … used to mean "and so on" */
+  before = t;
+  t = t.replace(/,\s*\.\.\.\s*(?=[}\]])/g, '')
+       .replace(/(\[|,)\s*(?:\.\.\.|…)\s*(?=[,\]])/g, '$1')
+       .replace(/(\[|\{)\s*(?:\.\.\.|…)\s*(?=[}\]])/g, '$1');
+  if(t !== before) fixes.push('elisions');
+
+  before = t;
+  t = t.replace(/:\s*(NaN|Infinity|-Infinity|undefined)\s*(?=[,}\]])/g, ': null');
+  if(t !== before) fixes.push('NaN/undefined');
+
+  /* ₹1,234 cr and 12% written unquoted */
+  before = t;
+  t = t.replace(/:\s*(\d[\d,]*\.?\d*)\s*(?=[,}\]])/g, function(m, num){
+        return ': ' + num.replace(/,/g, ''); });
+  if(t !== before) fixes.push('thousands separators');
+
+  return { text: t, fixes: fixes };
+}
+
+function stripComments(t){
+  var out = '', inStr = false, esc = false, i = 0, n = t.length;
+  while(i < n){
+    var c = t.charAt(i), d = t.charAt(i+1);
+    if(inStr){
+      out += c;
+      if(esc) esc = false;
+      else if(c === '\\') esc = true;
+      else if(c === '"') inStr = false;
+      i++; continue;
+    }
+    if(c === '"'){ inStr = true; out += c; i++; continue; }
+    if(c === '/' && d === '/'){ while(i < n && t.charAt(i) !== '\n') i++; continue; }
+    if(c === '/' && d === '*'){ i += 2; while(i < n && !(t.charAt(i) === '*' && t.charAt(i+1) === '/')) i++; i += 2; continue; }
+    out += c; i++;
+  }
+  return out;
+}
+
+/* Close whatever the model left open when it ran out of room. */
+function repairTruncated(t){
+  var stack = [], inStr = false, esc = false;
+  for(var i = 0; i < t.length; i++){
+    var c = t.charAt(i);
+    if(inStr){
+      if(esc) esc = false;
+      else if(c === '\\') esc = true;
+      else if(c === '"') inStr = false;
+      continue;
+    }
+    if(c === '"') inStr = true;
+    else if(c === '{' || c === '[') stack.push(c);
+    else if(c === '}' || c === ']') stack.pop();
+  }
+  if(inStr) t += '"';
+  /* drop a dangling key or comma so the close is valid */
+  t = t.replace(/,\s*$/, '').replace(/"[^"]*"\s*:\s*$/, '').replace(/,\s*$/, '');
+  for(var k = stack.length - 1; k >= 0; k--) t += (stack[k] === '{' ? '}' : ']');
+  return t;
+}
+
+/* Last resort: keep only the top-level keys that parsed cleanly. */
+function salvageTopLevel(t){
+  var body = t.replace(/^\s*\{/, '');
+  var keys = [], re = /"([a-z_0-9]+)"\s*:/gi, m;
+  while((m = re.exec(body))) keys.push({ name:m[1], at:m.index });
+  var best = null;
+  for(var i = keys.length - 1; i >= 0; i--){
+    var attempt = repairTruncated('{' + body.slice(0, keys[i].at));
+    try{ var j = JSON.parse(attempt); if(j && typeof j === 'object'){ best = j; break; } }catch(e){}
+  }
+  return best;
+}
+
+/* Some models wrap the payload one level deep: {"result": {...}}. */
+function unwrapPayload(j){
+  if(!j || typeof j !== 'object') return j;
+  /* A declared schema means this IS the payload — including a partial
+     block 2, whose gu.verdict would otherwise look like the real thing. */
+  if(typeof j.schema === 'string') return j;
+  if(j.meta || j.verdict || j.score_lines || j.gu) return j;
+  var keys = Object.keys(j);
+  for(var i = 0; i < keys.length; i++){
+    if(keys[i] === 'gu') continue;
+    var v = j[keys[i]];
+    if(v && typeof v === 'object' && (v.meta || v.verdict || v.score_lines)) return v;
+  }
+  return j;
+}
+
+/* Parse one candidate as hard as we can. */
+function readOne(text){
+  var san = sanitiseJson(text);
+  var tries = [
+    { t: san.text,                  note: san.fixes },
+    { t: repairTruncated(san.text), note: san.fixes.concat(['completed a truncated reply']) }
+  ];
+  for(var i = 0; i < tries.length; i++){
+    try{
+      var j = unwrapPayload(JSON.parse(tries[i].t));
+      if(j && typeof j === 'object' && (j.meta || j.verdict || j.score_lines || j.gu || j.schema)){
+        return { data:j, fixes:tries[i].note };
+      }
+    }catch(e){}
+  }
+  var sal = unwrapPayload(salvageTopLevel(san.text));
+  if(sal && (sal.meta || sal.verdict || sal.score_lines || sal.gu)){
+    return { data:sal, fixes:san.fixes.concat(['recovered the part of a cut-off reply that was complete']) };
+  }
+  return null;
+}
+
+/* The one entry point: give it any reply — one block or several — and get back
+   a single merged object. A reply that carries the English analysis and the block, which therefore needs only ONE paste. */
+/* A chat client that renders JSON as prose runs it through a typesetter first:
+   "Deteriorating" comes back as \u201CDeteriorating\u201D. There is then not a single
+   straight quote in the text, so the candidate scanner finds no strings, no
+   candidate and no payload — and the import silently falls back to scraping the
+   report prose, which is how a full analysis arrived as six score lines.
+
+   Structural quotes are converted first: only the ones sitting where JSON
+   punctuation demands a quote. If that still will not parse, every curly quote
+   is straightened. Both are tried only AFTER the raw text has failed, so a
+   correctly fenced block is never touched. */
+function deSmartenStructural(t){
+  return t
+    .replace(/([{\[,:]\s*)[\u201C\u201D]/g, '$1"')
+    .replace(/[\u201C\u201D](\s*[:,}\]])/g, '"$1')
+    .replace(/^\s*[\u201C\u201D]/mg, '"');
+}
+function deSmartenAll(t){
+  return t.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+}
+function readPayload(raw){
+  var got = readPayloadFrom(raw);
+  if(got) return got;
+  var tries = [
+    [deSmartenStructural(raw), 'the chat app had curled the quotes; they were straightened'],
+    [deSmartenAll(raw),        'the chat app had curled every quote; they were straightened']
+  ];
+  for(var i = 0; i < tries.length; i++){
+    if(tries[i][0] === raw) continue;
+    got = readPayloadFrom(tries[i][0]);
+    if(got){ LAST_REPAIRS.push(tries[i][1]); return got; }
+  }
+  return null;
+}
+function readPayloadFrom(raw){
+  LAST_REPAIRS = [];
+  var cands = extractJsonCandidates(raw);
+  var parsed = [];
+  for(var c = 0; c < cands.length; c++){
+    var r = readOne(cands[c].text);
+    if(r) parsed.push(r);
+  }
+  if(!parsed.length) return null;
+
+  /* the block carrying the analysis is the base; the rest fill it in */
+  var baseIx = 0;
+  for(var i = 0; i < parsed.length; i++){
+    var d = parsed[i].data;
+    if(d.score_lines && Object.keys(d.score_lines).length){ baseIx = i; break; }
+    if(d.meta && baseIx === 0) baseIx = i;
+  }
+  var out = parsed[baseIx].data;
+  var fixes = parsed[baseIx].fixes.slice();
+  var extra = 0;
+  for(var k = 0; k < parsed.length; k++){
+    if(k === baseIx) continue;
+    deepMerge(out, parsed[k].data);
+    parsed[k].fixes.forEach(function(f){ if(fixes.indexOf(f) < 0) fixes.push(f); });
+    extra++;
+  }
+  if(extra) fixes.push(extra + ' further block(s) in the same paste were merged in');
+  var moved = hoistMisnested(out);
+  if(moved.length) fixes.push('moved ' + moved.length + ' section(s) that arrived one level too deep ('
+    + moved.slice(0, 3).join(', ') + (moved.length > 3 ? ' and others' : '') + ')');
+  LAST_REPAIRS = fixes;
+  return out;
+}
+
+/* Sections that arrived nested one level too deep.
+
+   A live payload put eight `deep` keys — the reverse DCF, the base rate, the
+   sensitivity grid, management quality, both long cases, what would change our
+   mind and the questions for management — inside `deep.competition` rather than
+   beside it. The JSON was valid, every field was present and correctly shaped,
+   and the app reported the sections as missing while the reports simply left
+   them out. Nothing was wrong with the research; a single brace was in the
+   wrong place.
+
+   The names are unambiguous — nothing legitimately called `reverse_dcf` belongs
+   under `competition` — so a key found in the wrong parent is moved to the
+   right one rather than reported as absent. An existing key at the destination
+   always wins: repair never overwrites data that arrived correctly. */
+var DEEP_KEYS = ['unit_economics','operating_metrics','balance_sheet','working_capital',
+  'quarterly','capital_allocation','litigation','group_structure','credit',
+  'issue_structure','concentration','regulatory','competition','reverse_dcf',
+  'base_rate','sensitivity','management_quality','bear_case_detail','bull_case_detail',
+  'what_would_change_our_mind','key_questions_for_management'];
+
+function hoistMisnested(d){
+  var moved = [];
+  if(!d || typeof d !== 'object') return moved;
+  var deep = d.deep;
+  if(!deep || typeof deep !== 'object') return moved;
+  /* one pass over the containers that exist, looking for siblings of theirs
+     that should have been siblings of them */
+  Object.keys(deep).forEach(function(host){
+    var box = deep[host];
+    if(!box || typeof box !== 'object' || Array.isArray(box)) return;
+    DEEP_KEYS.forEach(function(k){
+      if(k === host) return;
+      if(!(k in box)) return;
+      if(box[k] == null) return;
+      if(deep[k] != null) return;          /* the right one is already there */
+      deep[k] = box[k];
+      delete box[k];
+      moved.push(k);
+    });
+  });
+  return moved;
+}
+
+
+/* What a partly-recovered payload cannot draw. Reported, never guessed. */
+/* The company NAME. `d.company` is an object in a v3 payload and a string in
+   the older prose-scraped ones, so never read it directly for a name. */
+function coNameOf(d, r){
+  if(!d) return '';
+  return str((d.meta||{}).company)
+      || (typeof d.company === 'string' ? str(d.company) : '')
+      || str(r && r.company) || '';
+}
+/* Which tool produced the reply.
+   The contract now carries meta.tool, so in the normal case the user never has
+   to answer this. Failing that the raw text is sniffed for the tool's own
+   signature, and only then does the dropdown matter. */
+var TOOL_SIGS = [
+  ['Claude',     /\bclaude\b|anthropic/i],
+  ['ChatGPT',    /\bchatgpt\b|\bopenai\b|\bgpt-[0-9]/i],
+  ['Gemini',     /\bgemini\b|google ai studio|\bbard\b/i],
+  ['Perplexity', /\bperplexity\b/i]
+];
+function detectTool(raw, d){
+  var fromPayload = d && d.meta && str(d.meta.tool);
+  if(fromPayload){
+    for(var i=0;i<TOOL_SIGS.length;i++)
+      if(new RegExp(TOOL_SIGS[i][0],'i').test(fromPayload)) return { name:TOOL_SIGS[i][0], how:'stated in the reply' };
+    return { name:'Other', how:'stated in the reply' };
+  }
+  var head = String(raw||'').slice(0, 4000);
+  for(var j=0;j<TOOL_SIGS.length;j++)
+    if(TOOL_SIGS[j][1].test(head)) return { name:TOOL_SIGS[j][0], how:'recognised from the reply' };
+  return null;
+}
+function applyDetectedTool(raw, d){
+  var t = detectTool(raw, d), note = $('#srcAuto'), sel = $('#importSrc'),
+      wrap = $('#srcWrap');
+  if(!sel) return;
+  if(t){
+    sel.value = t.name;
+    if(wrap) wrap.hidden = true;
+    if(note) note.textContent = 'Produced by ' + t.name + ' — ' + t.how + '.';
+  } else {
+    if(wrap) wrap.hidden = false;
+    if(note) note.textContent = 'The reply does not say which tool produced it. Pick one below.';
+  }
+}
+/* Indian date format, everywhere the app prints a date. The payload and the
+   imported runs carry ISO dates because they sort and compare correctly; what the
+   reader sees is DD-MM-YYYY. */
+function dmy(v){
+  var t = str(v);
+  if(!t) return '';
+  return t.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function(_, y, mo, d){
+    return d + '-' + mo + '-' + y; });
+}
+function docGaps(d){
+  var g = [];
+  if(!d) return ['everything'];
+  var have = 0;
+  ORDER.forEach(function(k){
+    var v = (d.score_lines||{})[k];
+    if(v !== undefined && v !== null && (d.incomplete||[]).indexOf(k) < 0) have++; });
+  if(have < 28) g.push((28-have)+' of the 28 score lines');
+  if(!d.meta || !str(d.meta.company)) g.push('company details');
+  if(!d.verdict || !d.verdict.recommendation) g.push('the verdict');
+  if(!d.financials || !(d.financials.rows||[]).length) g.push('the financial table');
+  if(!d.decision || !(d.decision.strengths||[]).length) g.push('strengths and weaknesses');
+
+  /* Research gaps, as opposed to missing keys. These three sections come back
+     thin far more often than they come back absent: a litigation section with
+     no record of any register having been searched, a credit profile that says
+     nothing was available, and a peer table of names and one multiple. Each is
+     a research job that was not finished, and each used to print as though it
+     had been. */
+  var lit = (d.deep || {}).litigation || {};
+  var ran = (lit.searched || []).map(function(x){
+    return String((x && x.source) || '').toLowerCase(); }).join(' ');
+  var wantReg = [['kanoon', 'Indian Kanoon'], ['court', 'e-Courts'], ['nclt', 'NCLT'],
+                 ['sebi', 'SEBI orders'], ['mca', 'MCA']];
+  var missReg = wantReg.filter(function(r){ return ran.indexOf(r[0]) < 0; })
+                       .map(function(r){ return r[1]; });
+  if(!(lit.searched || []).length)
+    g.push('the litigation register searches (no register is recorded as searched)');
+  else if(missReg.length)
+    g.push('litigation searches of ' + missReg.join(', '));
+
+  var cred = (d.deep || {}).credit || {};
+  var credThin = !str(cred.rating) && !(cred.facilities || []).length
+                 && cred.interest_cover == null && cred.debt_ebitda == null;
+  if(credThin) g.push('the credit profile (no rating, no facilities, no derived cover)');
+
+  /* A peer table earns its place by carrying the operating figures beside the
+     multiple. Fewer than five columns means it is a list of P/Es. */
+  var pr = (d.financials || {}).peers || {};
+  var cols = (pr.columns || []).length;
+  if((pr.rows || []).length && cols < 5)
+    g.push('peer comparison figures (' + cols + ' columns — revenue, EBITDA, PAT and growth are missing)');
+  /* The eight columns can all be there and still carry nothing. A table built
+     from the RHP's own peer table alone comes out as one column of P/Es and
+     seven of dashes, because that is all the RHP publishes — while every peer
+     in it is a listed company whose figures are on the exchanges. Count the
+     cells, not the headings. */
+  else if((pr.rows || []).length > 1 && cols >= 5){
+    var filled = 0, total = 0;
+    (pr.rows || []).forEach(function(r, i){
+      if(i === 0) return;                     /* the subject is our own working */
+      (r.cells || []).forEach(function(c, j){
+        if(j === 0) return;                   /* the name is not a figure */
+        total++;
+        var t = String(c == null ? '' : c).trim();
+        if(t && t !== '—' && t !== '-' && t !== 'n.a.') filled++;
+      });
+    });
+    if(total && filled / total < 0.5)
+      g.push('peer figures (' + filled + ' of ' + total
+        + ' cells filled — the peers are listed companies, so the rest are on the exchanges)');
+  }
+
+  return g;
+}
+
+/* Import coverage.
+   A partial translation used to be invisible until a PDF came out half English.
+   These are the exact paths that live testing found the models leave behind, so
+   the gap is named at import time rather than discovered in a finished report. */
+/* The translation-coverage audit was removed with the second edition. */
+
+
+/* Merge a follow-up block into an analysis already saved: the tail of a reply the model had to cut short. Existing
+   values win, so a re-paste can only ever add. */
+function deepMerge(base, add){
+  if(add == null) return base;
+  if(base == null || typeof base !== 'object' || typeof add !== 'object') return base == null ? add : base;
+  if(Array.isArray(base) && Array.isArray(add)) return base.length ? base : add;
+  if(Array.isArray(base) !== Array.isArray(add)) return base;
+  Object.keys(add).forEach(function(k){
+    if(base[k] === undefined || base[k] === null || base[k] === '') base[k] = add[k];
+    else if(typeof base[k] === 'object' && typeof add[k] === 'object') deepMerge(base[k], add[k]);
+  });
+  return base;
+}
+
+function mergeIntoRecord(id, raw){
+  var lib = libRead(), rec = lib.filter(function(x){ return x.id===id; })[0];
+  if(!rec) return { ok:false, msg:'Select a saved analysis first.' };
+  var add = readPayload(raw);
+  if(!add) return { ok:false, msg:'No readable data block was found in what you pasted.' };
+  var before = 28 - (rec.data.incomplete||[]).length;
+  var beforeIncomplete = (rec.data.incomplete||[]).slice();
+  /* an unsupplied item sits at 0; let a follow-up block overwrite it */
+  beforeIncomplete.forEach(function(k){ if(rec.data.score_lines) delete rec.data.score_lines[k]; });
+  deepMerge(rec.data, add);
+  rec.data.incomplete = beforeIncomplete.filter(function(k){
+    var v = (rec.data.score_lines||{})[k];
+    if(v === undefined || v === null){ rec.data.score_lines[k] = 0; return true; }
+    return false; });
+  ORDER.forEach(function(k){
+    var v = parseFloat((rec.data.score_lines||{})[k]);
+    if(!isNaN(v) && v > maxOf(k) + 0.01) rec.data.score_lines[k] = maxOf(k);
+  });
+  rec.data.scores = rec.data.scores || {};
+  if(rec.data.verdict && rec.data.verdict.scores) rec.data.scores = rec.data.verdict.scores;
+  rec.data.scores.ipo_quality = sumLines(rec.data.score_lines);
+  rec.text = (rec.text||'') + '\n\n' + raw;
+  libWrite(lib);
+  var after = 28 - (rec.data.incomplete||[]).length;
+  var gained = [];
+  if(after > before) gained.push((after-before)+' score line(s)');
+  return { ok:true, msg: gained.length ? 'Merged '+gained.join(' and ')+'.' : 'Merged. Nothing new was missing.' };
+}
+
+function parseImport(raw){
+  var out = { data:null, how:'', warn:[], found:0, missing:[], statedTotal:null };
+  var lines = {}, seen = {};
+
+  /* --- strategy 1: the data block, read tolerantly --- */
+  var j = readPayload(raw);
+  if(j){
+    {
+      if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
+        + LAST_REPAIRS.join(', ') + '). Check the figures below.');
+      j.score_lines = j.score_lines || {};
+      if(j.meta || j.verdict){
+        /* v3 payload — everything the renderer needs travels with it */
+        {
+          out.v3 = true;
+          j.meta = j.meta || {};
+          j.verdict = j.verdict || {};
+          j.meta.company = str(j.meta.company) || (typeof j.company === 'string' ? j.company : '');
+          j.meta.short_name = str(j.meta.short_name) || j.meta.company;
+          /* j.company is the Block 1 company OBJECT — what the business does,
+             how it earns, its segments, products, operating metrics, industry
+             and moat. Overwriting it with the company NAME, as this line used
+             to, silently emptied the business, products, operating-metrics and
+             industry sections of every report. The name lives in meta. */
+          if(!j.recommendation && j.verdict) j.recommendation = j.verdict.recommendation;
+          if(!j.allocation_band && j.verdict) j.allocation_band = j.verdict.allocation_band;
+          if(!j.verdict_line && j.verdict) j.verdict_line = j.verdict.one_liner;
+          if(j.verdict && j.verdict.scores) j.scores = j.verdict.scores;
+          if(j.decision && j.decision.red_flags) j.red_flags = j.decision.red_flags;
+        }
+        var bad = [];
+        ORDER.forEach(function(k){
+          var v = parseFloat(j.score_lines[k]);
+          if(isNaN(v)){ out.missing.push(k); return; }
+          if(v > maxOf(k) + 0.01){ bad.push(labelOf(k)); v = maxOf(k); }
+          lines[k] = v; out.found++;
+        });
+        if(bad.length) out.warn.push(bad.length+' item(s) exceeded their maximum and were capped.');
+        /* Anything the JSON did not carry is still worth scraping out of the
+           prose above it, rather than leaving the item blank. */
+        if(out.missing.length){
+          var rescued = [];
+          raw.split('\n').forEach(function(line){
+            if(!/\d/.test(line)) return;
+            var body = line.replace(/\*\*/g,'').replace(/^[\s>|\-\u2022*]+/,'');
+            var lbl = (body.split(/[|:]/)[0] || '').replace(/\d.*$/,'').trim();
+            var key = matchLabel(lbl);
+            if(!key || lines[key] !== undefined) return;
+            var v = scoreFromLine(line, key);
+            if(v === null) return;
+            lines[key] = v; rescued.push(key);
+          });
+          if(rescued.length){
+            out.missing = out.missing.filter(function(k){ return rescued.indexOf(k) < 0; });
+            out.found += rescued.length;
+            out.warn.push(rescued.length + ' score(s) were missing from the data block and were read '
+              + 'from the report text instead.');
+          }
+        }
+        j.score_lines = lines;
+        out.data = j; out.how = 'data block';
+        if(j.scores && j.scores.ipo_quality != null) out.statedTotal = parseFloat(j.scores.ipo_quality);
+        return finishParse(out, raw);
+      }
+    }
+  }
+
+  /* --- strategy 2: read the scoring section line by line --- */
+  raw.split('\n').forEach(function(line){
+    if(!/\d/.test(line)) return;
+    var body = line.replace(/\*\*/g,'').replace(/^[\s>|\-•*]+/,'');
+    /* candidate label = text before the first digit, colon or pipe */
+    var lbl = (body.split(/[|:]/)[0] || '').replace(/\d.*$/,'').trim();
+    var key = matchLabel(lbl);
+    if(!key || seen[key]) return;
+    var v = scoreFromLine(line, key);
+    if(v === null) return;
+    lines[key] = v; seen[key] = 1; out.found++;
+  });
+
+  ORDER.forEach(function(k){ if(lines[k] === undefined) out.missing.push(k); });
+
+  if(!out.found){
+    out.warn.push('No scoring line items could be recognised in what you pasted.');
+    out.data = { schema:'equity-analyst/1', score_lines:{}, scores:{}, snapshot:{}, red_flags:[] };
+    out.how = 'nothing recognised';
+    return finishParse(out, raw);
+  }
+  out.how = 'read from the report text';
+  out.data = { schema:'equity-analyst/1', score_lines:lines, scores:{}, snapshot:{}, red_flags:[] };
+  return finishParse(out, raw);
+}
+
+/* fill in everything around the scores, whichever strategy ran */
+function finishParse(out, raw){
+  var d = out.data, txt = raw;
+  var num = function(re){ var x = txt.match(re); return x ? parseFloat(x[1].replace(/,/g,'')) : null; };
+  d.scores = d.scores || {};
+  if(d.scores.ipo_quality == null)
+    /* the old IPO quality score has no equivalent here */
+  if(d.scores.long_term == null)
+    d.scores.long_term = num(/Long[-\s]?Term[^0-9\n]{0,30}(\d{1,3}(?:\.\d)?)/i);
+  if(d.scores.listing_gain == null)
+    d.scores.listing_gain = num(/Listing[-\s]?Gain[^0-9\n]{0,30}(\d{1,3}(?:\.\d)?)/i);
+  if(!d.recommendation){
+    var r = txt.match(/\b(STRONG SUBSCRIBE|LISTING GAIN ONLY|WAIT FOR BETTER VALUATION|SELECTIVE[A-Z \-–]*|SUBSCRIBE|AVOID)\b/);
+    d.recommendation = r ? r[1].trim() : '';
+  }
+  if(!d.allocation_band){
+    var a = txt.match(/allocation[^0-9\n]{0,20}(\d(?:\s*[-–]\s*\d)?\s*%|0\s*%)/i);
+    d.allocation_band = a ? a[1].replace(/\s+/g,'') : '';
+  }
+  if(!d.company || (typeof d.company !== 'object' && !str(d.company))){
+    /* take the whole heading line — a company suffix inside the name (…Engineering
+       Limited) must not truncate the match at the first suffix word */
+    var c = txt.match(/^#{1,3}\s*(?:\d+\.?\s*)?([A-Z][A-Za-z0-9&.,'\-() ]{3,70})\s*$/m);
+    var name = c ? c[1].trim().replace(/\s*[-–—:|].*$/,'').trim() : '';
+    if(!name){
+      var c2 = txt.match(/\b([A-Z][A-Za-z0-9&.,'\- ]{3,60}?\s(?:Limited|Ltd\.?))\b/);
+      name = c2 ? c2[1].trim() : '';
+    }
+    if(typeof d.company !== 'object') d.company = name;
+    d.meta = d.meta || {};
+    if(!str(d.meta.company)) d.meta.company = name;
+  }
+  if(!d.red_flags || !d.red_flags.length){
+    var flags = [];
+    txt.split('\n').forEach(function(l){
+      var sev = l.match(/\b(CRITICAL|HIGH|MEDIUM|LOW)\b/);
+      if(!sev || l.indexOf('|') === -1) return;
+      var cells = l.split('|').map(function(x){ return x.replace(/\*\*/g,'').trim(); })
+                   .filter(function(x){ return x; });
+      if(cells.length < 2) return;
+      var label = cells[0];
+      if(!label || /^-+$/.test(label) || /severity/i.test(label)) return;
+      if(flags.length < 8) flags.push({ flag:label, severity:sev[1] });
+    });
+    d.red_flags = flags;
+  }
+  if(d.scores.ipo_quality != null) out.statedTotal = d.scores.ipo_quality;
+  return out;
+}
+
+function sumLines(l){ var t=0; Object.keys(l||{}).forEach(function(k){ t += (parseFloat(l[k])||0); });
+  return Math.round(t*10)/10; }
+
+/* ---------------- library ---------------- */
+function libRead(){ try{ return JSON.parse(get(LIB,'[]')) || []; }catch(e){ return []; } }
+function libWrite(a){ set(LIB, JSON.stringify(a.slice(0,40))); }
+function saveToLibrary(rec){
+  var lib = libRead().filter(function(x){ return x.id !== rec.id; });
+  lib.unshift(rec); libWrite(lib); drawLibrary(rec.id);
+}
+
+
+
+
+
+/* A stored timestamp as DD-MM-YYYY, to match every other date in the app. */
+function dmyTs(ts){
+  var d = new Date(Number(ts) || 0);
+  if(isNaN(d.getTime()) || !ts) return '—';
+  var p2 = function(v){ return (v < 10 ? '0' : '') + v; };
+  return p2(d.getDate()) + '-' + p2(d.getMonth() + 1) + '-' + d.getFullYear();
+}
+
+function drawLibrary(selectId){
+  var lib = libRead(), sel = $('#libSel');
+  sel.innerHTML = '<option value="">— none saved —</option>' + lib.map(function(r){
+    return '<option value="' + r.id + '">' + esc(recName(r)) + '</option>';
+  }).join('');
+  if(selectId){ sel.value = selectId; showRecord(selectId); }
+  syncRepPick();
+  drawAnalysisPanel('#repPanel', sel.value);
+  drawAnalysisPanel('#scPanel', SC_ID);
+}
+
+
+
+
+
+
+
+
+
+
+function syncRepPick(){
+  var el = $('#repPick'); if(!el) return;
+  var id = $('#libSel').value;
+  var r = libRead().filter(function(x){ return x.id === id; })[0];
+  el.value = r ? recName(r) : '';
+  var btn = $('#btnRepPick');
+  if(btn) btn.classList.toggle('hidden', !libRead().length);
+}
+function A_REC(v){ var t = str(v); return t || '—'; }
+
+/* The verdict card lives on the Score Card now; #repCard no longer exists. */
+function hideVerdict(){
+  /* Only the Report tab's own state. The Score Card's name and verdict follow
+     SC_ID and are cleared by scSelect(''), not from here. */
+}
+
+/* The verdict card belongs to the SCORE CARD's selection, not the Report's.
+   It used to be drawn from inside showRecord, which is why the two tabs moved
+   together; it is its own function now and the Score Card calls it. */
+function showScVerdict(r){
+  if(!r){ var h0 = $('#scVerdict');
+          if(h0){ h0.innerHTML=''; h0.classList.add('hidden'); } return; }
+  var d = r.data || {}, sc = d.scores || {};
+  /* Scores are sums of one-decimal values, so raw floats leak 72.30000000000004. */
+  var fx = function(v){
+    if(v==null||v==='') return '—';
+    var f = parseFloat(v);
+    return isNaN(f) ? esc(str(v)) : String(Math.round(f*10)/10);
+  };
+  var tile = function(k,v){ return '<div class="t"><b>'+fx(v)+'</b><span>'+k+'</span></div>'; };
+  var flags = (d.red_flags||[]).slice(0,6).map(function(f){
+    var sv = String(f.severity||'LOW').toUpperCase();
+    return '<div><i class="sv-'+sv+'">'+sv+'</i>'+esc(f.flag||'')+'</div>';
+  }).join('');
+  /* The verdict belongs with the scores it summarises, so it renders at the foot
+     of the Score Card rather than on the Report tab. The tool name and import
+     timestamp are gone — they told the reader nothing about the company. */
+  var SEV_MEANING = {
+    CRITICAL: 'could break the investment case on its own',
+    HIGH:     'materially affects the valuation or the risk',
+    MEDIUM:   'worth pricing in, not disqualifying',
+    LOW:      'noted for completeness'
+  };
+  var seen = {};
+  var flagRows = (d.red_flags||[]).slice(0,8).map(function(f){
+    var sv = String(f.severity||'LOW').toUpperCase();
+    seen[sv] = 1;
+    return '<div class="fl-row"><i class="sv-'+sv+'">'+sv+'</i><span>'+esc(str(f.flag)||'')+'</span></div>';
+  }).join('');
+  var legend = Object.keys(SEV_MEANING).filter(function(k){ return seen[k]; })
+    .map(function(k){
+      return '<div class="lg-row"><i class="sv-'+k+'">'+k+'</i><span>'+SEV_MEANING[k]+'</span></div>'; }).join('');
+
+  var card = '<div class="rc">'
+    + '<div class="v">'+esc(A_REC(d.recommendation))+'</div>'
+    + '<div class="m">'+esc(coNameOf(d, r))+'</div>'
+    + '<div class="tiles">'+tile('Long term',sc.long_term)
+    + tile('Listing',sc.listing_gain)+tile('Alloc',d.allocation_band||'—')+'</div>'
+    + (d.verdict_line ? '<div class="fl" style="font-style:italic;">'+esc(str(d.verdict_line))+'</div>' : '')
+    + (flagRows ? '<div class="fl">'+flagRows+'</div>' : '')
+    + (legend ? '<div class="sev-key"><div class="sev-key-h">What the severities mean</div>'+legend+'</div>' : '')
+    + '</div>';
+  var host = $('#scVerdict');
+  if(host){ host.innerHTML = card; host.classList.remove('hidden'); }
+}
+
+function showRecord(id){
+  var r = libRead().filter(function(x){ return x.id===id; })[0];
+  if(!r){ hideVerdict(); return; }
+  var d = r.data || {};
+  /* The Score Card is NOT touched from here any more. It has its own selection
+     and its own worksheet; binding the two tabs together is what made the score
+     follow a company you had not asked for. */
+  /* The documents used to be hidden unless BOTH meta and verdict survived, with
+     nothing on screen to say why. A part-recovered analysis can still produce
+     real files, so show the tools and be explicit about what is thin. */
+  var isV3 = !!(d.meta || d.verdict || (d.score_lines && Object.keys(d.score_lines).length));
+  $('#docTools').classList.toggle('hidden', !isV3);
+  var sd = $('#scDocs'); if(sd) sd.classList.toggle('hidden', !isV3);
+  var gaps = docGaps(d);
+  if($('#docMsg')) $('#docMsg').innerHTML = isV3 && gaps.length
+    ? '<b>Documents will be missing: ' + esc(gaps.join(', ')) + '.</b> '
+      + 'Reply <b>continue</b> to the AI tool and paste the rest here with '
+      + '<b>Add To This Analysis</b>.'
+    : '';
+  var addBtn = $('#btnAddMore'); if(addBtn) addBtn.classList.toggle('hidden', !isV3);
+  $('#out').textContent = r.text || '';
+    $('#repTag').textContent = 'imported';
+  $('#repMeta').textContent = coNameOf(d, r)+' · via '+r.source;
+  /* applyToWorksheet used to run here. The Score Card now loads its own
+     selection, so importing on the Report tab no longer silently rewrites the
+     worksheet under a company you were looking at. */
+}
+
+/* the reverse-use step: an outside tool's scores drive the worksheet */
+function applyToWorksheet(d, company){
+  var n = 0;
+  scoreState = {};
+  if(!d || !d.score_lines){
+    /* Nothing to show. Every line reads zero rather than leaving the previous
+       company's figures on screen under a new name. */
+    scoreState.__name = company || '';
+    $('#scName').value = scoreState.__name;
+    persistScore(); buildSheet(); drawScImport();
+    return 0;
+  }
+  Object.keys(d.score_lines).forEach(function(k){
+    var pos = KEYMAP[k]; if(!pos) return;
+    var v = parseFloat(d.score_lines[k]); if(isNaN(v)) return;
+    v = Math.max(0, Math.min(maxOf(k), v));
+    scoreState['s'+pos[0]+'_'+pos[1]] = v; n++;
+  });
+  scoreState.__name = company || '';
+  $('#scName').value = scoreState.__name;
+  scoreState.__read = n;
+  scoreState.__stated = (d.verdict && d.verdict.scores
+                          && d.verdict.scores.ipo_quality != null)
+                        ? Number(d.verdict.scores.ipo_quality) : null;
+  persistScore(); buildSheet(); drawScImport();
+  return n;
+}
+
+/* The 28-line coverage note, on the tab that owns the 28 lines. */
+function drawScImport(){
+  var el = $('#scImport');
+  if(!el) return;
+  var n = scoreState.__read;
+  if(n === undefined || n === null){ el.classList.add('hidden'); el.innerHTML = ''; return; }
+  var sum = 0;
+  SHEET.forEach(function(grp, gi){
+    grp[1].forEach(function(it, ii){ sum += scoreState['s'+gi+'_'+ii] || 0; });
+  });
+  var stated = scoreState.__stated;
+  var html = '<b>' + n + ' of 28 line items</b> came from the imported payload'
+           + (n < 28 ? ' — the remaining ' + (28 - n) + ' scored zero.' : '.')
+           + ' They total <b>' + sum.toFixed(1) + '</b>';
+  if(stated != null && !isNaN(stated)){
+    var diff = Math.abs(sum - stated);
+    html += ' against a stated <b>' + stated + '</b>';
+    html += diff > 1.5
+      ? '.<br><b class="scbad">These disagree by ' + diff.toFixed(1) + ' points.</b> '
+        + 'The line items are what drive this worksheet and every document built from it.'
+      : ' — they agree.';
+  } else { html += '.'; }
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+}
+
+/* ---------------- review before saving ---------------- */
+var pendingImport = null;
+/* ================= PAYLOAD AUDIT =========================================
+   What actually arrived, section by section, and what each document will be
+   able to draw from it. The old review line counted one thing only — the 28
+   score lines — which said nothing about whether the reports would come out
+   full. A payload can carry all 28 scores and still produce an empty Executive
+   Summary because `financials` never arrived.
+
+   Every entry is [key, label, path, kind]. kind: 'v' a single value, 'n' rows
+   in an array, 'k' keys in an object.
+
+   The paths must match the CONTRACT, not what the path ought to be called. The
+   first version of this table guessed four of them — ipo.shareholding,
+   financials.valuation.ratios, deep.credit_profile and a people.key_people that
+   has never existed — and reported all four as missing on every payload,
+   because nothing is stored there. The data was present the whole time and the
+   reports were drawing it. If a check is added here, grep render.js for the
+   path first and confirm something reads it.
+   ======================================================================== */
+/* The audit reads the v2 equity payload. A path beginning "companies[]." is
+   evaluated for every shortlisted company and counts as present only when all
+   of them carry it — a section that four companies have and eight do not is a
+   gap, not a section. */
+/* The audit reads the v3 equity payload. A path beginning "companies[]." is
+   evaluated for every shortlisted company and counts as present only when all
+   of them carry it — a section four companies have and eight do not is a gap,
+   not a section. */
+var AUDIT_SPEC = [
+  ['run','Segment and horizon','run.segment','v'],
+  ['run','Number of searches recorded','run.searchesRun','v'],
+  ['run','Screening funnel','universe.identified','v'],
+  ['run','What was screened out, and why','universe.exclusions','n'],
+
+  ['world','Global market size and growth','global.cagr','k'],
+  ['world','Global peers, and what each makes','global.peers','n'],
+  ['world','Where India sits','global.indiaPosition','v'],
+
+  ['macro','Growth, inflation and the policy rate','macro.gdpGrowth','k'],
+  ['macro','Currency, credit and capacity','macro.creditGrowth','k'],
+  ['macro','Budget allocations, announced against spent','budget.allocations','n'],
+  ['macro','The Economic Survey reading','budget.economicSurvey','v'],
+  ['macro','Policy schemes','policy','n'],
+  ['macro','How the regime evolved','policyEvolution','n'],
+  ['macro','Regulation','regulation','k'],
+  ['macro','Geopolitics and supply chains','geopolitics','k'],
+  ['macro','Trade data behind the claims','geopolitics.tradeData','n'],
+
+  ['ind','Industry structure and cycle','industry.structure','v'],
+  ['ind','Demand drivers, tagged','industry.demandDrivers','n'],
+  ['ind','Value chain with beneficiaries','valueChain','n'],
+  ['ind','TAM, SAM and SOM','tam','k'],
+  ['ind','Programmes traced to suppliers','programs','n'],
+  ['ind','Competition and market share','competition.players','n'],
+  ['ind','Sector valuation against its own band','sectorValuation','k'],
+  ['ind','Key monitorables','monitorables','n'],
+  ['ind','Glossary','glossary','n'],
+
+  ['rate','Business quality ratings','companies[].businessQuality','k'],
+  ['rate','Growth and multibagger ratings','companies[].growthMultibagger','k'],
+  ['rate','Valuation and opportunity ratings','companies[].valuationOpportunity','k'],
+  ['rate','Risk and quality ratings','companies[].riskQuality','k'],
+  ['rate','The four overall dimensions','companies[].dimensions','k'],
+
+  ['arg','Three numbered theses','companies[].theses','n'],
+  ['arg','The moat, argued','companies[].moat','k'],
+  ['arg','Management and the guidance record','companies[].management.guidanceRecord','n'],
+  ['arg','Capital allocation over ten years','companies[].capitalAllocation','k'],
+  ['arg','Why the market has this wrong','companies[].mispricing','n'],
+  ['arg','The bear case, stated and answered','companies[].bearCase','k'],
+  ['arg','Peer comparison','companies[].peers','n'],
+  ['arg','ESG against peers','companies[].esg','k'],
+
+  ['for','Current-year line items','companies[].forensic.current','k'],
+  ['for','Prior-year line items','companies[].forensic.prior','k'],
+  ['for','Ten years of profit and operating cash','companies[].forensic.decade','n'],
+  ['for','Forensic inputs','companies[].forensic.inputs','k'],
+  ['for','Disclosure findings','companies[].forensic.disclosures','k'],
+
+  ['lit','Registers searched','companies[].litigation.searched','n'],
+
+  ['mod','Segment drivers','companies[].model.segments','n'],
+  ['mod','Cost structure','companies[].model.opex','k'],
+  ['mod','Capex and depreciation','companies[].model.capex','k'],
+  ['mod','Working-capital days','companies[].model.workingCapital','k'],
+  ['mod','Debt schedule and tax','companies[].model.financing','k'],
+  ['mod','Fully diluted share count','companies[].model.shares','k'],
+
+  ['val','Price and as-of date','companies[].valuation.currentPrice','v'],
+  ['val','Discount rate and terminal growth','companies[].valuation.discountRate','v'],
+  ['val','Bear, base and bull','companies[].valuation.base','k'],
+
+  ['mkt','Consensus estimates','companies[].consensus','k'],
+  ['mkt','Snapshot and performance','companies[].snapshot','k'],
+  ['mkt','Shareholding, quarter by quarter','companies[].shareholding','n'],
+  ['mkt','Liquidity','companies[].liquidity','k'],
+  ['mkt','Base rates','companies[].baseRates','k'],
+  ['mkt','Price history','companies[].priceHistory.closes','n'],
+  ['mkt','Ten years of financials','companies[].financials.annual','n'],
+
+  ['nar','Catalysts','companies[].catalysts','n'],
+  ['nar','Risks with a quantified impact','companies[].risks','n'],
+  ['nar','Thesis breakers','companies[].thesisBreakers','n'],
+  ['nar','Upgrade triggers','companies[].upgradeTriggers','n'],
+  ['nar','Questions for management','companies[].managementQuestions','n'],
+
+  ['src','Sources with tier and date','companies[].sources','n'],
+  ['src','Where sources disagreed','companies[].conflicts','n']
+];
+var AUDIT_GROUPS = { run:'The run', world:'The world', macro:'Macro and policy',
+  ind:'Industry', rate:'Ratings', arg:'The argument', for:'Forensic',
+  lit:'Litigation', mod:'Financial model', val:'Valuation', mkt:'Market context',
+  nar:'Narrative', src:'Sources' };
+
+function atPath(o, path){
+  var cur = o;
+  var parts = String(path).split('.');
+  for(var i = 0; i < parts.length; i++){
+    if(cur == null || typeof cur !== 'object') return undefined;
+    cur = cur[parts[i]];
+  }
+  return cur;
+}
+function auditCount(v, kind){
+  if(v === undefined || v === null || v === '') return 0;
+  if(kind === 'n'){
+    if(Array.isArray(v)) return v.length;
+    if(typeof v === 'object'){
+      /* peers and similar arrive as {columns, rows} */
+      if(Array.isArray(v.rows)) return v.rows.length;
+      return Object.keys(v).length;
+    }
+    return 0;
+  }
+  if(kind === 'k'){
+    if(Array.isArray(v)) return v.length;
+    if(typeof v === 'object'){
+      return Object.keys(v).filter(function(k){
+        var x = v[k];
+        return x !== null && x !== undefined && x !== ''
+          && !(Array.isArray(x) && !x.length);
+      }).length;
+    }
+    return 0;
+  }
+  return 1;
+}
+/* Evaluate one spec row. Returns { have, of, note } so a per-company row can
+   say "8 of 12 companies" instead of a bare tick or cross. */
+function auditRow(d, path, kind){
+  if(path.indexOf('companies[].') !== 0){
+    return { have: auditCount(atPath(d, path), kind) > 0 ? 1 : 0, of: 1, note: '' };
+  }
+  var rest = path.slice('companies[].'.length);
+  var cos = (d && d.companies) || [];
+  if(!cos.length) return { have: 0, of: 0, note: 'no companies' };
+  var n = cos.filter(function(c){ return auditCount(atPath(c, rest), kind) > 0; }).length;
+  return { have: n === cos.length ? 1 : 0, of: 1,
+           note: n + ' of ' + cos.length + ' companies' , partial: n > 0 && n < cos.length };
+}
+function auditPayload(d){
+  var groups = {}, order = [], filled = 0;
+  AUDIT_SPEC.forEach(function(e){
+    var r = auditRow(d, e[2], e[3]);
+    if(!groups[e[0]]){ groups[e[0]] = { key:e[0], name:AUDIT_GROUPS[e[0]], have:0, total:0, gaps:[] };
+                       order.push(groups[e[0]]); }
+    var g = groups[e[0]];
+    g.total++;
+    if(r.have){ g.have++; filled++; }
+    else { g.gaps.push(e[1] + (r.note ? ' \u2014 ' + r.note : '')); }
+  });
+  return { groups:order, filled:filled, total:AUDIT_SPEC.length };
+}
+/* Which documents this payload can actually fill. */
+function docReadiness(d){
+  var a = {};
+  AUDIT_SPEC.forEach(function(e){ a[e[2]] = auditRow(d, e[2], e[3]).have > 0; });
+  var cos = (d && d.companies) || [];
+  var rated    = cos.filter(function(c){ return c.businessQuality || c.riskQuality; }).length;
+  var modelled = cos.filter(function(c){ return c.model && c.model.segments; }).length;
+  var gated    = cos.filter(function(c){ return c.forensic && c.litigation; }).length;
+  var argued   = cos.filter(function(c){ return c.theses || c.mispricing; }).length;
+  var segment  = !!(d && (d.macro || d.policy || d.programs));
+  return [
+    { name:'Sector Research Report',
+      ok: !!a['run.segment'] && rated > 0,
+      why: segment ? 'macro, policy and programmes present'
+                   : 'no segment research — the report will be a ranking with stated gaps' },
+    { name:'Company Research Report — rank 1',
+      ok: rated > 0,
+      why: argued ? argued + ' companies carry a numbered argument' : 'scores but no argument' },
+    { name:'Company Research Report — rank 2',
+      ok: rated > 1, why: rated > 1 ? 'ready' : 'fewer than two companies rated' },
+    { name:'Company Research Report — rank 3',
+      ok: rated > 2, why: rated > 2 ? 'ready' : 'fewer than three companies rated' },
+    { name:'Executive Summary',
+      ok: !!a['run.segment'] && rated > 0,
+      why: rated + ' companies rated, ' + gated + ' with forensic and litigation work' },
+    { name:'Score Card',
+      ok: rated > 0,
+      why: a['companies[].businessQuality'] ? 'ratings with evidence' : 'ratings incomplete' }
+  ];
+}
+
+function envelopeOf(raw, res){
+  /* Without a v3 payload nothing came from a data block, whatever the raw text
+     happens to contain — a stray brace in the prose is not an envelope. */
+  if(!res.v3) return 'the report prose';
+  if(res.how && /report text/i.test(res.how)) return 'the report prose';
+  if(/```/.test(raw) && /"schema"/.test(raw))  return 'a fenced json block';
+  if(/<<<EQUITY-ANALYST-DATA/.test(raw))          return 'the marker lines';
+  return 'a bare json object';
+}
+
+function showReview(res, raw){
+  pendingImport = { res:res, raw:raw, fixes:{} };
+  var d = res.data;
+  var html = '<div class="rv">';
+
+  /* ---- headline: what arrived, and how much of it ---- */
+  if(res.v3){
+    var au = auditPayload(d);
+    var pct = Math.round(au.filled / au.total * 100);
+    html += '<div class="rvh">Imported ' + au.filled + ' of ' + au.total + ' data sections'
+          + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
+    var runSeg = (d.run && d.run.segment) || '(segment not detected)';
+    var nCo = (d.companies && d.companies.length) || 0;
+    html += '<div class="rvm">' + esc(runSeg)
+          + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
+          + ' · ' + nCo + ' companies</div>';
+    html += '<div class="rvbar"><i style="width:' + pct + '%"></i></div>';
+    html += '<div class="' + (pct >= 80 ? 'rvok' : pct >= 55 ? 'rvwarn' : 'rvbad') + '">'
+          + '<b>' + pct + '% of the payload carries data.</b> '
+          + '</div>';
+
+    /* ---- section by section ---- */
+    html += '<div class="rvsec">';
+    au.groups.forEach(function(g){
+      var full = g.have === g.total;
+      html += '<div class="rvsrow"><i class="' + (full ? 'dot ok' : g.have ? 'dot part' : 'dot none')
+            + '"></i><span>' + esc(g.name) + '</span><b>' + g.have + '/' + g.total + '</b></div>';
+      if(g.gaps.length){
+        html += '<div class="rvgap">missing: ' + esc(g.gaps.join(' · ')) + '</div>';
+      }
+    });
+    html += '</div>';
+
+    /* ---- what will actually build ---- */
+    html += '<div class="rvdocs"><div class="rvdh">What this payload can build</div>';
+    docReadiness(d).forEach(function(x){
+      html += '<div class="rvsrow"><i class="' + (x.ok ? 'dot ok' : 'dot none') + '"></i>'
+            + '<span>' + esc(x.name) + '</span><b class="' + (x.ok ? '' : 'mutb') + '">'
+            + esc(x.ok ? 'ready' : x.why) + '</b></div>';
+    });
+    html += '</div>';
+
+    var sum = sumLines(d.score_lines);
+    html += '<div class="rvsum">All 28 score lines read · total <b>' + sum.toFixed(1) + '</b>'
+          + ' — the line-by-line check is on the <b>Score Card</b> tab.</div>';
+
+  } else {
+    /* ---- no data block: this is the case that produced empty documents ---- */
+    html += '<div class="rvh">No data block found <span class="tagx">'
+          + esc(envelopeOf(raw, res)) + '</span></div>';
+    html += '<div class="rvbad"><b>This was read from the report prose, not from the payload.</b> '
+          + 'Only scores can be recovered this way, so the reports and the Investment Summary will '
+          + 'come out empty. Go back to the chat and copy the fenced <b>json</b> block at the top of '
+          + 'the reply — the fenced json block — using its copy button. '
+          + 'If that block shows as an empty box in your chat app, reply <b>SPLIT</b> to the model and '
+          + 'paste the smaller blocks one after another.</div>';
+    var runSeg = (d.run && d.run.segment) || '(segment not detected)';
+    var nCo = (d.companies && d.companies.length) || 0;
+    html += '<div class="rvm">' + esc(runSeg)
+          + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
+          + ' · ' + nCo + ' companies</div>';
+
+    html += '<div class="rvsum">Recovered ' + res.found + ' of 28 score lines';
+    var sum2 = sumLines(d.score_lines);
+    html += ' · they total <b>' + sum2.toFixed(1) + '</b>';
+    if(res.statedTotal != null){
+      var diff = Math.abs(sum2 - res.statedTotal);
+      html += ' against a stated <b>' + res.statedTotal + '</b>';
+      if(diff > 1.5) html += '<div class="rvbad">These disagree by ' + diff.toFixed(1) + ' points.</div>';
+    }
+    html += '</div>';
+
+    if(res.missing.length){
+      html += '<div class="rvmiss"><b>' + res.missing.length + ' not found.</b> Type the values from '
+            + 'the report’s scoring table, or leave blank to score them zero.</div>';
+      res.missing.forEach(function(k){
+        html += '<div class="rvrow"><span>' + esc(labelOf(k)) + '</span>'
+          + '<input type="number" step="0.5" min="0" max="' + maxOf(k) + '" data-fix="' + k + '" '
+          + 'inputmode="decimal" placeholder="0"><small>/' + maxOf(k) + '</small></div>';
+      });
+    }
+  }
+
+  html += '</div>';
+  $('#reviewBox').innerHTML = html;
+  $('#reviewBox').classList.remove('hidden');
+  $('#btnSaveImport').classList.remove('hidden');
+  $$('#reviewBox [data-fix]').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var v = parseFloat(this.value);
+      if(isNaN(v)) delete pendingImport.fixes[this.dataset.fix];
+      else pendingImport.fixes[this.dataset.fix] = Math.max(0, Math.min(maxOf(this.dataset.fix), v));
+    });
+  });
+}
+
+$('#btnImport').addEventListener('click', function(){
+  $('#importCard').classList.remove('hidden');
+  $('#reviewBox').classList.add('hidden');
+  $('#btnSaveImport').classList.add('hidden');
+  $('#importMsg').textContent = '';
+  $('#importText').focus();
+});
+$('#btnCancelImport').addEventListener('click', function(){
+  $('#importCard').classList.add('hidden'); $('#importText').value='';
+  $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
+  pendingImport = null;
+});
+/* A .json attachment goes into the same box and down the same tolerant path,
+   so a file and a paste are read identically. */
+$('#importFile').addEventListener('change', function(){
+  var f = this.files && this.files[0];
+  if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){
+    $('#importText').value = String(r.result || '');
+    $('#importMsg').innerHTML = '<b>Loaded ' + esc(f.name) + '.</b> Now tap READ IT.';
+  };
+  r.onerror = function(){ $('#importMsg').textContent = 'That file could not be read.'; };
+  r.readAsText(f);
+  this.value = '';
+});
+$('#btnDoImport').addEventListener('click', function(){
+  var raw = $('#importText').value.trim();
+  if(!raw){ $('#importMsg').textContent = 'Nothing pasted.'; return; }
+  var res = parseImport(raw);
+  $('#importMsg').innerHTML = res.warn.length ? '<b>Note.</b> '+esc(res.warn.join(' ')) : '';
+  applyDetectedTool(raw, res.data);
+  showReview(res, raw);
+});
+$('#btnSaveImport').addEventListener('click', function(){
+  if(!pendingImport) return;
+  if(!window.EQ){ alert('The research engine has not finished loading. Try again in a moment.'); return; }
+
+  var d = pendingImport.res.data;
+
+  /* Validation happens here, not at paste time, so the review card can show
+     what arrived before anything is committed. A payload that fails is not
+     saved at all: a half-read contract is worse than a refusal. */
+  var built = EQ.buildReport(d);
+  if(!built.ok){
+    alert('This payload was rejected and nothing was saved.\n\n'
+      + built.errors.slice(0, 6).join('\n')
+      + (built.errors.length > 6 ? '\n\n…and ' + (built.errors.length - 6) + ' more.' : ''));
+    return;
+  }
+
+  var det = detectTool(pendingImport.raw, d);
+  var src = (det && det.name) || $('#importSrc').value || 'unknown';
+  var seg = (d.run && d.run.segment) || formVals().segment || 'Untitled run';
+  var sub = (d.run && d.run.subsegment) || formVals().subsegment || '';
+
+  var rec = { id:'r' + Date.now(), ts:Date.now(), source:src,
+              segment:seg, subsegment:sub,
+              company:seg + (sub ? ' — ' + sub : ''),   /* what the pickers show */
+              data:d, report:built.report, warnings:built.warnings,
+              text:pendingImport.raw };
+  saveToLibrary(rec);
+
+  /* An import is the one moment the Score Card should move on its own: this is
+     the run you just brought in, so it is the one you want to see. */
+  SC.runId = rec.id; SC.coIndex = 0;
+  renderScoreTab();
+
+  $('#importCard').classList.add('hidden'); $('#importText').value='';
+  $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
+  pendingImport = null;
+
+  var c = built.report.counts;
+  alert('Saved. ' + c.scored + ' of ' + c.universe + ' companies scored, '
+    + c.top3Eligible + ' cleared the kill switch.'
+    + (built.warnings.length ? '\n\n' + built.warnings.length + ' gaps are reported on the documents.' : ''));
+});
+$('#btnAddMore').addEventListener('click', function(){
+  var box = $('#addMoreBox');
+  box.classList.toggle('hidden');
+  if(!box.classList.contains('hidden')) $('#addMoreText').focus();
+});
+$('#btnAddMoreCancel').addEventListener('click', function(){
+  $('#addMoreBox').classList.add('hidden'); $('#addMoreText').value=''; $('#addMoreMsg').textContent='';
+});
+$('#btnAddMoreSave').addEventListener('click', function(){
+  var raw = $('#addMoreText').value.trim();
+  if(!raw){ $('#addMoreMsg').textContent = 'Nothing pasted.'; return; }
+  var id = $('#libSel').value;
+  var res = mergeIntoRecord(id, raw);
+  $('#addMoreMsg').innerHTML = (res.ok?'<b>':'<b style="color:var(--red)">')+esc(res.msg)+'</b>';
+  if(res.ok){
+    $('#addMoreText').value=''; $('#addMoreBox').classList.add('hidden');
+    /* drawLibrary rebuilds the select, so re-select the record we just merged
+       into — otherwise a second merge cannot find it. */
+    drawLibrary();
+    $('#libSel').value = id;
+    showRecord(id);
+  }
+});
+
+$('#libSel').addEventListener('change', function(){
+  if(this.value) showRecord(this.value);
+  else hideVerdict();
+});
+$('#btnDelRep').addEventListener('click', function(){
+  var id = $('#libSel').value;
+  if(!id){ alert('Select a saved analysis first.'); return; }
+  if(!confirm('Delete this saved analysis from this device?')) return;
+  libWrite(libRead().filter(function(x){ return x.id!==id; }));
+  hideVerdict(); $('#out').textContent=''; drawLibrary();
+});
+/* The first draw is deferred to the end of the script. The saved-analysis panel
+   sorts by save time, newest first
+   declaration hoists, its value does not, so booting here threw before any row
+   was drawn and both panels came up empty. */
+
+
+/* The IPO-list question was removed with that workflow. The tool row now
+   only ever carries the research prompt. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ---- status, GMP and ordering ----------------------------------------
+   The status tag is computed from TODAY, never from the payload. A search run
+   a week ago is stale; the run has since been re-imported, and a
+   stale tag on a stored entry is worse than no tag at all. Dates are ISO in
+   storage, so a plain string compare orders them correctly. */
+/* A rotated phone changes how much room a row has, so the fit is redone. */
+window.addEventListener('resize', function(){
+  ['#ipoPanel', '#repPanel', '#scPanel'].forEach(function(sel){
+    try{ pkFit(sel); }catch(e){}
+  });
+});
+
+
+
+window.gmpFirstSeen = gmpFirstSeen;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* The third picker line. It carried an IPO price band and grey market
+   premium; a listed company has neither, so it carries the run instead.
+   Returns the pieces, so the caller decides how to join them. */
+function pkLine3(x){
+  var l3 = [];
+  if(x && x.horizon) l3.push('<span class="pklbl">Horizon :</span> ' + esc(str(x.horizon)));
+  if(x && x.report && x.report.counts){
+    l3.push('<span class="pklbl">Analysed :</span> ' + x.report.counts.universe);
+  }
+  return l3;
+}
+
+/* Indian grouping, and no trailing .00 on a whole-rupee band. */
+function fmtIn(v){
+  if(v === null || v === undefined || isNaN(v)) return '';
+  var neg = v < 0; v = Math.abs(v);
+  var s = (Math.round(v*100)/100).toString();
+  var parts = s.split('.'), i = parts[0], dec = parts[1] ? '.'+parts[1] : '';
+  var last3 = i.slice(-3), rest = i.slice(0, -3);
+  if(rest) last3 = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+  return (neg?'-':'') + last3 + dec;
+}
+
+/* A run is what there is to pick now, so these two name and draw runs. The
+   Score Card has its own picker; this one serves the Report page. */
+function recName(r){
+  if(!r) return '';
+  return (r.segment || r.company || 'Untitled run')
+       + (r.subsegment ? ' \u2014 ' + r.subsegment : '');
+}
+function drawAnalysisPanel(sel, currentId){
+  var host = $(sel); if(!host) return;
+  var lib = libRead().filter(function(x){ return x && x.report; });
+  host.innerHTML = lib.length ? lib.map(function(r){
+    var n = (r.report && r.report.counts) ? r.report.counts.universe : 0;
+    return '<button type="button" class="pk' + (r.id === currentId ? ' on' : '') + '"'
+      + ' data-run="' + esc(r.id) + '" data-pick="' + esc(r.id) + '">'
+      + '<span class="pk1">' + esc(recName(r)) + '</span>'
+      + '<span class="pk2">' + n + ' companies'
+      + (r.ts ? ' \u00b7 ' + new Date(r.ts).toLocaleDateString('en-IN') : '')
+      + '</span></button>';
+  }).join('') : '<div class="pkempty">No runs imported yet.</div>';
+  try{ pkFit(sel); }catch(e){}
+}
+
+/* The fetched-list workflow and its handlers were removed with the IPO
+   product. There is no list to fetch here: the user names a segment, and the
+   segment picker in the block below does that job. */
+/* ============================== version stamp =================== */
+/* A stale service worker is invisible unless the page says which build it is
+   running, so print the build id and the cache actually serving these files. */
+(function(){
+  var el = $('#verBuild'); if(!el) return;
+  /* The build id is stored as YYYY.MM.DD.n and shown as DD.MM.YYYY.n. The
+     serving cache name used to be appended in full —
+     which repeated the app name and the version already printed two words
+     earlier. Only a MISMATCH is worth saying now, and then only that one word. */
+  function human(b){
+    var m = String(b || '').match(/^(\d{4})\.(\d{2})\.(\d{2})(\.\d+)?$/);
+    return m ? (m[3] + '.' + m[2] + '.' + m[1] + (m[4] || '')) : (b || '—');
+  }
+  var build = window.APP_BUILD || '';
+  el.textContent = human(build);
+  if(build && navigator.serviceWorker && navigator.serviceWorker.controller){
+    caches.keys().then(function(ks){
+      var mine = ks.filter(function(k){ return /^equity-analyst-/.test(k); });
+      var stale = mine.filter(function(k){ return k.indexOf(build) < 0; });
+      if(mine.length && stale.length === mine.length){
+        el.textContent = human(build) + ' · serving an older cache, reload twice';
+      }
+    }).catch(function(){});
+  }
+})();
+
+/* ---------- in-app AI toggle ---------- */
+function apiEnabled(){ return get('eq.apion','0') === '1'; }
+function applyApiMode(){
+  var on = apiEnabled();
+  var tg = $('#tgApi');
+  if(tg) tg.setAttribute('aria-checked', on ? 'true' : 'false');
+  var f = $('#apiFields'); if(f) f.classList.toggle('hidden', !on);
+  var run = $('#btnRun'); if(run) run.classList.toggle('hidden', !on);
+  var sb = $('#btnSearch');
+  if(sb) sb.title = 'Copy the full research prompt';
+}
+if($('#tgApi')){
+  $('#tgApi').addEventListener('click', function(){
+    var on = !apiEnabled();
+    set('eq.apion', on ? '1' : '0');
+    applyApiMode();
+    if(!on){
+      /* leaving the key behind after the user has switched the feature off
+         would be storing a secret for no reason */
+      try{ localStorage.removeItem(LS.key); }catch(e){}
+      var k = $('#key'); if(k) k.value = '';
+    }
+  });
+}
+applyApiMode();
+
+/* ---------- zoom lock ----------
+   iOS Safari ignores user-scalable=no, so the gestures are cancelled directly.
+   Double-tap zoom is handled by touch-action:manipulation in CSS. */
+(function(){
+  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+    document.addEventListener(ev, function(e){ e.preventDefault(); }, { passive:false });
+  });
+  document.addEventListener('touchmove', function(e){
+    if(e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive:false });
+  /* ctrl+wheel is the desktop pinch gesture on trackpads */
+  window.addEventListener('wheel', function(e){
+    if(e.ctrlKey) e.preventDefault();
+  }, { passive:false });
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && ['+','-','=','0'].indexOf(e.key) >= 0) e.preventDefault();
+  });
+})();
+
+setPending('analysis');
+syncSearchButton();
+
+/* ============================== install prompt ================== */
+var deferred=null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault(); deferred=e;
+  $('#btnInstall').style.display='flex';
+});
+$('#btnInstall').addEventListener('click', function(){
+  if(!deferred) return;
+  deferred.prompt();
+  deferred.userChoice.then(function(){ deferred=null; $('#btnInstall').style.display='none'; });
+});
+if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone){
+  $('#installHint').textContent = 'Installed. You are running the app version.';
+}
+
+/* ============================== service worker ================== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      /* Ask the browser to look for a new build on every launch, and reload
+         once when one takes over, so an upload is visible immediately. */
+      try{ reg.update(); }catch(e){}
+      reg.addEventListener('updatefound', function(){
+        var sw = reg.installing;
+        if(!sw) return;
+        sw.addEventListener('statechange', function(){
+          if(sw.state === 'installed' && navigator.serviceWorker.controller){
+            var m = document.getElementById('verBuild');
+            if(m) m.textContent = 'updating…';
+          }
+        });
+      });
+    }).catch(function(){});
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(reloaded) return; reloaded = true; location.reload();
+    });
+  });
+}
+
+/* ---------- first draw, once every helper above exists ---------- */
+drawLibrary();
+/* The Score Card restores its OWN selection: it is not driven by whatever the
+   Report tab happens to be showing. */
+try{ scSelect(SC_ID); }catch(e){}
+
+
+/* Text fitting for the picker rows. General, not IPO: the segment picker and
+   the run picker both use it. */
+var PK_MIN_PX = 9.5, PK_BASE_PX = 11.5, PK_MIN_TRACK = -0.35;
+function pkFitLine(el, avail){
+  if(!el) return;
+  el.style.fontSize = ''; el.style.letterSpacing = ''; el.style.textOverflow = '';
+  if(el.scrollWidth <= avail + 0.5) return;
+  var size = Math.max(PK_MIN_PX, PK_BASE_PX * avail / el.scrollWidth);
+  el.style.fontSize = size.toFixed(2) + 'px';
+  /* Rounding and hinting can leave it a hair wide; one more nudge settles it. */
+  if(el.scrollWidth > avail + 0.5 && size > PK_MIN_PX){
+    size = Math.max(PK_MIN_PX, size - 0.5);
+    el.style.fontSize = size.toFixed(2) + 'px';
+  }
+  if(el.scrollWidth <= avail + 0.5) return;
+  /* At the floor on a narrow phone the very longest rows are still a few per
+     cent over — a 33-character name with Perplexity and a four-figure band.
+     Tightening the tracking a fraction of a pixel buys that back without going
+     smaller, and these lines are Latin text and digits where a squeeze this
+     small is invisible. Only if even that fails does the line clip, with an
+     ellipsis, so it is obvious something was cut rather than mis-rendered. */
+  var n = (el.textContent || '').length;
+  if(n > 0){
+    var over = el.scrollWidth - avail;
+    el.style.letterSpacing = Math.max(PK_MIN_TRACK, -over / n).toFixed(3) + 'px';
+  }
+  if(el.scrollWidth > avail + 0.5) el.style.textOverflow = 'ellipsis';
+}
+
+function pkFitLine(el, avail){
+  if(!el) return;
+  el.style.fontSize = ''; el.style.letterSpacing = ''; el.style.textOverflow = '';
+  if(el.scrollWidth <= avail + 0.5) return;
+  var size = Math.max(PK_MIN_PX, PK_BASE_PX * avail / el.scrollWidth);
+  el.style.fontSize = size.toFixed(2) + 'px';
+  /* Rounding and hinting can leave it a hair wide; one more nudge settles it. */
+  if(el.scrollWidth > avail + 0.5 && size > PK_MIN_PX){
+    size = Math.max(PK_MIN_PX, size - 0.5);
+    el.style.fontSize = size.toFixed(2) + 'px';
+  }
+  if(el.scrollWidth <= avail + 0.5) return;
+  /* At the floor on a narrow phone the very longest rows are still a few per
+     cent over — a 33-character name with Perplexity and a four-figure band.
+     Tightening the tracking a fraction of a pixel buys that back without going
+     smaller, and these lines are Latin text and digits where a squeeze this
+     small is invisible. Only if even that fails does the line clip, with an
+     ellipsis, so it is obvious something was cut rather than mis-rendered. */
+  var n = (el.textContent || '').length;
+  if(n > 0){
+    var over = el.scrollWidth - avail;
+    el.style.letterSpacing = Math.max(PK_MIN_TRACK, -over / n).toFixed(3) + 'px';
+  }
+  if(el.scrollWidth > avail + 0.5) el.style.textOverflow = 'ellipsis';
+}
+
+var PK_NAME_PX = 14.5, PK_NAME_MIN = 11.5;
+function pkFitName(el, avail){
+  if(!el) return;
+  el.style.fontSize = ''; el.style.letterSpacing = '';
+  var one = el.scrollHeight;                       /* height at full size */
+  var line = parseFloat(getComputedStyle(el).lineHeight) || PK_NAME_PX * 1.3;
+  if(one <= line * 1.4) return;                    /* already one line */
+  for(var size = PK_NAME_PX - 0.5; size >= PK_NAME_MIN; size -= 0.5){
+    el.style.fontSize = size.toFixed(1) + 'px';
+    line = parseFloat(getComputedStyle(el).lineHeight) || size * 1.3;
+    if(el.scrollHeight <= line * 1.4) return;      /* it fits on one line now */
+  }
+  /* Genuinely too long. Leave it at the floor and let it wrap — truncating a
+     company name is worse than a taller row. */
+}
+
+function pkFitName(el, avail){
+  if(!el) return;
+  el.style.fontSize = ''; el.style.letterSpacing = '';
+  var one = el.scrollHeight;                       /* height at full size */
+  var line = parseFloat(getComputedStyle(el).lineHeight) || PK_NAME_PX * 1.3;
+  if(one <= line * 1.4) return;                    /* already one line */
+  for(var size = PK_NAME_PX - 0.5; size >= PK_NAME_MIN; size -= 0.5){
+    el.style.fontSize = size.toFixed(1) + 'px';
+    line = parseFloat(getComputedStyle(el).lineHeight) || size * 1.3;
+    if(el.scrollHeight <= line * 1.4) return;      /* it fits on one line now */
+  }
+  /* Genuinely too long. Leave it at the floor and let it wrap — truncating a
+     company name is worse than a taller row. */
+}
+
+function pkFit(hostSel){
+  var host = typeof hostSel === 'string' ? $(hostSel) : hostSel;
+  if(!host || host.classList.contains('hidden')) return;   /* nothing to measure */
+  [].forEach.call(host.querySelectorAll('.pk'), function(row){
+    var cs = getComputedStyle(row);
+    var avail = row.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    if(!(avail > 0)) return;
+    pkFitName(row.querySelector(':scope > b'), avail);
+    [].forEach.call(row.querySelectorAll(':scope > span'), function(sp){ pkFitLine(sp, avail); });
+  });
+}
+
+/* ==================== score card tab ==============================
+   One card per scoring model. The head carries the score achieved and the
+   total available, so the models can be compared at a glance without opening
+   any of them. Tapping opens the full points table for that model: every
+   component, the weight it carries, the band it was placed in, the anchor for
+   that band and the evidence behind it. A rating that failed the evidence gate
+   shows the reason it did not count in place of a number, because a blank and
+   a rejected rating are not the same thing. */
+var SC = { runId:null, coIndex:0 };
+
+function scRuns(){
+  return libRead().filter(function(r){ return r && r.report; });
+}
+function scCurrent(){
+  var runs = scRuns();
+  if(!runs.length) return null;
+  var r = runs.filter(function(x){ return x.id === SC.runId; })[0] || runs[0];
+  SC.runId = r.id;
+  return r;
+}
+function scBarColor(pc){
+  if(pc >= 70) return 'var(--green)';
+  if(pc >= 45) return 'var(--amber)';
+  return 'var(--red)';
+}
+function scLabel(k){
+  return k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
+}
+
+function scModelCard(title, key, sc, outOf, ratings, weights, openKey){
+  var pc = (sc == null) ? 0 : Math.max(0, Math.min(100, sc));
+  var lines = Object.keys(weights).map(function(ck){
+    var r = ratings[ck] || {};
+    var has = r.score != null;
+    return '<div class="ln' + (has ? '' : ' miss') + '">'
+      + '<div class="r1"><span class="n">' + esc(scLabel(ck)) + '</span>'
+        + '<span class="v">' + (has ? r.score.toFixed(0) : '&mdash;') + '</span>'
+        + '<span class="w">' + weights[ck] + '</span></div>'
+      + '<div class="r2">'
+        + (has
+            ? '<span class="bd2">' + esc(r.band || '') + '.</span> ' + esc(r.anchor || '')
+              + (r.evidence ? '<br><b>Evidence.</b> ' + esc(r.evidence) : '')
+            : esc(r.reason || 'Not assessed.'))
+      + '</div></div>';
+  }).join('');
+
+  return '<div class="pill' + (openKey === key ? ' open' : '') + '" data-model="' + esc(key) + '">'
+    + '<button type="button" class="hd">'
+      + '<span class="nm">' + esc(title) + '</span>'
+      + '<span class="sc">' + (sc == null ? '&mdash;' : sc.toFixed(1))
+        + '<small>/' + outOf + '</small></span>'
+      + '<span class="cv">&#9662;</span>'
+    + '</button>'
+    + '<div class="pbar"><i style="width:' + pc.toFixed(0) + '%;background:' + scBarColor(pc) + '"></i></div>'
+    + '<div class="bd">' + lines + '</div></div>';
+}
+
+function renderScoreTab(){
+  var sheet = $('#sheet'), tiles = $('#scTiles');
+  if(!sheet || !tiles) return;
+  var rec = scCurrent();
+  var eng = window.EQ;
+  if(!rec || !eng){
+    if($('#scName')) $('#scName').value = '';
+    tiles.innerHTML = '';
+    sheet.innerHTML = '<p class="hint">Import a research payload on the Analyse page and the '
+      + 'score card appears here.</p>';
+    if($('#scCo')) $('#scCo').innerHTML = '<option value="">— import a run first —</option>';
+    return;
+  }
+
+  var rep = rec.report, list = rep.full || [];
+  if($('#scName')) $('#scName').value = (rec.segment || '') + (rec.subsegment ? ' — ' + rec.subsegment : '');
+  if($('#scCo')) $('#scCo').innerHTML = list.map(function(c, i){
+    return '<option value="' + i + '"' + (i === SC.coIndex ? ' selected' : '') + '>'
+      + esc((c.rank ? c.rank + '. ' : '') + (c.name || c.symbol)
+            + (c.eligibleForTop3 ? '' : '  (barred from Top 3)')) + '</option>';
+  }).join('');
+
+  var co = list[Math.min(SC.coIndex, list.length - 1)];
+  if(!co){ sheet.innerHTML = '<p class="hint">This run has no scored company.</p>'; return; }
+
+  var cover = co.overall && co.overall.coverage;
+  function tile(k, v, sub){
+    return '<div class="t"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div>'
+      + '<div class="s">' + esc(sub || '') + '</div></div>';
+  }
+  tiles.innerHTML =
+      tile('Overall', (co.overall && co.overall.score != null ? co.overall.score.toFixed(1) : '&mdash;') + '<small>/100</small>',
+           co.rank ? ('rank ' + co.rank + (co.tied ? ', tied' : '')) : 'unranked')
+    + tile('Forensic', (co.forensicScore == null ? '&mdash;' : co.forensicScore.toFixed(0)) + '<small>/100</small>',
+           co.forensicBand || '')
+    + tile('Coverage', (cover == null ? '&mdash;' : Math.round(cover*100) + '<small>%</small>'),
+           co.ratingsRejected ? (co.ratingsRejected + ' not evidenced') : 'all evidenced');
+
+  var PIL = eng.scoring.PILLARS, OW = eng.scoring.OVERALL_WEIGHTS;
+  var openEl = sheet.querySelector('.pill.open');
+  var openKey = openEl ? openEl.getAttribute('data-model') : null;
+
+  var html = Object.keys(PIL).map(function(k){
+    return scModelCard(PIL[k].label, k,
+      co.pillars && co.pillars[k] ? co.pillars[k].score : null, 100,
+      (co.ratings && co.ratings[k]) || {}, PIL[k].weights, openKey);
+  }).join('');
+
+  /* The four dimensions with no pillar of their own, shown as a fifth card so
+     nothing carrying weight in the total is invisible on this page. */
+  var dimWeights = {};
+  ['financialQuality','managementGovernance','technicalEntry','catalysts'].forEach(function(k){
+    dimWeights[k] = Math.round((OW[k] || 0) * 100);
+  });
+  var dimScores = (co.ratings && co.ratings.dimensions) || {};
+  var dimVals = Object.keys(dimWeights).map(function(k){ return dimScores[k] && dimScores[k].score; })
+    .filter(function(v){ return v != null; });
+  var dimAvg = dimVals.length ? dimVals.reduce(function(a,b){ return a+b; },0) / dimVals.length : null;
+  html += scModelCard('Overall dimensions', 'dimensions', dimAvg, 100, dimScores, dimWeights, openKey);
+
+  if(co.exclusionReasons && co.exclusionReasons.length){
+    html += '<div class="warn" style="margin-top:12px"><b>Barred from the Top 3.</b> '
+      + esc(co.exclusionReasons.join(' ')) + '</div>';
+  }
+  sheet.innerHTML = html;
+}
+
+document.addEventListener('click', function(ev){
+  if(!ev.target.closest) return;
+  var hd = ev.target.closest('#sheet .pill > .hd');
+  if(hd){ hd.parentNode.classList.toggle('open'); return; }
+  var b = ev.target.closest('#scPanel .pk');
+  if(b){
+    SC.runId = b.getAttribute('data-run'); SC.coIndex = 0;
+    $('#scPanel').classList.add('hidden');
+    if($('#btnScPick')) $('#btnScPick').setAttribute('aria-expanded','false');
+    renderScoreTab();
+  }
+});
+if($('#scCo')) $('#scCo').addEventListener('change', function(){
+  SC.coIndex = parseInt(this.value, 10) || 0; renderScoreTab();
+});
+if($('#btnScPick')) $('#btnScPick').addEventListener('click', function(){
+  var p = $('#scPanel');
+  if(!p.classList.contains('hidden')){
+    p.classList.add('hidden'); this.setAttribute('aria-expanded','false'); return;
+  }
+  var runs = scRuns();
+  p.innerHTML = runs.length ? runs.map(function(r){
+    return '<button type="button" class="pk" data-run="' + esc(r.id) + '">'
+      + '<span class="pk1">' + esc(r.segment || 'Untitled run') + '</span>'
+      + '<span class="pk2">' + esc((r.subsegment ? r.subsegment + ' · ' : '')
+        + ((r.report && r.report.counts ? r.report.counts.universe : 0) + ' companies')
+        + (r.ts ? ' · ' + new Date(r.ts).toLocaleDateString('en-IN') : '')) + '</span></button>';
+  }).join('') : '<div class="pkempty">No runs imported yet.</div>';
+  p.classList.remove('hidden'); this.setAttribute('aria-expanded','true');
+});
+window.addEventListener('eq:ready', renderScoreTab);
+
+/* ================= segment and subsegment picker ==================
+   The list is a navigation aid, not a constraint: both fields stay free text,
+   so a segment the taxonomy has never heard of can still be typed and used.
+   Typing filters; the caret browses. Choosing a segment narrows the subsegment
+   list to that segment's own, which is the point of having two boxes. */
+(function(){
+  var segIn = $('#segment'), subIn = $('#subsegment');
+  if(!segIn || !subIn || !window.EQSegments) return;
+  var SEG = window.EQSegments;
+
+  function row(item){
+    var main = item.kind === 'sub' ? item.sub : item.segment;
+    var sub  = item.kind === 'sub' ? item.segment
+             : (item.subCount ? item.subCount + ' subsegments' : '');
+    return '<button type="button" class="pk" role="option"'
+      + ' data-seg="' + esc(item.segment) + '" data-sub="' + esc(item.sub || '') + '">'
+      + '<span class="pk1">' + esc(main) + '</span>'
+      + (sub ? '<span class="pk2">' + esc(sub) + '</span>' : '')
+      + '</button>';
+  }
+  function paint(sel, items, emptyMsg){
+    $(sel).innerHTML = items.length ? items.map(row).join('')
+      : '<div class="pkempty">' + esc(emptyMsg) + '</div>';
+  }
+  function open(sel, btn){ $(sel).classList.remove('hidden');
+    if($(btn)) $(btn).setAttribute('aria-expanded','true'); }
+  function shut(sel, btn){ $(sel).classList.add('hidden');
+    if($(btn)) $(btn).setAttribute('aria-expanded','false'); }
+
+  function segList(q){
+    paint('#segPanel', SEG.search(q, 60),
+      'Nothing matches. You can still type your own segment.');
+  }
+  function subList(q){
+    var seg = segIn.value.trim();
+    var subs = SEG.subsOf(seg);
+    var items;
+    if(subs.length){
+      items = subs.filter(function(x){
+        return !q || x.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      }).map(function(x){ return { segment: seg, sub: x, kind:'sub' }; });
+    } else {
+      /* No segment chosen, or one the taxonomy does not carry. Search every
+         subsegment so the box is still useful rather than empty. */
+      items = SEG.search(q, 60).filter(function(x){ return x.kind === 'sub'; });
+    }
+    paint('#subPanel', items,
+      subs.length ? 'No subsegment matches. You can still type your own.'
+                  : 'Choose a segment first, or type a subsegment.');
+  }
+
+  segIn.addEventListener('input', function(){ segList(segIn.value.trim()); open('#segPanel','#btnSegPick'); });
+  subIn.addEventListener('input', function(){ subList(subIn.value.trim()); open('#subPanel','#btnSubPick'); });
+
+  if($('#btnSegPick')) $('#btnSegPick').addEventListener('click', function(){
+    if(!$('#segPanel').classList.contains('hidden')){ shut('#segPanel','#btnSegPick'); return; }
+    segList(segIn.value.trim()); open('#segPanel','#btnSegPick');
+  });
+  if($('#btnSubPick')) $('#btnSubPick').addEventListener('click', function(){
+    if(!$('#subPanel').classList.contains('hidden')){ shut('#subPanel','#btnSubPick'); return; }
+    subList(subIn.value.trim()); open('#subPanel','#btnSubPick');
+  });
+
+  document.addEventListener('click', function(ev){
+    if(!ev.target.closest) return;
+    var b = ev.target.closest('#segPanel .pk');
+    if(b){
+      segIn.value = b.getAttribute('data-seg');
+      /* Picking a subsegment row from the segment panel fills both boxes: one
+         tap instead of two, which is how people actually search. */
+      var sub = b.getAttribute('data-sub');
+      if(sub) subIn.value = sub;
+      shut('#segPanel','#btnSegPick'); refresh(); return;
+    }
+    b = ev.target.closest('#subPanel .pk');
+    if(b){
+      if(!segIn.value.trim()) segIn.value = b.getAttribute('data-seg');
+      subIn.value = b.getAttribute('data-sub') || '';
+      shut('#subPanel','#btnSubPick'); refresh(); return;
+    }
+    if(!ev.target.closest('.pickwrap, .pickpanel')){
+      shut('#segPanel','#btnSegPick'); shut('#subPanel','#btnSubPick');
+    }
+  });
+
+  [segIn, subIn].forEach(function(el){
+    el.addEventListener('keydown', function(ev){
+      if(ev.key === 'Escape'){ shut('#segPanel','#btnSegPick'); shut('#subPanel','#btnSubPick'); }
+    });
+  });
+})();
+
+/* The Search button copies the prompt without opening anything, for pasting
+   into a tool that is already open, or somewhere else entirely. */
+if($('#btnSearch')) $('#btnSearch').addEventListener('click', function(){
+  if(!requireCompany()) return;
+  var self = this, was = self.textContent;
+  copyText(buildPrompt()).then(function(){
+    self.textContent = 'Prompt copied';
+    setPending('armed');
+    setTimeout(function(){ self.textContent = was; }, 2500);
+  }).catch(function(){
+    alert('Copying was blocked by the browser. Use one of the tool buttons instead.');
+  });
+});
+</script>
+<!-- The engine loads first as a module and hangs itself on window.EQ.
+     The classic scripts below wait for the eq:ready event. -->
+<script type="module" src="src/engine-bridge.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="charts.js"></script>
+<script src="render.js"></script>
+<script src="docs.js"></script>
+
+<div id="preview" class="hidden" role="dialog" aria-label="Document preview" aria-modal="true">
+  <div class="pvbar">
+    <button type="button" class="pvback" id="pvBack">&#8592;&nbsp;Back</button>
+    <div class="pvttl" id="pvTitle"></div>
+    <button type="button" class="pvsave" id="pvSave">Save as PDF</button>
+  </div>
+  <div class="pvbody"><iframe id="pvFrame" title="Document preview"></iframe></div>
+</div>
+
+</body>
+</html>
