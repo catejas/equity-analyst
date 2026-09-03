@@ -217,3 +217,33 @@ Changed:
   thing a researcher most needed to know and could not find.
 
 Tests: 321 assertions, 0 failures.
+
+## v1.0.2 — 2026-09-03
+The import was broken in the browser and every engine test still passed, because
+the tests never loaded the page. The app is now run in a real DOM as part of
+testing, which found five faults in one pass.
+
+Fixed:
+- **A deleted function was still referenced**, `window.gmpFirstSeen`, left behind
+  when the grey-market code came out. It threw at load and killed the rest of
+  the script, which is why the Setup page showed no build number and why the
+  import button did nothing. One line, and it disabled half the application.
+- **The payload scanner did not recognise an equity payload.** It looked for
+  `schema`, `score_lines`, `meta`, `verdict` or `recommendation` — all IPO keys.
+  A complete 165 KB equity payload scanned as zero candidates, so the app fell
+  back to scraping the report prose and reported "No data block found".
+- **The reader and `parseImport` had the same blind spot** and are now told what
+  an equity payload looks like in one place: `run` plus `companies`.
+- **The scoring worksheet crashed the review.** `labelOf` and `maxOf` index into
+  a table a block was removed from, so every lookup ran off the end. Both are
+  now defensive, and the worksheet is skipped entirely for an equity payload,
+  which is scored by the engine.
+- **The segment picker died silently if its taxonomy had not loaded.** The
+  handlers were skipped at bind time rather than looking the list up when used.
+
+Added:
+- `tests/` browser tests: the page is loaded in jsdom, the payload is pasted,
+  READ IT and SAVE are clicked, every tab is opened and every picker exercised.
+  This is what should have existed before the package was called ready.
+
+Tests: 321 engine assertions plus the browser flow, 0 failures.
