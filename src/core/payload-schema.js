@@ -30,6 +30,19 @@ const isArr = Array.isArray;
    would punish the honest payload and reward the one that dropped the key. */
 const given = (v) => v !== undefined && v !== null;
 
+/* True when a block has no actual figure anywhere inside it, however many
+   nested objects it carries. A consensus block of { eps: { y1: null } } is an
+   honest way of saying no consensus exists, and it must not read as populated
+   merely because the shape is there. */
+function hasAnyValue(v, depth = 0) {
+  if (!given(v) || depth > 4) return false;
+  if (Array.isArray(v)) return v.some((x) => hasAnyValue(x, depth + 1));
+  if (typeof v === 'object') return Object.values(v).some((x) => hasAnyValue(x, depth + 1));
+  if (typeof v === 'string') return v.trim().length > 0;
+  if (typeof v === 'number') return true;
+  return typeof v === 'boolean';
+}
+
 export function validatePayload(payload) {
   const errors = [];
   const warnings = [];
@@ -145,8 +158,12 @@ export function validatePayload(payload) {
       if (given(fx.disclosures)) {
         if (!isObj(fx.disclosures)) e(`${at}: forensic.disclosures must be an object.`);
         else for (const k of Object.keys(fx.disclosures)) {
-          if (!(k in DISCLOSURE_CHECKS)) e(`${at}: forensic.disclosures."${k}" is not a known check.`);
-          else if (typeof fx.disclosures[k] !== 'boolean') e(`${at}: forensic.disclosures.${k} must be true or false.`);
+          if (!(k in DISCLOSURE_CHECKS)) { e(`${at}: forensic.disclosures."${k}" is not a known check.`); continue; }
+          /* null means the check was not performed. That is a different fact
+             from "performed and came back clean", and the report says which.
+             Only a wrong type is an error. */
+          if (fx.disclosures[k] === null) { w(`${at}: forensic.disclosures.${k} was not checked, so it is reported as unknown rather than clean.`); continue; }
+          if (typeof fx.disclosures[k] !== 'boolean') e(`${at}: forensic.disclosures.${k} must be true, false or null.`);
         }
       }
     }
@@ -226,7 +243,16 @@ export function validatePayload(payload) {
     } else if (!isObj(c.consensus)) {
       e(`${at}: consensus must be an object.`);
     } else {
-      if (!isStr(c.consensus.source)) e(`${at}: consensus.source is required, so the figure can be checked.`);
+      /* estimateCount of 0 is itself a statement that no estimate exists, so
+         it does not count as content. */
+      const csProbe = { ...c.consensus };
+      if (csProbe.estimateCount === 0) delete csProbe.estimateCount;
+      const csEmpty = !hasAnyValue(csProbe);
+      if (csEmpty) {
+        w(`${at}: a consensus block was supplied with nothing in it, which is read as no consensus existing.`);
+      } else if (!isStr(c.consensus.source)) {
+        e(`${at}: consensus.source is required, so the figure can be checked.`);
+      }
       if (!isStr(c.consensus.asOf)) w(`${at}: consensus has no as-of date.`);
       if (given(c.consensus.estimateCount) && !isNum(c.consensus.estimateCount)) {
         e(`${at}: consensus.estimateCount must be a number.`);
@@ -241,7 +267,11 @@ export function validatePayload(payload) {
     } else if (!isObj(c.liquidity)) {
       e(`${at}: liquidity must be an object.`);
     } else {
-      if (!isNum(c.liquidity.avgDailyValue)) e(`${at}: liquidity.avgDailyValue is required if the block is present.`);
+      if (!given(c.liquidity.avgDailyValue)) {
+        w(`${at}: no average daily traded value, so position sizing cannot be assessed.`);
+      } else if (!isNum(c.liquidity.avgDailyValue)) {
+        e(`${at}: liquidity.avgDailyValue must be a number.`);
+      }
       if (!isStr(c.liquidity.currency)) w(`${at}: liquidity has no currency stated.`);
       if (given(c.liquidity.freeFloatPct) && !isNum(c.liquidity.freeFloatPct)) {
         e(`${at}: liquidity.freeFloatPct must be a number.`);
@@ -365,7 +395,8 @@ function validateRunResearch(payload, e, w) {
     for (const k of ['gdpGrowth', 'inflation', 'policyRate', 'currency', 'creditGrowth', 'capacityUtilisation']) {
       if (!given(m[k])) { w(`macro.${k} not supplied.`); continue; }
       if (!isObj(m[k])) { e(`macro.${k} must be an object with value, period and source.`); continue; }
-      if (!isNum(m[k].value)) e(`macro.${k}.value must be a number.`);
+      if (!given(m[k].value)) w(`macro.${k} carries no value; it will print as not established.`);
+      else if (!isNum(m[k].value)) e(`macro.${k}.value must be a number.`);
       if (!isStr(m[k].period)) w(`macro.${k} has no period; an undated macro figure is not usable.`);
       if (!isStr(m[k].source)) e(`macro.${k}.source is required.`);
     }
@@ -378,7 +409,8 @@ function validateRunResearch(payload, e, w) {
     (b.allocations || []).forEach((x, i) => {
       if (!isObj(x)) { e(`budget.allocations[${i}] is not an object.`); return; }
       if (!isStr(x.head)) e(`budget.allocations[${i}]: head is required.`);
-      if (!isNum(x.announced)) e(`budget.allocations[${i}]: announced must be a number.`);
+      if (!given(x.announced)) w(`budget.allocations[${i}]: nothing stated for the announced amount.`);
+      else if (!isNum(x.announced)) e(`budget.allocations[${i}]: announced must be a number.`);
       if (given(x.spent) && !isNum(x.spent)) e(`budget.allocations[${i}]: spent must be a number.`);
       if (x.spent === undefined) w(`budget.allocations[${i}]: nothing stated on what was actually spent. Announced against spent is the whole point.`);
       if (!isStr(x.year)) e(`budget.allocations[${i}]: year is required.`);
@@ -439,7 +471,9 @@ function validateRunResearch(payload, e, w) {
   else {
     for (const k of ['tam', 'sam', 'som']) {
       if (!given(tam[k])) { w(`tam.${k} not supplied.`); continue; }
-      if (!isObj(tam[k]) || !isNum(tam[k].value)) e(`tam.${k} must be an object with a numeric value.`);
+      if (!isObj(tam[k])) { e(`tam.${k} must be an object.`); continue; }
+      if (!given(tam[k].value)) w(`tam.${k} carries no figure; it will print as not verifiable.`);
+      else if (!isNum(tam[k].value)) e(`tam.${k}.value must be a number.`);
       else if (!isStr(tam[k].basis)) w(`tam.${k} has no stated basis, so the number cannot be checked.`);
     }
   }
