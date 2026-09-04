@@ -67,7 +67,16 @@ anything: there is nothing to rank. Still cover the segment, because a company
 cannot be judged without its industry, its policy regime and its peers — but
 cover it at the depth of a two-page backdrop rather than a sector study.`
   : `Work on ${scope}. Screen the Indian listed universe for this segment and
-shortlist roughly ${shortlistSize} companies for full treatment.`}
+shortlist roughly ${shortlistSize} companies.
+
+THIS RUN IS THE SEGMENT ONLY. Do the whole segment study — the world, macro, the
+Budget, policy, regulation, geopolitics, industry, value chain, market sizing,
+programmes, competition — and then name the three companies worth a full report
+in run.top3, with one line each on why. Leave the companies array empty.
+
+The three companies are researched separately, one per run, each with its own
+prompt from the application. That keeps every reply inside one code block with a
+working copy button, which is the whole point of splitting it this way.`}
 
 WHAT YOU ARE PRODUCING
 A single JSON object, returned as the last thing in your reply, inside one
@@ -345,6 +354,7 @@ including pledged shares.
     "horizon": "${h.key}",
     "generatedAt": "ISO 8601 timestamp",
     "searchesRun": 0,
+    "top3": [ { "symbol": "", "name": "", "why": "one line on why it makes the three" } ],
     "researchNotes": "what you could and could not establish, and why"
   },
   "industryMap": {

@@ -76,6 +76,20 @@ export function validatePayload(payload, { repair = true } = {}) {
     }
     if (!isStr(run.horizon)) w('run.horizon not stated; defaulting to 3-5 years.');
     if (!isNum(run.searchesRun)) w('run.searchesRun not stated, so the depth of the search cannot be reported.');
+
+    /* A segment run names the three companies worth a full report, so the app
+       can label the three company boxes before any of them is researched. */
+    if (given(run.top3)) {
+      if (!isArr(run.top3)) e('run.top3 must be an array of up to three companies.');
+      else run.top3.forEach((x, i) => {
+        if (!isObj(x)) { e(`run.top3[${i}] is not an object.`); return; }
+        if (!isStr(x.name) && !isStr(x.symbol)) e(`run.top3[${i}]: a name or symbol is required.`);
+        if (!isStr(x.why)) w(`run.top3[${i}]: no reason given for the shortlist place.`);
+      });
+      if (isArr(run.top3) && run.top3.length > 3) w('run.top3 lists more than three; only the first three are used.');
+    } else if (!isArr(payload.companies) || payload.companies.length === 0) {
+      w('run.top3 not supplied, so the three company boxes cannot be labelled until a company is imported.');
+    }
     else if (run.searchesRun < 25) w(`Only ${run.searchesRun} searches recorded. Fewer than 25 is thin for a Top 3 candidate.`);
   }
 
