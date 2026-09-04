@@ -20,6 +20,7 @@ import * as multibagger from './core/multibagger.js';
 import * as integrity from './core/integrity.js';
 import * as schema from './core/payload-schema.js';
 import * as repair from './core/repair.js';
+import * as compose from './core/compose.js';
 import * as prompt from './core/prompt-builder.js';
 import * as report from './core/report.js';
 import * as compare from './core/compare.js';
@@ -32,7 +33,7 @@ const EQ = Object.freeze({
   },
   scoring, rubrics, ranking, model, valuation, metrics, technicals,
   forensic, litigation, multibagger, integrity, schema, prompt, report,
-  compare, store, repair,
+  compare, store, repair, compose,
 
   // The three calls the shell actually makes.
   buildPrompt: prompt.buildResearchPrompt,
