@@ -306,3 +306,43 @@ Changed:
   reads as nothing, an unknown register or flag category.
 
 Tests: 337 engine assertions plus the browser flow, 0 failures.
+
+## v1.2.0 — 2026-09-04
+The Report page rebuilt as four independent runs, and the reason no PDF ever
+appeared.
+
+Fixed:
+- **The document panel was hidden after every equity import.** It was gated by a
+  test for `meta`, `verdict` or `score_lines` — all IPO keys — so a perfectly
+  good equity run left the whole panel invisible. This is why no report could be
+  generated, and it had nothing to do with the payload.
+- **The page header and footer crashed on every document**, reading
+  `meta.short_name` and `meta.analysis_datetime` from a block equity payloads do
+  not have.
+- **The Score Card printed two different scales as a fraction.** "82  5" was a
+  0-100 rating beside a weight. Every line now reads points earned against
+  points available — a line weighted 5 and rated 82 earns 4.1 of 5 — and an
+  unrated line removes its points from the denominator rather than counting as
+  zero. The four pillars carry 70 points and the four other dimensions 30, and
+  the page now says so instead of printing "64.5/100" over a card summing to 30.
+- The forensic tile said "Unscored" with no reason; it now says how many tests
+  ran against the four needed. The coverage tile no longer contradicts itself.
+- `scrollIntoView` is guarded: it is missing in some webviews and was aborting
+  the import in them.
+
+Changed:
+- **Four independent runs.** The segment is researched alone and names its Top 3
+  in `run.top3`; each company is then researched alone in its own box with its
+  own search, import, delete and report. Every reply fits one code block with a
+  working copy button, which the single 150,000-character payload never did.
+- Documents are built from the composed run, so the sector report sees the
+  companies and each company report sees the segment backdrop.
+- Each box is titled by what it holds: the segment box by segment and
+  subsegment, each company box by that company.
+- Delete per box. Deleting the segment takes its companies with it rather than
+  orphaning them; deleting a company leaves the rest untouched.
+- Removed: the Recent picker, the "All 28 score lines" footnote, the tool picker
+  when detection succeeds.
+
+Tests: 337 engine assertions plus browser tests that import four runs, build all
+six documents and delete a company.
