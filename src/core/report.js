@@ -380,6 +380,37 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   const check = validatePayload(payload);
   if (!check.valid) return { ok: false, errors: check.errors, warnings: check.warnings, report: null };
 
+  /* A partial run carries the segment work and no companies. It is saved so the
+     rest of a split reply can be merged into it; the documents it can build say
+     so plainly rather than coming out empty without explanation. */
+  if (check.partial) {
+    return {
+      ok: true, partial: true, errors: [],
+      warnings: [...check.warnings,
+        'This run has no companies yet. Paste the rest of the reply with Add To This Analysis.'],
+      report: {
+        run: { segment: payload.run.segment, subsegment: payload.run.subsegment ?? null,
+          horizon: (HORIZONS.find((h) => h.key === (payload.run.horizon || '3-5')) || HORIZONS[1]).label,
+          horizonKey: payload.run.horizon || '3-5',
+          payloadGeneratedAt: payload.run.generatedAt, reportBuiltAt: asOf.toISOString(),
+          methodologyVersion: METHODOLOGY_VERSION, payloadSchemaVersion: payload.run.schemaVersion,
+          researchNotes: payload.run.researchNotes ?? null,
+          searchesRun: payload.run.searchesRun ?? null, noiseBand: NOISE_BAND },
+        industryMap: payload.industryMap ?? null, universe: payload.universe ?? null,
+        global: payload.global ?? null, macro: payload.macro ?? null, budget: payload.budget ?? null,
+        policy: payload.policy ?? null, policyEvolution: payload.policyEvolution ?? null,
+        regulation: payload.regulation ?? null, geopolitics: payload.geopolitics ?? null,
+        industry: payload.industry ?? null, valueChain: payload.valueChain ?? null,
+        tam: payload.tam ?? null, programs: payload.programs ?? null,
+        competition: payload.competition ?? null, sectorValuation: payload.sectorValuation ?? null,
+        monitorables: payload.monitorables ?? null, glossary: payload.glossary ?? null,
+        top3: [], top10: [], full: [], excludedFromTop3: [], unscored: [],
+        counts: { universe: 0, scored: 0, top3Eligible: 0 }, ties: [],
+        lenses: { bestBusiness: [], bestInvestmentToday: [], highestMultibagger: [], bestValueGarp: [] },
+      },
+    };
+  }
+
   const horizonKey = payload.run?.horizon || '3-5';
   const horizon = HORIZONS.find((h) => h.key === horizonKey) || HORIZONS[1];
   const scored = payload.companies.map((c) => scoreCompany(c, horizonKey));

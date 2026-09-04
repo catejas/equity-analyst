@@ -19,6 +19,25 @@ export const FLAG_CATEGORIES = Object.freeze([
 
 export const SEVERITIES = Object.freeze(['low', 'moderate', 'severe']);
 
+/* Words that mean the same thing. A researcher writing "high" for a risk is not
+   making a mistake, they are using the ordinary word; rejecting a whole payload
+   over it would be pedantry dressed up as rigour. Anything unambiguous is
+   normalised to the canonical three and the payload is accepted. */
+const SEVERITY_SYNONYMS = Object.freeze({
+  severe: 'severe', high: 'severe', critical: 'severe', major: 'severe',
+  serious: 'severe', 'very high': 'severe', extreme: 'severe',
+  moderate: 'moderate', medium: 'moderate', mid: 'moderate', material: 'moderate',
+  significant: 'moderate',
+  low: 'low', minor: 'low', small: 'low', negligible: 'low', immaterial: 'low',
+  'very low': 'low', limited: 'low',
+});
+
+/** Canonical severity, or null when the word cannot be read as one of the three. */
+export function normaliseSeverity(v) {
+  if (typeof v !== 'string') return null;
+  return SEVERITY_SYNONYMS[v.trim().toLowerCase()] || null;
+}
+
 /**
  * Decide Top-3 eligibility (doc 01 red-flag kill switch, DEC-009).
  * Returns every reason found, not just the first.
@@ -39,10 +58,9 @@ export function evaluateKillSwitch(company) {
     if (!FLAG_CATEGORIES.includes(flag.category)) {
       throw new Error(`Unknown red-flag category: ${flag.category}`);
     }
-    if (!SEVERITIES.includes(flag.severity)) {
-      throw new Error(`Unknown severity: ${flag.severity}`);
-    }
-    if (flag.severity === 'severe' && KILL_SWITCH_CATEGORIES.includes(flag.category)) {
+    const severity = normaliseSeverity(flag.severity);
+    if (!severity) throw new Error(`Unknown severity: ${flag.severity}`);
+    if (severity === 'severe' && KILL_SWITCH_CATEGORIES.includes(flag.category)) {
       reasons.push(`Severe ${flag.category} concern: ${flag.detail}`);
     }
   }

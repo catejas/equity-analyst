@@ -7,10 +7,11 @@
 
 import { PILLARS, OVERALL_WEIGHTS } from './scoring.js';
 import { EVIDENCE } from './integrity.js';
-import { FLAG_CATEGORIES, SEVERITIES } from './ranking.js';
+import { FLAG_CATEGORIES, SEVERITIES, normaliseSeverity } from './ranking.js';
 import { readRating } from './rubrics.js';
 import { REGISTERS, OUTCOMES, SUBJECTS } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
+import { repairPayload } from './repair.js';
 
 export const PAYLOAD_SCHEMA_VERSION = '3.0.0';
 
@@ -43,9 +44,16 @@ function hasAnyValue(v, depth = 0) {
   return typeof v === 'boolean';
 }
 
-export function validatePayload(payload) {
+export function validatePayload(payload, { repair = true } = {}) {
   const errors = [];
   const warnings = [];
+  /* Repaired first, judged second. A shape a person could not reasonably be
+     asked to get right is fixed and reported; only what cannot be read is
+     rejected. */
+  let repairs = [];
+  if (repair && payload && typeof payload === 'object') {
+    repairs = repairPayload(payload).notes;
+  }
   const e = (m) => errors.push(m);
   const w = (m) => warnings.push(m);
 
@@ -81,6 +89,18 @@ export function validatePayload(payload) {
 
   // ---------------------------------------------------------- companies
   const companies = payload.companies;
+
+  /* A reply split across messages sends the segment work first and the
+     companies after. That first block is not broken, it is incomplete, and
+     saying "must be a non-empty array" sends the reader looking for a fault
+     that is not there. It is accepted and reported as partial, so the rest can
+     be merged into it. */
+  if (isObj(run) && (!isArr(companies) || companies.length === 0)) {
+    w('No companies yet. This looks like the first part of a split reply: paste the '
+      + 'next block with Add To This Analysis and the companies will merge into this run.');
+    repairs.forEach((r) => warnings.unshift(`Read as written: ${r}.`));
+    return { valid: errors.length === 0, errors, warnings, companies: 0, partial: true, repairs };
+  }
   if (!isArr(companies) || companies.length === 0) {
     e('payload.companies must be a non-empty array.');
     return { valid: false, errors, warnings, companies: 0 };
@@ -135,7 +155,9 @@ export function validatePayload(payload) {
       else c.redFlags.forEach((fl, j) => {
         if (!isObj(fl)) { e(`${at}.redFlags[${j}] is not an object.`); return; }
         if (!FLAG_CATEGORIES.includes(fl.category)) e(`${at}.redFlags[${j}]: category "${fl.category}" is not one of ${FLAG_CATEGORIES.join(', ')}.`);
-        if (!SEVERITIES.includes(fl.severity)) e(`${at}.redFlags[${j}]: severity must be low, moderate or severe.`);
+        const flSev = normaliseSeverity(fl.severity);
+        if (!flSev) e(`${at}.redFlags[${j}]: severity "${fl.severity}" is not readable as low, moderate or severe.`);
+        else if (flSev !== fl.severity) { fl.severity = flSev; w(`${at}.redFlags[${j}]: severity read as "${flSev}".`); }
         if (!isStr(fl.detail)) e(`${at}.redFlags[${j}]: detail is required.`);
       });
     }
@@ -184,7 +206,9 @@ export function validatePayload(payload) {
         }
         (sr.matters || []).forEach((m, k) => {
           if (!isObj(m)) { e(`${where}.matters[${k}] is not an object.`); return; }
-          if (!SEVERITIES.includes(m.severity)) e(`${where}.matters[${k}]: severity must be low, moderate or severe.`);
+          const mSev = normaliseSeverity(m.severity);
+          if (!mSev) e(`${where}.matters[${k}]: severity "${m.severity}" is not readable as low, moderate or severe.`);
+          else m.severity = mSev;
           if (!isStr(m.summary)) e(`${where}.matters[${k}]: summary is required.`);
         });
       });
@@ -337,7 +361,9 @@ export function validatePayload(payload) {
     if (isArr(c.risks)) {
       c.risks.forEach((rk, j) => {
         if (!isObj(rk)) { e(`${at}.risks[${j}] is not an object.`); return; }
-        if (!SEVERITIES.includes(rk.severity)) e(`${at}.risks[${j}]: severity must be low, moderate or severe.`);
+        const rkSev = normaliseSeverity(rk.severity);
+        if (!rkSev) e(`${at}.risks[${j}]: severity "${rk.severity}" is not readable as low, moderate or severe.`);
+        else rk.severity = rkSev;
         if (rk.impactPct === undefined) w(`${at}.risks[${j}] has no quantified impact; an adjective is not a risk assessment.`);
       });
     }
@@ -363,7 +389,8 @@ export function validatePayload(payload) {
     }
   });
 
-  return { valid: errors.length === 0, errors, warnings, companies: companies.length };
+  repairs.forEach((r) => warnings.unshift(`Read as written: ${r}.`));
+  return { valid: errors.length === 0, errors, warnings, companies: companies.length, repairs };
 }
 
 
