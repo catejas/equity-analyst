@@ -41,7 +41,16 @@ Segment: [SEGMENT]
 Subsegment: [SUBSEGMENT, or leave out]
 Holding horizon: 3 to 5 years
 Work on [SEGMENT], specifically the [SUBSEGMENT, or leave out] subsegment. Screen the Indian listed universe for this segment and
-shortlist roughly 12 companies for full treatment.
+shortlist roughly 12 companies.
+
+THIS RUN IS THE SEGMENT ONLY. Do the whole segment study — the world, macro, the
+Budget, policy, regulation, geopolitics, industry, value chain, market sizing,
+programmes, competition — and then name the three companies worth a full report
+in run.top3, with one line each on why. Leave the companies array empty.
+
+The three companies are researched separately, one per run, each with its own
+prompt from the application. That keeps every reply inside one code block with a
+working copy button, which is the whole point of splitting it this way.
 
 WHAT YOU ARE PRODUCING
 A single JSON object, returned as the last thing in your reply, inside one
@@ -620,6 +629,7 @@ including pledged shares.
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
     "searchesRun": 0,
+    "top3": [ { "symbol": "", "name": "", "why": "one line on why it makes the three" } ],
     "researchNotes": "what you could and could not establish, and why"
   },
   "industryMap": {
@@ -1476,6 +1486,7 @@ including pledged shares.
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
     "searchesRun": 0,
+    "top3": [ { "symbol": "", "name": "", "why": "one line on why it makes the three" } ],
     "researchNotes": "what you could and could not establish, and why"
   },
   "industryMap": {

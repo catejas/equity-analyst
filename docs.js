@@ -15,13 +15,14 @@ var PNG_SCALE = 4;   /* 4960 x 7016 = 600 DPI at A4. Messaging apps downscale
 /* What every builder receives. A run, not a company: the report model the
    engine produced, the run metadata, the gap warnings, and which company in the
    run the two per-company documents should use. */
+/* Every document is built from the whole run: the segment study plus whichever
+   companies have been imported. The pieces are stored separately so each can be
+   researched in one reply; they are only reassembled here. */
 function currentPayload(){
-  var id = $('#libSel') && $('#libSel').value;
-  var lib = [];
-  try{ lib = JSON.parse(localStorage.getItem('eq.library')||'[]'); }catch(e){}
-  var r = id ? lib.filter(function(x){ return x.id===id; })[0]
-             : lib.filter(function(x){ return x && x.report; })[0];
-  if(!r || !r.report) return null;
+  if(!window.composedReport) return null;
+  var built = composedReport();
+  if(!built) return null;
+  var seg = segRecord();
   var idx = 0;
   var sel = $('#scCo');
   if(sel && sel.value !== '' && sel.value != null){
@@ -29,10 +30,11 @@ function currentPayload(){
     if(!isNaN(v)) idx = v;
   }
   return {
-    meta: { segment: r.segment, subsegment: r.subsegment,
-            company: r.company, analysis_datetime: r.ts ? new Date(r.ts).toISOString() : '' },
-    report: r.report,
-    warnings: r.warnings || [],
+    meta: { segment: seg && seg.segment, subsegment: seg && seg.subsegment,
+            company: seg && seg.company,
+            analysis_datetime: seg && seg.ts ? new Date(seg.ts).toISOString() : new Date().toISOString() },
+    report: built.report,
+    warnings: built.warnings || [],
     companyIndex: idx
   };
 }

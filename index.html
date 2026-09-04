@@ -270,6 +270,15 @@ details .in{padding:0 14px 14px;}
 .pickpanel .pk1{display:block;font-weight:600;}
 .pickpanel .pk2{display:block;font-size:.78rem;color:var(--mut);margin-top:2px;}
 .pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
+.runbox{margin-bottom:12px;}
+.runbox h2 .tag{font-size:.62rem;vertical-align:middle;margin-left:8px;}
+.runbox.waiting{opacity:.72;}
+.runbox.done{border-left:3px solid var(--green);}
+.btn.dang{color:var(--red);border-color:var(--red-t);}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:11px;background:var(--grad-gold);color:var(--goldink);font-size:.72rem;font-weight:800;
+  margin-right:8px;vertical-align:middle;}
+.slotwhy{font-size:.78rem;color:var(--mut);margin-top:2px;}
 
 /* ---- score card: one collapsible card per scoring model ---- */
 .tiles3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px;}
@@ -409,7 +418,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.04.1";</script>
+<script>window.APP_BUILD="2026.09.04.4";</script>
 </head>
 <body>
 
@@ -496,114 +505,76 @@ body.previewing{overflow:hidden;}
     <button class="btn pri" id="btnRun">RESEARCH IN APP &mdash; USES YOUR API KEY</button>
   </div>
 
-  <div class="card">
-    <h2>Recent</h2>
-    <p class="hint">Saved on this device only.</p>
-    <!-- The list used to be printed on the page, twelve rows deep. It is a
-         picker now: one line of screen until you ask for it. -->
-    <label style="margin-top:0;" for="rcPick">Saved run</label>
-    <div class="pickline">
-      <div class="pickwrap">
-        <input type="text" id="rcPick" placeholder="Nothing yet"
-               autocomplete="off" readonly>
-        <button type="button" class="pickbtn" id="btnRcPick"
-                aria-label="Show recent companies" aria-expanded="false">&#9662;</button>
-      </div>
-      <button class="btn sm" id="btnRcLoad" style="margin:0;flex:0 0 84px;">Load</button>
-    </div>
-    <div id="rcPanel" class="pickpanel hidden" role="listbox" aria-label="Recent companies"></div>
-  </div>
+  
 </section>
 
 <!-- ============ REPORT ============ -->
 <section id="tab-report" class="hidden">
-  <div class="card">
-    <h2>Report <span class="tag" id="repTag">empty</span></h2>
-    <p class="hint" id="repMeta">Run an analysis to populate this tab.</p>
-    <label style="margin-top:0;" for="repPick">Company name</label>
-    <div class="pickwrap">
-      <input type="text" id="repPick" placeholder="No analysis saved yet"
-             autocomplete="off" readonly>
-      <button type="button" class="pickbtn" id="btnRepPick"
-              aria-label="Show saved analyses" aria-expanded="false">&#9662;</button>
-    </div>
-    <div id="repPanel" class="pickpanel hidden" role="listbox" aria-label="Saved analyses"></div>
-    <!-- A2. Every analysis carries a listing-gain call. Once the issue has
-         actually listed the call can be marked, and the app can tell you what
-         your hit rate is. No broker note scores itself. -->
-    <div id="outcomeBox" class="hidden"></div>
-    <!-- The native select is kept, hidden. It is the single source of truth for
-         which analysis is current — every existing handler reads #libSel.value —
-         so the picker above sets it and dispatches change rather than the rest
-         of the app having to learn a new mechanism. -->
+
+  <!-- Four independent runs. The segment is researched on its own and names the
+       three companies; each company is then researched on its own. Every reply
+       stays inside one code block with a working copy button, which is why the
+       page is built this way rather than as one enormous payload. -->
+
+  <div class="card runbox" id="segBox">
+    <h2><span id="segBoxName">Segment research</span>
+        <span class="tag" id="segBoxTag">empty</span></h2>
+    <p class="hint" id="segBoxMeta">Name a segment on the Analyse page, research it, then
+    import the reply here. The segment study names the three companies worth a full report.</p>
+
     <select id="libSel" hidden><option value="">— none saved —</option></select>
+
     <div class="grid2" style="margin-top:9px;">
-      <button class="btn sm pri" id="btnImport" style="margin:0;">Import Data</button>
-      <button class="btn sm" id="btnDelRep" style="margin:0;">Delete</button>
+      <button class="btn sm pri" id="btnSegSearch" style="margin:0;">Research segment</button>
+      <button class="btn sm" id="btnImport" style="margin:0;">Import Data</button>
+    </div>
+    <div class="grid2" style="margin-top:8px;">
+      <button class="btn sm" id="btnAddMore" style="margin:0;">Add to this</button>
+      <button class="btn sm dang" id="btnDelRep" style="margin:0;">Delete</button>
     </div>
 
-    <button class="btn sm hidden" id="btnAddMore">ADD TO THIS ANALYSIS</button>
+    <div id="docTools" class="hidden" style="margin-top:12px;"><div id="segDocs">
+      <div class="doc-row">
+        <span class="doc-name">Sector Research Report<small>the segment &middot; A4 PDF</small></span>
+        <button class="ico ico-pdf" data-doc="sector" data-act="make" aria-label="Generate Sector Research Report">PDF</button>
+        <button class="ico ico-sh" data-doc="sector" data-act="share" aria-label="Share Sector Research Report">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Executive Summary<small>segment and companies, high level</small></span>
+        <button class="ico ico-pdf" data-doc="exec" data-act="make" aria-label="Generate Executive Summary">PDF</button>
+        <button class="ico ico-sh" data-doc="exec" data-act="share" aria-label="Share Executive Summary">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Score Card<small>every rating with its anchor</small></span>
+        <button class="ico ico-pdf" data-doc="score" data-act="make" aria-label="Generate Score Card">PDF</button>
+        <button class="ico ico-sh" data-doc="score" data-act="share" aria-label="Share Score Card">&#8682;</button>
+      </div>
+    </div>
+    </div>
+      <div id="docMsg" class="note" style="margin-top:8px;"></div>
+    </div>
+
     <div id="addMoreBox" class="hidden" style="margin-top:10px;">
-      <p class="hint">Only needed if a reply arrived incomplete. Paste the missing part &mdash; the
-      the rest of a reply the tool had to cut short. It is merged into the analysis
-      above; nothing already there is overwritten.</p>
-      <textarea id="addMoreText" placeholder="Paste the second data block here…" style="min-height:130px;"></textarea>
-      <div class="grid2" style="margin-top:10px;">
-        <button class="btn sm pri" id="btnAddMoreSave" style="margin:0;">MERGE</button>
+      <p class="hint">Only needed if a reply arrived incomplete. Paste the missing part;
+      it is merged into this run and nothing already here is overwritten.</p>
+      <textarea id="addMoreText" placeholder="Paste the rest of the reply here…" style="min-height:120px;"></textarea>
+      <div class="grid2" style="margin-top:8px;">
+        <button class="btn sm pri" id="btnAddMoreSave" style="margin:0;">Merge it in</button>
         <button class="btn sm" id="btnAddMoreCancel" style="margin:0;">Cancel</button>
       </div>
       <div id="addMoreMsg" class="note"></div>
     </div>
-    <div id="docTools" class="hidden">
-      <label style="margin-top:14px;">Documents</label>
-      <!-- One switch for every document below it, rather than a pair of buttons
-           inside the All Reports row that only governed that row. -->
-      <div class="doc-lang">
-        <span class="doc-lang-k">Language</span>
-        <div class="langseg" role="group" aria-label="Language for every document">
-          
-        </div>
-      </div>
-      <div class="doc-row all-row">
-        <span class="doc-name">All Reports<small>all six documents in one go &middot; several minutes</small></span>
-        <button class="ico ico-pdf" data-doc="all" data-act="make" title="Generate all reports" aria-label="Generate all reports">PDF</button>
-        <button class="ico ico-sh" data-doc="all" data-act="share" title="Share all reports" aria-label="Share all reports">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Sector Research Report<small>30 pages &middot; A4 PDF &middot; the segment</small></span>
-        <button class="ico ico-pdf" data-doc="sector" data-act="make" title="Generate PDF" aria-label="Generate Sector Research Report">PDF</button>
-        <button class="ico ico-sh" data-doc="sector" data-act="share" title="Share PDF" aria-label="Share Sector Research Report">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Company Research Report &mdash; <b id="docCo1">Rank 1</b><small>25 pages &middot; A4 PDF</small></span>
-        <button class="ico ico-pdf" data-doc="co1" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 1">PDF</button>
-        <button class="ico ico-sh" data-doc="co1" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 1">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Company Research Report &mdash; <b id="docCo2">Rank 2</b><small>25 pages &middot; A4 PDF</small></span>
-        <button class="ico ico-pdf" data-doc="co2" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 2">PDF</button>
-        <button class="ico ico-sh" data-doc="co2" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 2">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Company Research Report &mdash; <b id="docCo3">Rank 3</b><small>25 pages &middot; A4 PDF</small></span>
-        <button class="ico ico-pdf" data-doc="co3" data-act="make" title="Generate PDF" aria-label="Generate Company Research Report, rank 3">PDF</button>
-        <button class="ico ico-sh" data-doc="co3" data-act="share" title="Share PDF" aria-label="Share Company Research Report, rank 3">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Executive Summary<small>6&ndash;8 pages &middot; A4 PDF &middot; sector and companies</small></span>
-        <button class="ico ico-pdf" data-doc="exec" data-act="make" title="Generate PDF" aria-label="Generate Executive Summary">PDF</button>
-        <button class="ico ico-sh" data-doc="exec" data-act="share" title="Share PDF" aria-label="Share Executive Summary">&#8682;</button>
-      </div>
-      <div class="doc-row">
-        <span class="doc-name">Score Card<small>2 pages &middot; A4 PDF &middot; every rating with its anchor</small></span>
-        <button class="ico ico-pdf" data-doc="score" data-act="make" title="Generate PDF" aria-label="Generate Score Card">PDF</button>
-        <button class="ico ico-sh" data-doc="score" data-act="share" title="Share PDF" aria-label="Share Score Card">&#8682;</button>
-      </div>
-      <div id="docMsg" class="note"></div>
-    </div>
-    <div class="status" id="status"></div>
-    <div id="out" class="hidden"></div>
+
+    <!-- Kept, hidden: existing handlers read these to know which run is current
+         and to report status. The page no longer shows them. -->
+    <span id="repTag" hidden></span><span id="repMeta" hidden></span>
+    <input id="repPick" hidden><span id="repPanel" hidden></span>
+    <span id="segMsg" hidden></span>
+    <pre id="out" hidden></pre><span id="status" hidden></span>
+    <button id="btnRepPick" hidden></button><span id="scDocs" hidden></span>
   </div>
+
+  <div id="coBoxes"></div>
 
   <div class="card hidden" id="importCard">
     <h2>Import Data</h2>
@@ -1083,88 +1054,10 @@ function requireCompany(){
 }
 
 /* ============================== recent ========================== */
-function saveRecent(){
-  var v = formVals(); if(!v.company) return;
-  var list=[]; try{ list = JSON.parse(get(LS.recent,'[]')); }catch(e){}
-  list = list.filter(function(x){ return x.company.toLowerCase() !== v.company.toLowerCase(); });
-  list.unshift({ company:v.company, type:v.type, horizon:v.horizon, investor:v.investor, ts:Date.now() });
-  set(LS.recent, JSON.stringify(list.slice(0,12)));
-  drawRecent();
-}
-/* RC_I is the row the Load button will act on: the one shown in the box, not
-   whatever the finger last brushed past. Choosing in the panel sets it and
-   loads immediately — the button is for loading the same company again after
-   you have typed over the field. */
-var RC_I = -1;
-function recentList(){
-  var list=[]; try{ list = JSON.parse(get(LS.recent,'[]')); }catch(e){}
-  return Array.isArray(list) ? list : [];
-}
-function drawRecent(){
-  var list = recentList(), host = $('#rcPanel');
-  if(RC_I >= list.length) RC_I = -1;
-  $('#rcPick').value = (RC_I >= 0 && list[RC_I]) ? str(list[RC_I].company) : '';
-  $('#rcPick').placeholder = list.length ? 'Tap to choose' : 'Nothing yet';
-  $('#btnRcLoad').disabled = !(RC_I >= 0 && list[RC_I]);
-  if(!host) return;
-  if(!list.length){
-    host.innerHTML = '<div class="pkempty">Nothing yet — run an analysis and it '
-      + 'will be remembered here.</div>';
-    return;
-  }
-  host.innerHTML = list.map(function(x, i){
-    var d = new Date(x.ts).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
-    return '<button type="button" class="pk' + (i === RC_I ? ' on' : '') + '" role="option"'
-      + ' data-re="' + i + '"><b>' + esc(x.company) + '</b>'
-      + '<span>' + esc(x.subsegment || x.segment || '') + ' &middot; ' + esc(x.horizon || '') + ' &middot; ' + d
-      + '</span></button>';
-  }).join('');
-  pkFit(host);
-}
-function rcLoad(i){
-  var list = recentList(), x = list[i];
-  if(!x) return;
-  RC_I = i;
-  $('#segment').value = str(x.company);
-  ['type','horizon','investor'].forEach(function(k){
-    var el = document.querySelector('input[name=' + k + '][value="' + x[k] + '"]');
-    if(el) el.checked = true;
-  });
-  drawRecent();
-  refresh();
-  window.scrollTo(0, 0);
-}
-function rcPanelOpen(){ return !$('#rcPanel').classList.contains('hidden'); }
-function openRcPanel(){
-  if(!recentList().length) return;
-  drawRecent();
-  $('#rcPanel').classList.remove('hidden');
-  pkFit('#rcPanel');
-  $('#btnRcPick').setAttribute('aria-expanded','true');
-}
-function closeRcPanel(){
-  $('#rcPanel').classList.add('hidden');
-  $('#btnRcPick').setAttribute('aria-expanded','false');
-}
-function rcToggle(ev){
-  ev.preventDefault(); ev.stopPropagation();
-  if(rcPanelOpen()) closeRcPanel(); else openRcPanel();
-}
-$('#btnRcPick').addEventListener('click', rcToggle);
-$('#rcPick').addEventListener('click', rcToggle);
-$('#rcPanel').addEventListener('click', function(ev){
-  var b = ev.target.closest && ev.target.closest('[data-re]');
-  if(!b) return;
-  closeRcPanel();
-  rcLoad(+b.dataset.re);
-});
-$('#btnRcLoad').addEventListener('click', function(){ rcLoad(RC_I); });
-document.addEventListener('click', function(ev){
-  if(rcPanelOpen() && !ev.target.closest('#rcPanel') && !ev.target.closest('#btnRcPick')
-     && !ev.target.closest('#rcPick')) closeRcPanel();
-});
-/* An AI may return an object where a string was asked for. Coerce sensibly
-   instead of letting "[object Object]" reach the screen. */
+/* saveRecent kept only as a no-op: the Recent list it fed is gone. */
+function saveRecent(){}
+/* String helpers, used throughout. They sat next to the Recent picker only by
+   accident of position and were briefly removed with it. */
 function str(v){
   if(v==null) return '';
   if(typeof v === 'string') return v;
@@ -1179,7 +1072,10 @@ function str(v){
 }
 function esc(s){ return str(s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-drawRecent();
+
+/* The Recent picker was removed with the saved-run box on the Analyse page.
+   Runs are chosen on the Report and Score Card pages, which is where they are
+   used. */
 
 /* ============================== settings ======================== */
 $('#key').value = get(LS.key,'');
@@ -2042,7 +1938,6 @@ function docGaps(d){
   ORDER.forEach(function(k){
     var v = (d.score_lines||{})[k];
     if(v !== undefined && v !== null && (d.incomplete||[]).indexOf(k) < 0) have++; });
-  if(have < 28) g.push((28-have)+' of the 28 score lines');
   if(!d.meta || !str(d.meta.company)) g.push('company details');
   if(!d.verdict || !d.verdict.recommendation) g.push('the verdict');
   if(!d.financials || !(d.financials.rows||[]).length) g.push('the financial table');
@@ -2434,7 +2329,12 @@ function showRecord(id){
   /* The documents used to be hidden unless BOTH meta and verdict survived, with
      nothing on screen to say why. A part-recovered analysis can still produce
      real files, so show the tools and be explicit about what is thin. */
-  var isV3 = !!(d.meta || d.verdict || (d.score_lines && Object.keys(d.score_lines).length));
+  /* What counts as an analysis worth showing documents for. An equity run
+     carries run and companies; the older keys are kept so a part-recovered IPO
+     record still opens. Testing only for the IPO keys is what left the whole
+     document panel hidden after a perfectly good equity import. */
+  var isV3 = !!(r.report || (d.run && d.companies)
+    || d.meta || d.verdict || (d.score_lines && Object.keys(d.score_lines).length));
   $('#docTools').classList.toggle('hidden', !isV3);
   var sd = $('#scDocs'); if(sd) sd.classList.toggle('hidden', !isV3);
   var gaps = docGaps(d);
@@ -2763,7 +2663,7 @@ function showReview(res, raw){
     html += '</div>';
 
     var sum = sumLines(d.score_lines);
-    html += '<div class="rvsum">All 28 score lines read · total <b>' + sum.toFixed(1) + '</b>'
+    html += '<div class="rvsum"><b>' + sum.toFixed(1) + '</b>'
           + ' — the line-by-line check is on the <b>Score Card</b> tab.</div>';
 
   } else {
@@ -2781,8 +2681,6 @@ function showReview(res, raw){
     html += '<div class="rvm">' + esc(runSeg)
           + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
           + ' · ' + nCo + ' companies</div>';
-
-    html += '<div class="rvsum">Recovered ' + res.found + ' of 28 score lines';
     var sum2 = sumLines(d.score_lines);
     html += ' · they total <b>' + sum2.toFixed(1) + '</b>';
     if(res.statedTotal != null){
@@ -2882,18 +2780,28 @@ $('#btnSaveImport').addEventListener('click', function(){
   }
   if(built.partial){
     var pr = { id:'r' + Date.now(), ts:Date.now(), source:(detectTool(pendingImport.raw, d)||{}).name || 'unknown',
+      kind:'segment', rank:0, parentId:null,
       segment:(d.run && d.run.segment) || 'Untitled run',
       subsegment:(d.run && d.run.subsegment) || '',
-      company:((d.run && d.run.segment) || 'Untitled run') + ' — awaiting companies',
+      company:((d.run && d.run.segment) || 'Untitled run')
+        + ((d.run && d.run.subsegment) ? ' \u2014 ' + d.run.subsegment : ''),
       data:d, report:built.report, warnings:built.warnings, partial:true, text:pendingImport.raw };
+    /* One segment run at a time: importing a new one replaces the old, and its
+       companies go with it rather than being orphaned. */
+    var prior = segRecord();
+    if(prior){
+      libWrite(libRead().filter(function(r){ return r.id !== prior.id && r.parentId !== prior.id; }));
+    }
     saveToLibrary(pr);
+    IMPORT_TARGET = { kind:'segment', rank:0 };
+    renderReportPage();
     $('#importCard').classList.add('hidden'); $('#importText').value='';
     $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
     pendingImport = null;
     renderScoreTab();
-    alert('Saved the segment research. No companies arrived in this block.\n\n'
-      + 'Reply CONTINUE to the tool, then paste the next block here and use '
-      + 'ADD TO THIS ANALYSIS to merge the companies into this run.');
+    var named = (d.run && Array.isArray(d.run.top3)) ? d.run.top3.length : 0;
+    alert('Segment research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
+      + 'Each has its own box below \u2014 research and import them one at a time.') : ''));
     return;
   }
 
@@ -2902,12 +2810,27 @@ $('#btnSaveImport').addEventListener('click', function(){
   var seg = (d.run && d.run.segment) || formVals().segment || 'Untitled run';
   var sub = (d.run && d.run.subsegment) || formVals().subsegment || '';
 
+  var isCompanyRun = (IMPORT_TARGET && IMPORT_TARGET.kind === 'company');
+  var firstCo = (d.companies && d.companies[0]) || null;
   var rec = { id:'r' + Date.now(), ts:Date.now(), source:src,
+              kind: isCompanyRun ? 'company' : 'segment',
+              rank: isCompanyRun ? IMPORT_TARGET.rank : 0,
+              parentId: isCompanyRun && segRecord() ? segRecord().id : null,
               segment:seg, subsegment:sub,
-              company:seg + (sub ? ' — ' + sub : ''),   /* what the pickers show */
+              company: isCompanyRun
+                ? ((firstCo && (firstCo.name || firstCo.symbol)) || ('Company ' + IMPORT_TARGET.rank))
+                : (seg + (sub ? ' — ' + sub : '')),
               data:d, report:built.report, warnings:built.warnings,
               text:pendingImport.raw };
+  if(isCompanyRun){
+    var keep = libRead().filter(function(r){
+      return !(r.kind === 'company' && r.rank === rec.rank && r.parentId === rec.parentId);
+    });
+    libWrite(keep);
+  }
   saveToLibrary(rec);
+  IMPORT_TARGET = { kind:'segment', rank:0 };
+  renderReportPage();
 
   /* An import is the one moment the Score Card should move on its own: this is
      the run you just brought in, so it is the one you want to see. */
@@ -3310,32 +3233,66 @@ function scLabel(k){
   return k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
 }
 
-function scModelCard(title, key, sc, outOf, ratings, weights, openKey){
-  var pc = (sc == null) ? 0 : Math.max(0, Math.min(100, sc));
+/* Points earned against points available. A component with a weight of 5, rated
+   82 out of 100, has earned 4.1 of its 5 points. Printing "82  5" put two
+   different scales side by side and read as a fraction that was not one.
+   Where a component was not rated its points are not available to earn, so the
+   denominator falls and the shortfall is stated rather than counted as a loss. */
+function scPoints(ratings, weights){
+  var earned = 0, available = 0, total = 0, unrated = 0;
+  Object.keys(weights).forEach(function(ck){
+    var w = weights[ck] || 0;
+    total += w;
+    var r = ratings[ck] || {};
+    if(r.score == null){ unrated += w; return; }
+    available += w;
+    earned += (r.score / 100) * w;
+  });
+  return { earned: earned, available: available, total: total, unrated: unrated };
+}
+function scNum(v, dp){ return (v == null) ? '\u2014' : v.toFixed(dp == null ? 1 : dp); }
+
+function scModelCard(title, key, ratings, weights, openKey){
+  var pts = scPoints(ratings, weights);
+  var pc = pts.available ? (pts.earned / pts.available) * 100 : 0;
+
   var lines = Object.keys(weights).map(function(ck){
     var r = ratings[ck] || {};
+    var w = weights[ck] || 0;
     var has = r.score != null;
+    var got = has ? (r.score / 100) * w : null;
     return '<div class="ln' + (has ? '' : ' miss') + '">'
       + '<div class="r1"><span class="n">' + esc(scLabel(ck)) + '</span>'
-        + '<span class="v">' + (has ? r.score.toFixed(0) : '&mdash;') + '</span>'
-        + '<span class="w">' + weights[ck] + '</span></div>'
+        + '<span class="v">' + (has ? scNum(got) : '&mdash;')
+          + '<span class="of">/' + w + '</span></span></div>'
       + '<div class="r2">'
         + (has
             ? '<span class="bd2">' + esc(r.band || '') + '.</span> ' + esc(r.anchor || '')
+              + '<br><span class="mut">Rated ' + r.score.toFixed(0) + ' out of 100, '
+              + 'so ' + scNum(got) + ' of the ' + w + ' points this line carries.</span>'
               + (r.evidence ? '<br><b>Evidence.</b> ' + esc(r.evidence) : '')
-            : esc(r.reason || 'Not assessed.'))
+            : esc(r.reason || 'Not assessed.')
+              + ' <span class="mut">' + w + ' points not available to earn.</span>')
       + '</div></div>';
   }).join('');
+
+  var foot = pts.unrated
+    ? '<div class="ln"><div class="r2 mut"><b>' + scNum(pts.earned) + ' of ' + scNum(pts.available, 0)
+      + ' points earned.</b> ' + scNum(pts.unrated, 0) + ' of the ' + pts.total
+      + ' points in this model were not rated, so they are outside the total rather than counted as zero.'
+      + '</div></div>'
+    : '<div class="ln"><div class="r2 mut"><b>' + scNum(pts.earned) + ' of ' + pts.total
+      + ' points earned.</b> Every line in this model was rated.</div></div>';
 
   return '<div class="pill' + (openKey === key ? ' open' : '') + '" data-model="' + esc(key) + '">'
     + '<button type="button" class="hd">'
       + '<span class="nm">' + esc(title) + '</span>'
-      + '<span class="sc">' + (sc == null ? '&mdash;' : sc.toFixed(1))
-        + '<small>/' + outOf + '</small></span>'
+      + '<span class="sc">' + scNum(pts.earned)
+        + '<small>/' + scNum(pts.available, 0) + '</small></span>'
       + '<span class="cv">&#9662;</span>'
     + '</button>'
     + '<div class="pbar"><i style="width:' + pc.toFixed(0) + '%;background:' + scBarColor(pc) + '"></i></div>'
-    + '<div class="bd">' + lines + '</div></div>';
+    + '<div class="bd">' + lines + foot + '</div></div>';
 }
 
 function renderScoreTab(){
@@ -3346,7 +3303,7 @@ function renderScoreTab(){
   if(!rec || !eng){
     if($('#scName')) $('#scName').value = '';
     tiles.innerHTML = '';
-    sheet.innerHTML = '<p class="hint">Import a research payload on the Analyse page and the '
+    sheet.innerHTML = '<p class="hint">Import a research payload on the Report page and the '
       + 'score card appears here.</p>';
     if($('#scCo')) $('#scCo').innerHTML = '<option value="">— import a run first —</option>';
     return;
@@ -3368,22 +3325,31 @@ function renderScoreTab(){
     return '<div class="t"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div>'
       + '<div class="s">' + esc(sub || '') + '</div></div>';
   }
+
+  /* The four pillars carry 70 of the 100 points and the four other dimensions
+     carry 30. Printing "64.5/100" above a card whose weights sum to 30 is what
+     made this page unreadable. */
+  var covPct = (cover == null) ? null : Math.round(cover * 100);
   tiles.innerHTML =
       tile('Overall', (co.overall && co.overall.score != null ? co.overall.score.toFixed(1) : '&mdash;') + '<small>/100</small>',
            co.rank ? ('rank ' + co.rank + (co.tied ? ', tied' : '')) : 'unranked')
     + tile('Forensic', (co.forensicScore == null ? '&mdash;' : co.forensicScore.toFixed(0)) + '<small>/100</small>',
-           co.forensicBand || '')
-    + tile('Coverage', (cover == null ? '&mdash;' : Math.round(cover*100) + '<small>%</small>'),
-           co.ratingsRejected ? (co.ratingsRejected + ' not evidenced') : 'all evidenced');
+           co.forensicScore == null
+             ? ((co.forensic && co.forensic.tested != null)
+                 ? ('only ' + co.forensic.tested + ' tests ran, four are needed')
+                 : 'no forensic inputs supplied')
+             : (co.forensicBand || ''))
+    + tile('Rated', (covPct == null ? '&mdash;' : covPct + '<small>%</small>'),
+           co.ratingsRejected
+             ? (co.ratingsRejected + ' of 52 lines carried no evidence')
+             : (covPct === 100 ? 'all 52 lines rated' : 'of the weight in the model'));
 
   var PIL = eng.scoring.PILLARS, OW = eng.scoring.OVERALL_WEIGHTS;
   var openEl = sheet.querySelector('.pill.open');
   var openKey = openEl ? openEl.getAttribute('data-model') : null;
 
   var html = Object.keys(PIL).map(function(k){
-    return scModelCard(PIL[k].label, k,
-      co.pillars && co.pillars[k] ? co.pillars[k].score : null, 100,
-      (co.ratings && co.ratings[k]) || {}, PIL[k].weights, openKey);
+    return scModelCard(PIL[k].label, k, (co.ratings && co.ratings[k]) || {}, PIL[k].weights, openKey);
   }).join('');
 
   /* The four dimensions with no pillar of their own, shown as a fifth card so
@@ -3393,10 +3359,9 @@ function renderScoreTab(){
     dimWeights[k] = Math.round((OW[k] || 0) * 100);
   });
   var dimScores = (co.ratings && co.ratings.dimensions) || {};
-  var dimVals = Object.keys(dimWeights).map(function(k){ return dimScores[k] && dimScores[k].score; })
-    .filter(function(v){ return v != null; });
-  var dimAvg = dimVals.length ? dimVals.reduce(function(a,b){ return a+b; },0) / dimVals.length : null;
-  html += scModelCard('Overall dimensions', 'dimensions', dimAvg, 100, dimScores, dimWeights, openKey);
+  html += scModelCard('The four other dimensions', 'dimensions', dimScores, dimWeights, openKey)
+    + '<div class=\'mut\' style=\'margin:4px 2px 0\'>The four scoring models above carry 70 of the '
+    + '100 points. These four carry the other 30.</div>';
 
   if(co.exclusionReasons && co.exclusionReasons.length){
     html += '<div class="warn" style="margin-top:12px"><b>Barred from the Top 3.</b> '
@@ -3546,6 +3511,168 @@ if($('#btnSearch')) $('#btnSearch').addEventListener('click', function(){
   }).catch(function(){
     alert('Copying was blocked by the browser. Use one of the tool buttons instead.');
   });
+});
+
+/* ==================== the Report page ==============================
+   Four independent runs: the segment, then one per company. Each is its own
+   record, its own import and its own set of documents, so a reply never has to
+   be split across messages and every code block keeps a working copy button.
+   The pieces are put back together only when a document is built. */
+
+function segRecord(){
+  return libRead().filter(function(r){ return r && r.kind !== 'company' && r.data && r.data.run; })[0] || null;
+}
+function coRecords(){
+  var seg = segRecord();
+  return libRead().filter(function(r){
+    return r && r.kind === 'company' && (!seg || !r.parentId || r.parentId === seg.id);
+  });
+}
+function runSlots(){
+  var seg = segRecord();
+  if(!window.EQ || !EQ.compose) return [];
+  return EQ.compose.slots(seg ? seg.data : null, coRecords());
+}
+/* The whole run, assembled. Documents are built from this, never from a single
+   record, so the Sector report sees the companies and a Company report sees the
+   segment backdrop. */
+function composedPayload(){
+  var seg = segRecord();
+  if(!seg || !window.EQ || !window.EQ.compose) return null;
+  return EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; }));
+}
+function composedReport(){
+  var p = composedPayload();
+  if(!p) return null;
+  try{ var b = EQ.buildReport(p); return b.ok ? b : null; }catch(e){ return null; }
+}
+
+/* Which record the import and delete buttons act on. The segment box sets it to
+   null; a company box sets it to that slot's rank. */
+var IMPORT_TARGET = { kind:'segment', rank:0 };
+
+function renderReportPage(){
+  var seg = segRecord();
+  var nameEl = $('#segBoxName'), tagEl = $('#segBoxTag'), metaEl = $('#segBoxMeta');
+
+  if(nameEl) nameEl.textContent = seg
+    ? ((seg.segment || 'Segment') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
+    : 'Segment research';
+  if(tagEl){
+    tagEl.textContent = seg ? 'imported' : 'empty';
+    tagEl.className = 'tag' + (seg ? ' ok' : '');
+  }
+  if(metaEl) metaEl.textContent = seg
+    ? ('Imported ' + new Date(seg.ts).toLocaleString('en-IN')
+       + (seg.source ? ' \u00b7 via ' + seg.source : ''))
+    : 'Name a segment on the Analyse page, research it, then import the reply here. '
+      + 'The segment study names the three companies worth a full report.';
+
+  var box = $('#segBox'); if(box) box.classList.toggle('done', !!seg);
+  if($('#docTools')) $('#docTools').classList.toggle('hidden', !seg);
+  if($('#btnDelRep')) $('#btnDelRep').disabled = !seg;
+  if($('#btnAddMore')) $('#btnAddMore').classList.toggle('hidden', !seg);
+
+  /* Keep the hidden select in step: every existing handler reads it. */
+  var sel = $('#libSel');
+  if(sel){
+    sel.innerHTML = libRead().map(function(r){
+      return '<option value="' + esc(r.id) + '">' + esc(r.company || r.segment || r.id) + '</option>';
+    }).join('') || '<option value="">— none saved —</option>';
+    if(seg) sel.value = seg.id;
+  }
+
+  renderCompanyBoxes();
+}
+
+function renderCompanyBoxes(){
+  var host = $('#coBoxes'); if(!host) return;
+  var seg = segRecord();
+  if(!seg){ host.innerHTML = ''; return; }
+
+  var sl = runSlots();
+  host.innerHTML = sl.map(function(s){
+    var named = !!s.name;
+    var done = s.state === 'imported';
+    return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
+      + '<h2><span class="rank-badge">' + s.rank + '</span>'
+        + '<span>' + esc(s.name || 'Company ' + s.rank) + '</span>'
+        + '<span class="tag' + (done ? ' ok' : '') + '">' + (done ? 'imported' : (named ? 'to research' : 'not named')) + '</span></h2>'
+      + (s.why ? '<div class="slotwhy">' + esc(s.why) + '</div>' : '')
+      + (named ? '' : '<p class="hint">The segment study did not name a company for this place. '
+          + 'You can still research one: type its name on the Analyse page.</p>')
+      + '<div class="grid2" style="margin-top:9px;">'
+        + '<button class="btn sm pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
+          + (named ? '' : ' disabled') + '>Research company</button>'
+        + '<button class="btn sm co-import" data-rank="' + s.rank + '" style="margin:0;">Import Data</button>'
+      + '</div>'
+      + '<div class="grid2" style="margin-top:8px;">'
+        + '<button class="btn sm co-add" data-rank="' + s.rank + '" style="margin:0;"'
+          + (done ? '' : ' disabled') + '>Add to this</button>'
+        + '<button class="btn sm dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
+          + (done ? '' : ' disabled') + '>Delete</button>'
+      + '</div>'
+      + (done
+          ? '<div style="margin-top:12px;"><div class="doc-row">'
+            + '<span class="doc-name">Company Research Report<small>' + esc(s.name) + ' &middot; A4 PDF</small></span>'
+            + '<button class="ico ico-pdf" data-doc="co' + s.rank + '" data-act="make" aria-label="Generate report">PDF</button>'
+            + '<button class="ico ico-sh" data-doc="co' + s.rank + '" data-act="share" aria-label="Share report">&#8682;</button>'
+            + '</div></div>'
+          : '<p class="hint" style="margin-top:10px;">Research this company, then import the reply '
+            + 'to unlock its report.</p>')
+      + '</div>';
+  }).join('');
+}
+
+/* One prompt per box. The company boxes ask for one company against the segment
+   already researched, which is what keeps each reply inside one code block. */
+function promptForSlot(rank){
+  var seg = segRecord();
+  if(!window.EQ) return '';
+  var sl = runSlots()[rank - 1];
+  var v = formVals();
+  return EQ.buildPrompt({
+    segment: (seg && seg.segment) || v.segment || '[SEGMENT]',
+    subsegment: (seg && seg.subsegment) || v.subsegment || '',
+    company: (sl && sl.name) || '',
+    mode: 'company',
+    horizon: (seg && seg.data && seg.data.run && seg.data.run.horizon) || v.horizon,
+  });
+}
+
+document.addEventListener('click', function(ev){
+  if(!ev.target.closest) return;
+  var b = ev.target.closest('.co-search, .co-import, .co-add, .co-del');
+  if(!b) return;
+  var rank = Number(b.getAttribute('data-rank')) || 1;
+  var sl = runSlots()[rank - 1];
+
+  if(b.classList.contains('co-search')){
+    var text = promptForSlot(rank);
+    copyText(text).then(function(){
+      setPending('armed');
+      alert('Prompt copied for ' + (sl && sl.name ? sl.name : 'company ' + rank)
+        + '.\n\nOpen your AI tool, paste it, and bring the reply back with '
+        + 'Import Data on this box.');
+    }).catch(function(){ alert('Copying was blocked. Use the tool buttons on the Analyse page.'); });
+    return;
+  }
+  if(b.classList.contains('co-import') || b.classList.contains('co-add')){
+    IMPORT_TARGET = { kind:'company', rank:rank, merge:b.classList.contains('co-add') };
+    $('#importCard').classList.remove('hidden');
+    $('#importText').value = '';
+    try{ $('#importCard').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+    return;
+  }
+  if(b.classList.contains('co-del')){
+    if(!sl || !sl.record) return;
+    if(!confirm('Delete the research for ' + (sl.name || 'this company')
+      + '?\n\nIts report goes with it. The segment run and the other companies are untouched.')) return;
+    var lib = libRead().filter(function(r){ return r.id !== sl.record.id; });
+    libWrite(lib);
+    renderReportPage(); renderScoreTab();
+    return;
+  }
 });
 </script>
 <!-- The engine loads first as a module and hangs itself on window.EQ.

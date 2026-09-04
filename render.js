@@ -971,14 +971,17 @@ var AUTOFIT = '<script>(function(){'
 function head(p, label){
   /* The company name stays in Latin script — it is a proper noun. The page
      label does not: it is ours, and in the Gujarati edition it is Gujarati. */
-  return '<div class="rh"><div class="l en">'+EN(e(S(p.meta.short_name)||S(p.meta.company)))+'</div>'
+  var m = (p && p.meta) || {};
+  var name = S(m.short_name) || S(m.company) || S(m.segment)
+    || (p && p.report && p.report.run && S(p.report.run.segment)) || '';
+  return '<div class="rh"><div class="l en">'+EN(e(name))+'</div>'
        + '<div class="r">'+EN(e(label))+'</div></div>';
 }
 function foot(p, i, total, lang, docName){
   return '<div class="rfw">'
        + '<div class="rfn">'+e(L(lang,'footnote'))+'</div>'
        + '<div class="rf"><div><span>'+EN(e(docName||L('en','doc_report')))+'</span><span class="en"> &nbsp;·&nbsp; '
-       + e(dmy(p.meta.analysis_datetime)) + '</span> &nbsp;·&nbsp; ' + e(L(lang,'research_only'))
+       + e(dmy((p && p.meta && p.meta.analysis_datetime) || (p && p.report && p.report.run && p.report.run.reportBuiltAt))) + '</span> &nbsp;·&nbsp; ' + e(L(lang,'research_only'))
        + '</div><div class="en"><b class="pgnum">'+i+'</b> / <span class="pgtot">'+total+'</span></div></div>'
        + '</div>';
 }
@@ -1723,7 +1726,8 @@ function safePayload(p){
   p.score_lines = p.score_lines || {};
   p.score_basis = p.score_basis || {};
   p.gu = p.gu || {};
-  if(!S(p.meta.company)) p.meta.company = S(p.meta.short_name) || 'IPO';
+  p.meta = p.meta || {};
+  if(!S(p.meta.company)) p.meta.company = S(p.meta.short_name) || S(p.meta.segment) || 'Run';
   if(!S(p.meta.short_name)) p.meta.short_name = S(p.meta.company);
   escalateLitigation(p);
   linkSegmentsAndProducts(p);
