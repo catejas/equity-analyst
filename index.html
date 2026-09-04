@@ -409,7 +409,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.03.3";</script>
+<script>window.APP_BUILD="2026.09.04.1";</script>
 </head>
 <body>
 
@@ -2862,9 +2862,38 @@ $('#btnSaveImport').addEventListener('click', function(){
      saved at all: a half-read contract is worse than a refusal. */
   var built = EQ.buildReport(d);
   if(!built.ok){
-    alert('This payload was rejected and nothing was saved.\n\n'
-      + built.errors.slice(0, 6).join('\n')
-      + (built.errors.length > 6 ? '\n\n…and ' + (built.errors.length - 6) + ' more.' : ''));
+    /* Repeated errors are collapsed. Six lines saying the same thing about six
+       different array positions tell the reader one fact, not six, and burying
+       it in repetition is how a fixable problem looks unfixable. */
+    var groups = {};
+    built.errors.forEach(function(msg){
+      var key = msg.replace(/companies\[\d+\][^:]*:\s*/, '')
+                   .replace(/\[\d+\]/g, '[]');
+      (groups[key] = groups[key] || []).push(msg);
+    });
+    var lines = Object.keys(groups).map(function(k){
+      var n = groups[k].length;
+      return n > 1 ? k + '  (' + n + ' places)' : groups[k][0];
+    });
+    alert('This payload was not saved.\n\n' + lines.slice(0, 5).join('\n\n')
+      + (lines.length > 5 ? '\n\n…and ' + (lines.length - 5) + ' other kinds of problem.' : '')
+      + '\n\nEverything else in the payload is fine. Fix these and paste again.');
+    return;
+  }
+  if(built.partial){
+    var pr = { id:'r' + Date.now(), ts:Date.now(), source:(detectTool(pendingImport.raw, d)||{}).name || 'unknown',
+      segment:(d.run && d.run.segment) || 'Untitled run',
+      subsegment:(d.run && d.run.subsegment) || '',
+      company:((d.run && d.run.segment) || 'Untitled run') + ' — awaiting companies',
+      data:d, report:built.report, warnings:built.warnings, partial:true, text:pendingImport.raw };
+    saveToLibrary(pr);
+    $('#importCard').classList.add('hidden'); $('#importText').value='';
+    $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
+    pendingImport = null;
+    renderScoreTab();
+    alert('Saved the segment research. No companies arrived in this block.\n\n'
+      + 'Reply CONTINUE to the tool, then paste the next block here and use '
+      + 'ADD TO THIS ANALYSIS to merge the companies into this run.');
     return;
   }
 

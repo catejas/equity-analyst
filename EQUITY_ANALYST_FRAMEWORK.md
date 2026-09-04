@@ -62,6 +62,28 @@ instead — a line reading <<<EQUITY-ANALYST-DATA before it and a line reading
 No commentary before the block beyond a sentence or two, no explanation after
 it. The application parses what is inside the fence.
 
+HOW MANY BLOCKS
+
+A full run on three companies comes to roughly 150,000 characters, which is
+past what most chat interfaces will emit in one reply. So plan the split rather
+than being cut off mid-object:
+
+  Block 1   the run, and everything about the segment
+  Block 2   the first company
+  Block 3   the second company
+  Block 4   the third company
+
+Every block repeats the same "run" object and carries a "companies" array with
+only that block's company in it. The application merges them: paste the first
+and save it, then paste each of the others and use Add To This Analysis. Nothing
+is overwritten, so the order does not matter.
+
+If the whole thing genuinely fits in one reply, send it in one. One company at
+full depth fits comfortably; three does not.
+
+Keep every evidence sentence to one line, about 160 characters. They are read
+in a table on a phone, and a paragraph in that column helps nobody.
+
 You do not produce scores, ratios, intrinsic values or rankings. The application
 computes all of those from what you supply. You produce three things: ratings
 against written anchors with the evidence behind each one, the operating drivers
@@ -818,10 +840,48 @@ including pledged shares.
 11. Return the payload as the last thing in your reply, in one fenced json code
     block, so it carries a copy button. Nothing after the closing fence.
 
-12. If the payload would be cut off by a length limit, stop at a complete object,
+12. If a block is still cut off by a length limit, stop at a complete object,
     end the block, and write CONTINUE on the line after it. Send the remainder in
-    the next reply in the same fenced form; the application merges a second block
-    into the same run without overwriting anything that already arrived.
+    the next reply in the same fenced form.
+
+═══════════════════════════════════════════════════════════════════
+10. CHECK BEFORE YOU SEND
+═══════════════════════════════════════════════════════════════════
+
+The application repairs a great deal on the way in: a list sent as one item, a
+number written as text, a probability given as a percentage, a source tier
+written as "Tier 1", a financial row that omits its basis, a price series of the
+wrong length. None of that needs your attention.
+
+These are the things it cannot repair, because fixing them would mean deciding
+what you meant. Check each one before sending:
+
+  1. Every company has a "symbol" and a "name", and no symbol repeats.
+  2. Bear fair value is not above bull fair value.
+  3. Scenario probabilities are near enough to 1 to be scaled — three numbers
+     that sum to 0.3 will be refused, because that is a contradiction rather
+     than a rounding error.
+  4. Every red flag, litigation matter and risk has a severity that reads as
+     low, moderate or severe. High, medium, minor and critical are all read.
+  5. Every red flag category is one of the listed ones.
+  6. Every litigation register id is one of the listed ones, and the outcome is
+     "clear", "matters found" or "register unreachable". An outcome of "matters
+     found" has at least one matter under it.
+  7. Every source has a title and a tier from 1 to 4, and not every source is
+     tier 4.
+  8. Every demand driver says "positive" or "negative".
+  9. The model block is complete or absent. A half-filled model is refused;
+     leaving it out costs one section and is reported as a gap.
+  10. Every financial series uses one basis throughout, consolidated or
+      standalone, never mixed.
+
+And the rule that matters more than any of them: **use null freely**. Null is
+never an error anywhere in this contract. It means you could not establish the
+figure, the application prints that as a gap on the report, and the run is
+accepted. A guessed number is far worse than a null, and a payload rejected for
+honesty would be the worst outcome of all.
+
+11. Return the payload in one fenced json block, as the last thing in the reply.
 
 ---
 
@@ -857,6 +917,28 @@ instead — a line reading <<<EQUITY-ANALYST-DATA before it and a line reading
 
 No commentary before the block beyond a sentence or two, no explanation after
 it. The application parses what is inside the fence.
+
+HOW MANY BLOCKS
+
+A full run on three companies comes to roughly 150,000 characters, which is
+past what most chat interfaces will emit in one reply. So plan the split rather
+than being cut off mid-object:
+
+  Block 1   the run, and everything about the segment
+  Block 2   the first company
+  Block 3   the second company
+  Block 4   the third company
+
+Every block repeats the same "run" object and carries a "companies" array with
+only that block's company in it. The application merges them: paste the first
+and save it, then paste each of the others and use Add To This Analysis. Nothing
+is overwritten, so the order does not matter.
+
+If the whole thing genuinely fits in one reply, send it in one. One company at
+full depth fits comfortably; three does not.
+
+Keep every evidence sentence to one line, about 160 characters. They are read
+in a table on a phone, and a paragraph in that column helps nobody.
 
 You do not produce scores, ratios, intrinsic values or rankings. The application
 computes all of those from what you supply. You produce three things: ratings
@@ -1614,7 +1696,45 @@ including pledged shares.
 11. Return the payload as the last thing in your reply, in one fenced json code
     block, so it carries a copy button. Nothing after the closing fence.
 
-12. If the payload would be cut off by a length limit, stop at a complete object,
+12. If a block is still cut off by a length limit, stop at a complete object,
     end the block, and write CONTINUE on the line after it. Send the remainder in
-    the next reply in the same fenced form; the application merges a second block
-    into the same run without overwriting anything that already arrived.
+    the next reply in the same fenced form.
+
+═══════════════════════════════════════════════════════════════════
+10. CHECK BEFORE YOU SEND
+═══════════════════════════════════════════════════════════════════
+
+The application repairs a great deal on the way in: a list sent as one item, a
+number written as text, a probability given as a percentage, a source tier
+written as "Tier 1", a financial row that omits its basis, a price series of the
+wrong length. None of that needs your attention.
+
+These are the things it cannot repair, because fixing them would mean deciding
+what you meant. Check each one before sending:
+
+  1. Every company has a "symbol" and a "name", and no symbol repeats.
+  2. Bear fair value is not above bull fair value.
+  3. Scenario probabilities are near enough to 1 to be scaled — three numbers
+     that sum to 0.3 will be refused, because that is a contradiction rather
+     than a rounding error.
+  4. Every red flag, litigation matter and risk has a severity that reads as
+     low, moderate or severe. High, medium, minor and critical are all read.
+  5. Every red flag category is one of the listed ones.
+  6. Every litigation register id is one of the listed ones, and the outcome is
+     "clear", "matters found" or "register unreachable". An outcome of "matters
+     found" has at least one matter under it.
+  7. Every source has a title and a tier from 1 to 4, and not every source is
+     tier 4.
+  8. Every demand driver says "positive" or "negative".
+  9. The model block is complete or absent. A half-filled model is refused;
+     leaving it out costs one section and is reported as a gap.
+  10. Every financial series uses one basis throughout, consolidated or
+      standalone, never mixed.
+
+And the rule that matters more than any of them: **use null freely**. Null is
+never an error anywhere in this contract. It means you could not establish the
+figure, the application prints that as a gap on the report, and the run is
+accepted. A guessed number is far worse than a null, and a payload rejected for
+honesty would be the worst outcome of all.
+
+11. Return the payload in one fenced json block, as the last thing in the reply.
