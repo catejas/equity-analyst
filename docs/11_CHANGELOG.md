@@ -247,3 +247,62 @@ Added:
   This is what should have existed before the package was called ready.
 
 Tests: 321 engine assertions plus the browser flow, 0 failures.
+
+## v1.0.3 — 2026-09-03
+A real two-part run on the phone. The import worked; the save did not.
+
+Fixed:
+- **"high" was not accepted as a severity.** The payload used the ordinary
+  English words — high, medium, minor, critical — and the validator rejected the
+  whole 165 KB file because it wanted low, moderate or severe. That is pedantry
+  dressed as rigour. Unambiguous synonyms are now read and normalised in place,
+  so a red flag written as "high" still trips the kill switch. A word that is
+  genuinely not a severity is still an error, and now names one field rather
+  than repeating itself once per array position.
+- **The first block of a split reply was called invalid.** A reply sent in two
+  messages carries the segment work first and the companies after; the app said
+  "payload.companies must be a non-empty array", which sends the reader hunting
+  for a fault that is not there. That block is now saved as a partial run,
+  carrying all the segment research, and the app says to reply CONTINUE and
+  merge the rest with Add To This Analysis.
+- **The rejection dialog repeated itself.** Six lines saying the same thing
+  about six array positions tell the reader one fact, not six. Repeated errors
+  are collapsed to one line with a count.
+
+Tests: 328 engine assertions plus the browser flow, 0 failures.
+
+## v1.1.0 — 2026-09-04
+The validator could raise 109 distinct rejections. Most were shape problems no
+person could reasonably be asked to avoid by care alone, and any one of them
+cost the whole run.
+
+Added:
+- **A repair pass, ahead of validation.** A list sent as a single item, a single
+  item sent as a list, numbers written as text, a price written as "1,234.50",
+  a source tier written as "Tier 1", a disclosure written as "no", a probability
+  given as 25 rather than 0.25, three probabilities that sum to 0.99, a
+  financial row that omits the basis its series already states, a price series
+  of the wrong length, a guidance entry with only half the pair. All read and
+  reported, none fatal. Every repair is printed as "Read as written: …" so
+  nothing is changed silently.
+- **A pre-flight check in the prompt** listing only what cannot be repaired,
+  because fixing it would mean deciding what the writer meant. Ten items, each
+  one a thing a person can actually check.
+- **A block plan.** A three-company run is about 150,000 characters, past what
+  most chat interfaces emit in one reply, so the prompt now asks for the segment
+  in one block and each company in its own, all sharing the same run object. The
+  application merges them and nothing is overwritten. One company at full depth
+  fits in a single block; three does not, and pretending otherwise produced the
+  cut-off replies.
+
+Changed:
+- What was refused and is now repaired: a mismatched price series is set aside
+  rather than fatal, an unanswered mispricing concern is set aside with the
+  reader told to answer it, a half-written guidance entry is set aside since it
+  only means anything as a pair, and an unreadable disclosure becomes unknown
+  rather than an error.
+- Still refused, because repairing would change meaning: a bear case above a
+  bull case, probabilities that are nowhere near summing to one, a severity that
+  reads as nothing, an unknown register or flag category.
+
+Tests: 337 engine assertions plus the browser flow, 0 failures.
