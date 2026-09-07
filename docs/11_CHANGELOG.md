@@ -346,3 +346,64 @@ Changed:
 
 Tests: 337 engine assertions plus browser tests that import four runs, build all
 six documents and delete a company.
+
+## v1.3.0 — 2026-09-05
+Five pages, and the share bug that made every company button hand over the same
+file.
+
+Fixed:
+- **The share button always shared the first company.** `companyIndex` was read
+  from the Score Card's dropdown — a control on a different tab, defaulting to
+  zero. The builder overrode it from the document kind, so the content was
+  right and the filename was wrong: a Bank of Maharashtra report saved as
+  State_Bank_of_India. One function now derives the company from the kind, and
+  the builder, the filename and the share title all use it.
+- **Readiness was judged on the block in the paste box**, not the run, so three
+  imported companies still read "fewer than two companies rated" and a
+  segment-only block reported every company section as missing.
+- **A blank band above every page.** An empty wrap div carried the layout's 96px
+  bottom padding, and the sections had ended up outside the wrap entirely.
+- **The chat box would not collapse.** IPO Analyst emits the payload minified on
+  one line with "schema" first, which is what makes the block render closed with
+  its copy button in reach; this prompt asked for pretty-printed JSON, so it
+  rendered as hundreds of open lines. The prompt now requires one minified line.
+
+Changed:
+- **Five pages: Analyse, Sector, Company, Score, Setup.** Sector and Company are
+  fully independent — a company researched on its own from the Analyse page gets
+  its report with no sector run present at all.
+- Each page carries a dropdown over every saved run, labelled as IPO Analyst
+  labels one: name, import date, and the tool that produced it.
+- Three buttons per row — Research, Import Data, Delete. "Add to this" removed.
+- The document icons get their own stacking context and 44px targets, so a tap
+  no longer selects the whole card.
+
+Tests: 337 engine assertions, plus browser tests covering the five-page flow,
+four imports, six documents and deletion.
+
+## v1.3.1 — 2026-09-05
+Added:
+- **Score Card PDF and share on the Score page**, acting on whichever sector or
+  company the two pickers have selected. The company is resolved by symbol
+  rather than by list position, because the library and the ranked list are not
+  in the same order.
+
+Fixed:
+- **Research did nothing when only a company was named.** The guard demanded a
+  segment, and the prompt builder threw without one. Researching a single
+  company without naming its segment is an ordinary thing to want; either field
+  is now enough, and only a segment run still requires a segment.
+- **Render progress had nowhere to appear except the Sector page**, which is why
+  a 41-page company report looked like it was doing nothing. Each page now has
+  its own message line and progress follows the button that was pressed.
+- **"via unknown" on every run.** The detector read `meta.tool`, an IPO path; an
+  equity payload states it under `run`, and a bare JSON paste has no prose to
+  recognise at all. It now reads the equity field and falls back to the tool the
+  person picked rather than filing the run as unknown.
+
+Changed:
+- The prompt gained a section on search depth that names every block, states
+  what each one becomes in the report, and budgets roughly twenty-five searches
+  per run — with the point made plainly that an empty section is a hole printed
+  on the page, and that null after a real search is honest while empty after no
+  search is not.
