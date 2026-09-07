@@ -22,13 +22,23 @@ function currentPayload(){
   if(!window.composedReport) return null;
   var built = composedReport();
   if(!built) return null;
-  var seg = segRecord();
+  var seg = (typeof segRecord === 'function') ? segRecord() : null;
+
+  /* Which company a per-company document is about. The Score page's picker
+     decides it, resolved by symbol rather than by list position, because the
+     library and the ranked list are not in the same order. */
   var idx = 0;
-  var sel = $('#scCo');
-  if(sel && sel.value !== '' && sel.value != null){
-    var v = parseInt(sel.value, 10);
-    if(!isNaN(v)) idx = v;
-  }
+  try{
+    var cur = coRecord();
+    var sym = cur && cur.data && cur.data.companies && cur.data.companies[0]
+      && cur.data.companies[0].symbol;
+    if(sym){
+      var at = (built.report.full || []).findIndex(function(c){
+        return String(c.symbol).toUpperCase() === String(sym).toUpperCase(); });
+      if(at >= 0) idx = at;
+    }
+  }catch(e){}
+
   return {
     meta: { segment: seg && seg.segment, subsegment: seg && seg.subsegment,
             company: seg && seg.company,
@@ -44,6 +54,18 @@ function currentPayload(){
    you were pressing. */
 function langsWanted(){ return [ALL_LANG]; }
 function docLang(){ return ALL_LANG; }
+function shareTitle(p, kind){
+  if(/^co[123]$/.test(kind) && p.report && p.report.full){
+    var c = p.report.full[companyIndexFor(p, kind)];
+    if(c) return EQDocs.S(c.name || c.symbol);
+  }
+  return EQDocs.S((p.meta && (p.meta.segment || p.meta.company)) || 'Equity Analyst');
+}
+function companyIndexFor(p, kind){
+  var m = /^co([123])$/.exec(kind);
+  if(m) return Number(m[1]) - 1;
+  return (p && p.companyIndex) || 0;
+}
 function fileBase(p, kind, lang){
   /* Per-company documents are named for the company; run-level ones for the
      segment, since naming three companies' report after one of them is how a
@@ -51,7 +73,7 @@ function fileBase(p, kind, lang){
   var perCompany = /^co[123]$/.test(kind) || kind === 'score' || kind === 'scorepng';
   var co = null;
   if(perCompany && p.report && p.report.full){
-    co = p.report.full[p.companyIndex || 0];
+    co = p.report.full[companyIndexFor(p, kind)];
   }
   var raw = (window.EQDocs && EQDocs.S)
     ? EQDocs.S(co ? (co.name || co.symbol) : (p.meta && (p.meta.segment || p.meta.company)))
@@ -85,17 +107,31 @@ function buildHTML(p, kind, lang){
   p = withLocalGmp(p);
   /* The three company reports are the same builder pointed at a different
      rank. Nothing else distinguishes them. */
-  var rank = /^co([123])$/.exec(kind);
-  if(rank) return EQDocs.buildCompany(Object.assign({}, p, { companyIndex: Number(rank[1]) - 1 }), lang);
+  if(/^co[123]$/.test(kind)){
+    return EQDocs.buildCompany(Object.assign({}, p, { companyIndex: companyIndexFor(p, kind) }), lang);
+  }
   if(kind === 'sector') return EQDocs.buildSector(p, lang);
   if(kind === 'exec')   return EQDocs.buildExec(p, lang);
   return EQDocs.buildScorecard(p, lang);
 }
 function selFor(kind){ return kind==='visual' ? '.vpage' : '.page'; }
 function isPng(kind){ return kind==='visual' || kind==='scorepng'; }
+/* Progress and errors belong next to the button that was pressed. The Score
+   page has its own line; every other page shares the one on the Sector page. */
+function msgEl(){
+  /* Progress belongs next to the button that was pressed, so each page has its
+     own line. Rendering a 41-page report with the message on another tab is why
+     the company reports looked like they were doing nothing. */
+  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-sector','#docMsg']];
+  for(var i=0;i<pages.length;i++){
+    var sec = document.getElementById(pages[i][0]);
+    if(sec && !sec.classList.contains('hidden') && document.querySelector(pages[i][1])) return pages[i][1];
+  }
+  return '#docMsg';
+}
 var MSG_EL = '#docMsg';
 function msg(t, bad){
-  var el = $(MSG_EL); if(!el) return;
+  var el = $(msgEl()); if(!el) return;
   el.innerHTML = t ? (bad ? '<b style="color:var(--red)">'+t+'</b>' : t) : '';
 }
 
@@ -575,7 +611,7 @@ function doAction(kind, act, msgTarget){
     htmlToPngBlobs(buildHTML(p, kind, lg), selFor(kind)).then(function(blobs){
       var files = blobs.map(function(b,i){
         return new File([b], fileBase(p,kind,lg)+(blobs.length>1?'_p'+(i+1):'')+'.png', { type:'image/png' }); });
-      var ttl = EQDocs.S(p.meta.company || p.meta.segment);
+      var ttl = shareTitle(p, kind);
       return shareNow(files, ttl).then(function(r){
         if(r.ok){ msg(r.cancelled ? '' : 'Shared.'); return; }
         if(r.reason === 'gesture'){
@@ -591,7 +627,7 @@ function doAction(kind, act, msgTarget){
     htmlToPdfBlob(buildHTML(p, kind, lg), selFor(kind)).then(function(blob){
       var name = fileBase(p, kind, lg)+'.pdf';
       var file = new File([blob], name, { type:'application/pdf' });
-      var ttl2 = EQDocs.S(p.meta.company || p.meta.segment);
+      var ttl2 = shareTitle(p, kind);
       return shareNow([file], ttl2).then(function(r){
         if(r.ok){ msg(r.cancelled ? '' : 'Shared.'); return; }
         if(r.reason === 'gesture'){

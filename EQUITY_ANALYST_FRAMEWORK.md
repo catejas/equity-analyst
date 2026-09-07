@@ -60,9 +60,19 @@ fenced code block tagged json:
 { ... the whole payload ... }
 ```
 
-The fence matters: it is what gives the chat interface a copy button, so the
-payload can be copied in one tap rather than selected by hand. Put nothing after
-the closing fence.
+Two things about that block matter, and both are about how it renders on a
+phone rather than about the data:
+
+  1. Put the JSON on ONE LINE, minified. No line breaks, no indentation.
+     A pretty-printed payload renders as hundreds of open lines that the reader
+     has to scroll past; the same payload minified renders as a single collapsed
+     box with a copy button sitting right there. That is the whole difference
+     between a payload that is easy to copy and one that is not.
+  2. Put "schema" first inside the object, so the collapsed line reads
+     {"schema":"equity-analyst/3", ... } and the reader can see what it is
+     without opening it.
+
+Put nothing after the closing fence.
 
 If your interface cannot render a code block, wrap the object in marker lines
 instead — a line reading <<<EQUITY-ANALYST-DATA before it and a line reading
@@ -855,6 +865,42 @@ including pledged shares.
     the next reply in the same fenced form.
 
 ═══════════════════════════════════════════════════════════════════
+9b. SEARCH UNTIL THE SECTIONS ARE FULL
+═══════════════════════════════════════════════════════════════════
+
+Every empty section in the payload is a section missing from the report. The
+application prints the gap rather than hiding it, so a thin run produces a thin
+document with holes in it, and the reader sees exactly what was not done.
+
+Search until each block below has something in it. These are not optional
+extras; each one is a named section of the finished report:
+
+  the world        global market size, its growth over 15/10/5/3 years, and a
+                   handful of global peers with what each of them makes
+  macro            six readings, each with its period and its source
+  budget           the allocations touching this segment over five years, with
+                   what was announced AND what was actually spent
+  economic survey  the Survey's own words on this segment
+  policy           every scheme that touches it, each to the full template
+  regulation       the regulator, the rules, what is under review
+  geopolitics      import dependence and export exposure WITH the trade data
+  industry         structure, cycle, drivers tagged, profit pool
+  value chain      every node, and the listed companies sitting at each one
+  tam              three figures, each with a basis and a source
+  programmes       the contracts driving demand, traced to listed suppliers
+  competition      share by player, with the basis stated
+
+Budget for roughly twenty-five searches on a segment run and twenty-five per
+company. If a block is still empty after searching for it properly, write null
+and say so in researchNotes — that is honest and the report will print it. What
+is not acceptable is leaving it empty because it was never looked for.
+
+Two habits that fill these sections fastest: search the primary source directly
+rather than commentary about it — the ministry, the regulator, the budget
+document, the exchange filing — and when a figure appears in two places with
+different values, record both in conflicts rather than silently picking one.
+
+═══════════════════════════════════════════════════════════════════
 10. CHECK BEFORE YOU SEND
 ═══════════════════════════════════════════════════════════════════
 
@@ -891,7 +937,9 @@ figure, the application prints that as a gap on the report, and the run is
 accepted. A guessed number is far worse than a null, and a payload rejected for
 honesty would be the worst outcome of all.
 
-11. Return the payload in one fenced json block, as the last thing in the reply.
+11. Return the payload in one fenced json block, minified onto a single line,
+    with "schema" as the first key, as the last thing in the reply. The JSON
+    above is spaced out so you can read the contract; what you send must not be.
 
 ---
 
@@ -917,9 +965,19 @@ fenced code block tagged json:
 { ... the whole payload ... }
 ```
 
-The fence matters: it is what gives the chat interface a copy button, so the
-payload can be copied in one tap rather than selected by hand. Put nothing after
-the closing fence.
+Two things about that block matter, and both are about how it renders on a
+phone rather than about the data:
+
+  1. Put the JSON on ONE LINE, minified. No line breaks, no indentation.
+     A pretty-printed payload renders as hundreds of open lines that the reader
+     has to scroll past; the same payload minified renders as a single collapsed
+     box with a copy button sitting right there. That is the whole difference
+     between a payload that is easy to copy and one that is not.
+  2. Put "schema" first inside the object, so the collapsed line reads
+     {"schema":"equity-analyst/3", ... } and the reader can see what it is
+     without opening it.
+
+Put nothing after the closing fence.
 
 If your interface cannot render a code block, wrap the object in marker lines
 instead — a line reading <<<EQUITY-ANALYST-DATA before it and a line reading
@@ -1712,6 +1770,42 @@ including pledged shares.
     the next reply in the same fenced form.
 
 ═══════════════════════════════════════════════════════════════════
+9b. SEARCH UNTIL THE SECTIONS ARE FULL
+═══════════════════════════════════════════════════════════════════
+
+Every empty section in the payload is a section missing from the report. The
+application prints the gap rather than hiding it, so a thin run produces a thin
+document with holes in it, and the reader sees exactly what was not done.
+
+Search until each block below has something in it. These are not optional
+extras; each one is a named section of the finished report:
+
+  the world        global market size, its growth over 15/10/5/3 years, and a
+                   handful of global peers with what each of them makes
+  macro            six readings, each with its period and its source
+  budget           the allocations touching this segment over five years, with
+                   what was announced AND what was actually spent
+  economic survey  the Survey's own words on this segment
+  policy           every scheme that touches it, each to the full template
+  regulation       the regulator, the rules, what is under review
+  geopolitics      import dependence and export exposure WITH the trade data
+  industry         structure, cycle, drivers tagged, profit pool
+  value chain      every node, and the listed companies sitting at each one
+  tam              three figures, each with a basis and a source
+  programmes       the contracts driving demand, traced to listed suppliers
+  competition      share by player, with the basis stated
+
+Budget for roughly twenty-five searches on a segment run and twenty-five per
+company. If a block is still empty after searching for it properly, write null
+and say so in researchNotes — that is honest and the report will print it. What
+is not acceptable is leaving it empty because it was never looked for.
+
+Two habits that fill these sections fastest: search the primary source directly
+rather than commentary about it — the ministry, the regulator, the budget
+document, the exchange filing — and when a figure appears in two places with
+different values, record both in conflicts rather than silently picking one.
+
+═══════════════════════════════════════════════════════════════════
 10. CHECK BEFORE YOU SEND
 ═══════════════════════════════════════════════════════════════════
 
@@ -1748,4 +1842,6 @@ figure, the application prints that as a gap on the report, and the run is
 accepted. A guessed number is far worse than a null, and a payload rejected for
 honesty would be the worst outcome of all.
 
-11. Return the payload in one fenced json block, as the last thing in the reply.
+11. Return the payload in one fenced json block, minified onto a single line,
+    with "schema" as the first key, as the last thing in the reply. The JSON
+    above is spaced out so you can read the contract; what you send must not be.
