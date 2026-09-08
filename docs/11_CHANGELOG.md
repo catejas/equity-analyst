@@ -440,3 +440,58 @@ Removed:
 Tests: 337 engine assertions, and a browser test that drives both pages end to
 end — dropdowns, both research paths, the tool buttons, four imports, the Top 3
 boxes and all six documents.
+
+## v1.4.1 — 2026-09-08
+Six faults found from a real run.
+
+Fixed:
+- **The Top 3 boxes vanished on restart.** The engine is a module and lands
+  after the page script, so on a cold start the boxes were built before
+  EQ.compose existed, came back empty, and looked like lost data. The whole page
+  is redrawn when the engine announces itself.
+- **Every import was recorded as Gemini.** The tool picker's first option was
+  Gemini with no blank entry, so my fallback read that as the person's answer.
+  There is a blank default now and the fallback only applies when a tool was
+  actually chosen.
+- **A standalone company filled Top 1.** It was being filed with the segment
+  study as its parent, so it took a slot belonging to a company it had nothing
+  to do with. Rank 0 now means standalone: it belongs to no segment study, never
+  fills a slot, and re-importing it replaces only itself.
+- **A standalone company scored 0.0/0.** Same cause. It is scored from its own
+  payload, never merged into a segment run.
+- **"28 of 67 data sections" on a complete company run.** The audit counted the
+  world, the Budget and the value chain against a payload never asked to carry
+  them. Each run is now judged against its own scope, and the count says which:
+  the same company run reads 36 of 46.
+
+Changed:
+- Score is Score Card, in the tab and on the page. "Sector research" is
+  "Segment / subsegment".
+
+## v1.4.1 — 2026-09-08
+Six faults, all visible on a real run.
+
+Fixed:
+- **The Top 3 boxes vanished on restart.** The engine is a module and lands
+  after the page script, so on a cold start the boxes were built before
+  EQ.compose existed, came back empty, and looked like lost data. Everything
+  that reads the engine is now drawn again on eq:ready.
+- **Every import was filed as Gemini.** The tool picker had no blank option, so
+  its default value was the first entry, and the fallback I added last build
+  read that as though the person had chosen it. There is a blank default now and
+  the fallback only counts a deliberate choice.
+- **A company researched on its own filled Top 1.** It was being given the
+  segment run as a parent, so it took a slot belonging to a different company
+  and reported that slot as ready. A standalone run is now flagged as such,
+  never appears in the Top 3, and replaces only a previous run of the same
+  company.
+- **A standalone company scored 0.0 of 0.** It was being merged into the segment
+  study for scoring. It is now scored from its own payload, as its own run.
+- **"28 of 67 data sections" on a complete company run.** The audit counted the
+  world, the Budget and the value chain against a payload never asked to carry
+  them. Each run is judged against its own scope now, and the header says which:
+  the same company run reads 36 of 46.
+
+Changed:
+- Score Card everywhere, and "Segment / Subsegment Research" in place of the
+  sector wording.
