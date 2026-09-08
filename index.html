@@ -420,7 +420,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.08.1";</script>
+<script>window.APP_BUILD="2026.09.08.2";</script>
 </head>
 <body>
 
@@ -436,7 +436,7 @@ body.previewing{overflow:hidden;}
   <nav>
     <button class="on" data-tab="segment">Segment</button>
     <button data-tab="company">Company</button>
-    <button data-tab="score">Score</button>
+    <button data-tab="score">Score Card</button>
     <button data-tab="setup">Setup</button>
   </nav>
  </div>
@@ -448,7 +448,7 @@ body.previewing{overflow:hidden;}
 <!-- ============ SEGMENT ============ -->
 <section id="tab-segment">
   <div class="card runbox" id="segBox">
-    <h2><span id="segBoxName">Segment research</span>
+    <h2><span id="segBoxName">Segment / Subsegment Research</span>
         <span class="tag" id="segBoxTag">empty</span></h2>
 
     <label for="segSel">Segment</label>
@@ -465,7 +465,7 @@ body.previewing{overflow:hidden;}
       <option value="10+">10 years or more</option>
     </select>
 
-    <label for="segPick" style="margin-top:10px;">Saved segment research</label>
+    <label for="segPick" style="margin-top:10px;">Saved Segment / Subsegment Research</label>
     <select id="segPick"><option value="">— none imported —</option></select>
 
     <div class="grid3" style="margin-top:11px;">
@@ -578,7 +578,8 @@ body.previewing{overflow:hidden;}
     <div id="srcWrap" hidden>
       <label for="importSrc">Which tool produced it</label>
       <select id="importSrc">
-        <option>Gemini</option><option>ChatGPT</option><option>Claude</option>
+        <option value="">— pick one —</option>
+        <option>Claude</option><option>ChatGPT</option><option>Gemini</option>
         <option>Perplexity</option><option>Other</option>
       </select>
     </div>
@@ -594,9 +595,9 @@ body.previewing{overflow:hidden;}
 
 <section id="tab-score" class="hidden">
   <div class="card">
-    <h2>Score</h2>
+    <h2>Score Card</h2>
 
-    <label for="scSector">Sector research</label>
+    <label for="scSector">Segment / Subsegment Research</label>
     <select id="scSector"><option value="">— none imported —</option></select>
 
     <label for="scCompany" style="margin-top:10px;">Company research</label>
@@ -826,7 +827,14 @@ function refresh(){
 });
 if($('#horizon')) $('#horizon').addEventListener('change', refresh);
 /* The engine loads as a module, so it may arrive after this script runs. */
-window.addEventListener('eq:ready', function(){ refresh(); });
+/* The engine is a module, so it lands after this script. Everything that reads
+   it has to be drawn again: on a cold start the Top 3 boxes were built before
+   EQ.compose existed, came back empty, and looked like lost data. */
+window.addEventListener('eq:ready', function(){
+  refresh();
+  try{ renderReportPage(); }catch(e){}
+  try{ renderScoreTab(); }catch(e){}
+});
 $$('.seg input').forEach(function(i){ i.addEventListener('change', refresh); });
 
 /* restore form */
@@ -2515,9 +2523,22 @@ function auditRow(d, path, kind){
   return { have: n === cos.length ? 1 : 0, of: 1,
            note: n + ' of ' + cos.length + ' companies' , partial: n > 0 && n < cos.length };
 }
+/* A run is judged against the sections it was asked for. A company payload was
+   never meant to carry the world, the Budget or the value chain, so counting
+   those against it produced "28 of 67" on a complete company run and made good
+   research look thin. The four segment-only groups are set aside for a company
+   run, and the company groups for a segment run. */
 function auditPayload(d){
   var groups = {}, order = [], filled = 0;
+  var cos = (d && Array.isArray(d.companies)) ? d.companies : [];
+  var isCompanyRun = cos.length === 1 && !(d.macro || d.budget || d.policy || d.programs);
+  var isSegmentRun = !!(d && d.run) && !cos.length;
+  var SEGMENT_ONLY = ['world', 'macro', 'ind'];
+  var COMPANY_ONLY = ['rate', 'arg', 'for', 'lit', 'mod', 'val', 'mkt', 'nar'];
+
   AUDIT_SPEC.forEach(function(e){
+    if(isCompanyRun && SEGMENT_ONLY.indexOf(e[0]) >= 0) return;
+    if(isSegmentRun && COMPANY_ONLY.indexOf(e[0]) >= 0) return;
     var r = auditRow(d, e[2], e[3]);
     if(!groups[e[0]]){ groups[e[0]] = { key:e[0], name:AUDIT_GROUPS[e[0]], have:0, total:0, gaps:[] };
                        order.push(groups[e[0]]); }
@@ -2526,7 +2547,9 @@ function auditPayload(d){
     if(r.have){ g.have++; filled++; }
     else { g.gaps.push(e[1] + (r.note ? ' \u2014 ' + r.note : '')); }
   });
-  return { groups:order, filled:filled, total:AUDIT_SPEC.length };
+  var total = order.reduce(function(a, g){ return a + g.total; }, 0);
+  return { groups:order, filled:filled, total:total,
+           scope: isCompanyRun ? 'this company' : (isSegmentRun ? 'this segment' : 'the whole run') };
 }
 /* What the app could build if this payload were saved, judged against the whole
    run rather than the block sitting in the paste box. Reading only the incoming
@@ -2605,7 +2628,8 @@ function showReview(res, raw){
   if(res.v3){
     var au = auditPayload(d);
     var pct = Math.round(au.filled / au.total * 100);
-    html += '<div class="rvh">Imported ' + au.filled + ' of ' + au.total + ' data sections'
+    html += '<div class="rvh">Imported ' + au.filled + ' of ' + au.total
+      + ' data sections for ' + esc(au.scope)
           + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
     var runSeg = (d.run && d.run.segment) || '(segment not detected)';
     var nCo = (d.companies && d.companies.length) || 0;
@@ -2776,7 +2800,7 @@ $('#btnSaveImport').addEventListener('click', function(){
     pendingImport = null;
     renderScoreTab();
     var named = (d.run && Array.isArray(d.run.top3)) ? d.run.top3.length : 0;
-    alert('Segment research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
+    alert('Segment / Subsegment research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
       + 'Each has its own box below \u2014 research and import them one at a time.') : ''));
     return;
   }
@@ -2791,7 +2815,12 @@ $('#btnSaveImport').addEventListener('click', function(){
   var rec = { id:'r' + Date.now(), ts:Date.now(), source:src,
               kind: isCompanyRun ? 'company' : 'segment',
               rank: isCompanyRun ? IMPORT_TARGET.rank : 0,
-              parentId: isCompanyRun && segRecord() ? segRecord().id : null,
+              /* Rank 0 means the person researched this company on its own. It
+                 belongs to no segment study and must never fill a Top 3 slot,
+                 however closely the names happen to match. */
+              standalone: isCompanyRun && !IMPORT_TARGET.rank,
+              parentId: (isCompanyRun && IMPORT_TARGET.rank && segRecord())
+                ? segRecord().id : null,
               segment:seg, subsegment:sub,
               company: isCompanyRun
                 ? ((firstCo && (firstCo.name || firstCo.symbol)) || ('Company ' + IMPORT_TARGET.rank))
@@ -2799,8 +2828,16 @@ $('#btnSaveImport').addEventListener('click', function(){
               data:d, report:built.report, warnings:built.warnings,
               text:pendingImport.raw };
   if(isCompanyRun){
+    var firstSym = firstCo && firstCo.symbol;
     var keep = libRead().filter(function(r){
-      return !(r.kind === 'company' && r.rank === rec.rank && r.parentId === rec.parentId);
+      if(r.kind !== 'company') return true;
+      if(rec.standalone){
+        /* one record per company researched on its own */
+        var s0 = r.data && r.data.companies && r.data.companies[0];
+        return !(r.standalone && s0 && firstSym
+                 && String(s0.symbol).toUpperCase() === String(firstSym).toUpperCase());
+      }
+      return !(!r.standalone && r.rank === rec.rank && r.parentId === rec.parentId);
     });
     libWrite(keep);
   }
@@ -3420,9 +3457,15 @@ function segRecord(){
   var l = sectorRecords(); if(!l.length) return null;
   return l.filter(function(r){ return r.id === SEL.sector; })[0] || l[0];
 }
+/* The companies belonging to a segment study. A standalone run is deliberately
+   not here: it exists to research something outside the Top 3 so the two can be
+   compared, and folding it in would overwrite a slot it has nothing to do with. */
 function coRecords(){
   var seg = segRecord();
-  return companyRecords().filter(function(r){ return !seg || !r.parentId || r.parentId === seg.id; });
+  return companyRecords().filter(function(r){
+    if(r.standalone) return false;
+    return !seg || !r.parentId || r.parentId === seg.id;
+  });
 }
 function coRecord(){
   var l = companyRecords(); if(!l.length) return null;
@@ -3490,11 +3533,15 @@ function fillPicker(sel, records, current, empty){
     : '<option value="">' + esc(empty) + '</option>';
 }
 
+/* What the documents and the score card are built from. A company researched on
+   its own is a run in its own right: it is scored from its own payload, never
+   merged into a segment study it has nothing to do with. */
 function composedPayload(){
-  var seg = segRecord();
   if(!window.EQ || !window.EQ.compose) return null;
-  if(seg) return EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; }));
   var co = coRecord();
+  if(co && co.standalone) return co.data;
+  var seg = segRecord();
+  if(seg) return EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; }));
   return co ? co.data : null;
 }
 function composedReport(){
@@ -3560,7 +3607,7 @@ function renderSegmentPage(){
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
     ? ((seg.segment || 'Segment') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
-    : 'Segment research';
+    : 'Segment / Subsegment Research';
   var tag = $('#segBoxTag');
   if(tag){ tag.textContent = seg ? 'imported' : 'empty'; tag.className = 'tag' + (seg ? ' ok' : ''); }
   if($('#segBoxMeta')) $('#segBoxMeta').textContent = seg
