@@ -2,7 +2,7 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '2026.09.05.3';
+var BUILD = '2026.09.08.1';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',

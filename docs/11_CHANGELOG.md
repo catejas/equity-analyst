@@ -407,3 +407,36 @@ Changed:
   per run — with the point made plainly that an empty section is a hole printed
   on the page, and that null after a real search is honest while empty after no
   search is not.
+
+## v1.4.0 — 2026-09-08
+The app was unusable: no prompt could be produced on any page.
+
+Fixed:
+- **The placeholder was being copied.** When the engine had not finished
+  loading, the prompt builder returned the string "Loading the research
+  engine…", and that string was copied and pasted into the AI tool. The app now
+  refuses instead: no engine means no prompt and a message saying so, and the
+  same for an empty selection. A prompt that is not a prompt is worse than none.
+- **The subsegment box never filtered.** It was free text with a picker that
+  searched everything. It is now a select that lists only the subsegments of the
+  chosen segment, and is disabled until a segment is chosen.
+
+Changed:
+- **The Analyse page is gone.** Choosing what to research now happens on the
+  page where the results land, so there is no step that produces nothing you can
+  see. Four pages: Segment, Company, Score, Setup.
+- **Segment page**: segment, subsegment and horizon as real dropdowns, the saved
+  research picker, Research / Import Data / Delete, the four AI tools, then the
+  three sector documents.
+- **Company page**: a standalone company box that needs no segment at all, then
+  the three Top 3 boxes named by the segment study, then the saved company
+  picker with its report, then the four AI tools.
+- "Sector" renamed to "Segment" throughout the interface.
+
+Removed:
+- The typeahead panels and the picker that drove them, replaced by the two
+  dropdowns.
+
+Tests: 337 engine assertions, and a browser test that drives both pages end to
+end — dropdowns, both research paths, the tool buttons, four imports, the Top 3
+boxes and all six documents.

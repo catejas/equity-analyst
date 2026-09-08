@@ -420,7 +420,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.05.3";</script>
+<script>window.APP_BUILD="2026.09.08.1";</script>
 </head>
 <body>
 
@@ -434,8 +434,7 @@ body.previewing{overflow:hidden;}
     </div>
   </div>
   <nav>
-    <button class="on" data-tab="analyse">Analyse</button>
-    <button data-tab="sector">Sector</button>
+    <button class="on" data-tab="segment">Segment</button>
     <button data-tab="company">Company</button>
     <button data-tab="score">Score</button>
     <button data-tab="setup">Setup</button>
@@ -446,34 +445,17 @@ body.previewing{overflow:hidden;}
 <div class="wrap">
 
 
-<!-- ============ ANALYSE ============ -->
-<section id="tab-analyse">
-  <div class="card">
-    <div class="lblrow">
-      <label for="segment" style="margin:0;">Segment</label>
-      <span id="runStamp" class="stamp"></span>
-    </div>
-    <div class="pickwrap">
-      <input type="text" id="segment" placeholder="Type or browse — Defence and aerospace"
-             autocomplete="off" autocapitalize="words" enterkeyhint="next">
-      <button type="button" class="pickbtn" id="btnSegPick"
-              aria-label="Browse segments" aria-expanded="false">&#9662;</button>
-    </div>
-    <div id="segPanel" class="pickpanel hidden" role="listbox" aria-label="Segments"></div>
+<!-- ============ SEGMENT ============ -->
+<section id="tab-segment">
+  <div class="card runbox" id="segBox">
+    <h2><span id="segBoxName">Segment research</span>
+        <span class="tag" id="segBoxTag">empty</span></h2>
 
-    <label for="subsegment" style="margin-top:10px;">Subsegment <span class="mut">optional</span></label>
-    <div class="pickwrap">
-      <input type="text" id="subsegment" placeholder="Type or browse"
-             autocomplete="off" autocapitalize="words" enterkeyhint="done">
-      <button type="button" class="pickbtn" id="btnSubPick"
-              aria-label="Browse subsegments" aria-expanded="false">&#9662;</button>
-    </div>
-    <div id="subPanel" class="pickpanel hidden" role="listbox" aria-label="Subsegments"></div>
+    <label for="segSel">Segment</label>
+    <select id="segSel"><option value="">— choose a segment —</option></select>
 
-    <label for="company" style="margin-top:10px;">Company <span class="mut">optional</span></label>
-    <input type="text" id="company" placeholder="Leave empty to research the whole segment"
-           autocomplete="off" autocapitalize="words" enterkeyhint="done">
-    <p class="note" id="modeNote" style="margin-top:6px;"></p>
+    <label for="subSel" style="margin-top:10px;">Subsegment <span class="mut">optional</span></label>
+    <select id="subSel"><option value="">— all of the segment —</option></select>
 
     <label for="horizon" style="margin-top:10px;">Holding horizon</label>
     <select id="horizon">
@@ -483,14 +465,19 @@ body.previewing{overflow:hidden;}
       <option value="10+">10 years or more</option>
     </select>
 
-    <p style="margin-top:16px">
-      <button class="btn pri" id="btnSearch" type="button">Research</button>
-    </p>
+    <label for="segPick" style="margin-top:10px;">Saved segment research</label>
+    <select id="segPick"><option value="">— none imported —</option></select>
 
-    <label style="margin-top:14px;">Or open a tool directly</label>
-    <p class="note" id="toolHint" style="margin-top:0;margin-bottom:8px;">One tap copies the
-    prompt and opens the tool &mdash; its app if you have it installed, otherwise the website.
-    Paste, send, then bring the reply back under Import.</p>
+    <div class="grid3" style="margin-top:11px;">
+      <button class="btn sm pri" id="btnSegSearch" style="margin:0;">Research</button>
+      <button class="btn sm" id="btnImport" style="margin:0;">Import Data</button>
+      <button class="btn sm dang" id="btnDelRep" style="margin:0;">Delete</button>
+    </div>
+
+    <label style="margin-top:16px;">Open AI tool</label>
+    <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
+    pick a tool. The prompt is already on the clipboard: the tool opens, you paste, send, and
+    bring the reply back with Import Data.</p>
     <div class="grid2" id="toolRow">
       <button class="btn sm" data-tool="claude">Claude</button>
       <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
@@ -498,46 +485,14 @@ body.previewing{overflow:hidden;}
       <button class="btn sm" data-tool="perplexity">Perplexity</button>
     </div>
 
-    <p class="note" style="margin-top:14px;">The prompt is built from the scoring engine itself,
-    so the anchors, the register battery and the search rules in it are the same ones the app
-    scores against. Change a rubric and the prompt changes with it.</p>
-
-    <button class="btn pri" id="btnRun">RESEARCH IN APP &mdash; USES YOUR API KEY</button>
-  </div>
-
-  
-</section>
-
-<!-- ============ REPORT ============ -->
-<!-- ============ SECTOR ============ -->
-<section id="tab-sector" class="hidden">
-  <div class="card runbox" id="segBox">
-    <h2><span id="segBoxName">Sector research</span>
-        <span class="tag" id="segBoxTag">empty</span></h2>
-
-    <label for="segPick" style="margin-top:6px;">Saved sector research</label>
-    <div class="pickwrap">
-      <select id="segPick"><option value="">— none imported —</option></select>
-    </div>
-    <p class="hint" id="segBoxMeta">Name a segment on the Analyse page, research it, then
-    import the reply here. The sector study also names the three companies worth a full report.</p>
-
-    <select id="libSel" hidden><option value="">— none saved —</option></select>
-
-    <div class="grid3" style="margin-top:9px;">
-      <button class="btn sm pri" id="btnSegSearch" style="margin:0;">Research</button>
-      <button class="btn sm" id="btnImport" style="margin:0;">Import Data</button>
-      <button class="btn sm dang" id="btnDelRep" style="margin:0;">Delete</button>
-    </div>
-
-    <div id="docTools" class="hidden" style="margin-top:12px;"><div id="segDocs">
+    <div id="docTools" class="hidden" style="margin-top:14px;"><div id="segDocs">
       <div class="doc-row">
         <span class="doc-name">Sector Research Report<small>the segment &middot; A4 PDF</small></span>
         <button class="ico ico-pdf" data-doc="sector" data-act="make" aria-label="Generate Sector Research Report">PDF</button>
         <button class="ico ico-sh" data-doc="sector" data-act="share" aria-label="Share Sector Research Report">&#8682;</button>
       </div>
       <div class="doc-row">
-        <span class="doc-name">Executive Summary<small>sector and companies, high level</small></span>
+        <span class="doc-name">Executive Summary<small>segment and companies, high level</small></span>
         <button class="ico ico-pdf" data-doc="exec" data-act="make" aria-label="Generate Executive Summary">PDF</button>
         <button class="ico ico-sh" data-doc="exec" data-act="share" aria-label="Share Executive Summary">&#8682;</button>
       </div>
@@ -550,12 +505,17 @@ body.previewing{overflow:hidden;}
       <div id="docMsg" class="note" style="margin-top:8px;"></div>
     </div>
 
+    <p class="note" id="segBoxMeta" style="margin-top:10px;"></p>
+
     <span id="repTag" hidden></span><span id="repMeta" hidden></span>
     <input id="repPick" hidden><span id="repPanel" hidden></span>
     <span id="segMsg" hidden></span>
     <pre id="out" hidden></pre><span id="status" hidden></span>
     <button id="btnRepPick" hidden></button><span id="scDocs" hidden></span>
     <button id="btnAddMore" hidden></button>
+    <input id="segment" hidden><input id="subsegment" hidden><input id="company" hidden>
+    <span id="modeNote" hidden></span><button id="btnSearch" hidden></button>
+    <button id="btnRun" hidden></button>
     <div id="addMoreBox" class="hidden"><textarea id="addMoreText"></textarea>
       <button id="btnAddMoreSave"></button><button id="btnAddMoreCancel"></button>
       <div id="addMoreMsg"></div></div>
@@ -564,27 +524,42 @@ body.previewing{overflow:hidden;}
 
 <!-- ============ COMPANY ============ -->
 <section id="tab-company" class="hidden">
-  <div class="card">
-    <h2>Company research</h2>
-    <p class="hint">Every company researched on its own, whether it came from a sector
-    study's Top 3 or from naming a company on the Analyse page. Each has its own report.</p>
-    <label for="coPick" style="margin-top:6px;">Saved company research</label>
-    <div class="pickwrap">
-      <select id="coPick"><option value="">— none imported —</option></select>
+
+  <div class="card runbox">
+    <h2>A company on its own</h2>
+    <p class="hint">No segment needed. Name any listed company and research it; its report
+    stands alone.</p>
+    <label for="soloCo">Company name</label>
+    <input type="text" id="soloCo" placeholder="e.g. Punjab National Bank"
+           autocomplete="off" autocapitalize="words" enterkeyhint="done">
+    <div class="grid3" style="margin-top:11px;">
+      <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
+      <button class="btn sm" id="btnSoloImport" style="margin:0;">Import Data</button>
+      <button class="btn sm dang" id="btnSoloDelete" style="margin:0;">Delete</button>
     </div>
-    <div class="grid3" style="margin-top:9px;">
-      <button class="btn sm pri" id="btnCoSearch" style="margin:0;">Research</button>
-      <button class="btn sm" id="btnCoImport" style="margin:0;">Import Data</button>
-      <button class="btn sm dang" id="btnCoDelete" style="margin:0;">Delete</button>
-    </div>
-    <div id="coDocs" style="margin-top:12px;"></div>
-    <div id="coMsg" class="note" style="margin-top:8px;"></div>
   </div>
 
   <div id="coBoxes"></div>
+
+  <div class="card runbox">
+    <h2>Saved company research</h2>
+    <label for="coPick">Every company imported into this app</label>
+    <select id="coPick"><option value="">— none imported —</option></select>
+    <div id="coDocs" style="margin-top:11px;"></div>
+    <div id="coMsg" class="note" style="margin-top:8px;"></div>
+
+    <label style="margin-top:16px;">Open AI tool</label>
+    <p class="hint" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
+    The prompt is already on the clipboard.</p>
+    <div class="grid2" id="toolRowCo">
+      <button class="btn sm" data-tool="claude">Claude</button>
+      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
+      <button class="btn sm" data-tool="gemini">Gemini</button>
+      <button class="btn sm" data-tool="perplexity">Perplexity</button>
+    </div>
+  </div>
 </section>
 
-<!-- ============ SCORING ============ -->
 <div class="card hidden" id="importCard">
     <h2>Import Data</h2>
     <p class="hint">Paste the whole reply, or just the JSON block. The payload comes back inside a fenced <b>json</b> code block, which is what gives your chat app a copy button &mdash; one tap on that and paste here. Marker lines and a bare JSON object read exactly the same, so it does not matter which form your tool produced. The reader repairs what chat models get wrong: a reply cut off mid-JSON, trailing commas, comments, "..." shortcuts, a missing closing fence. Anything still missing is listed for you before saving.</p>
@@ -771,7 +746,7 @@ $$('nav button').forEach(function(b){
   b.addEventListener('click', function(){
     $$('nav button').forEach(function(x){ x.classList.remove('on'); });
     b.classList.add('on');
-    ['analyse','sector','company','score','setup'].forEach(function(t){
+    ['segment','company','score','setup'].forEach(function(t){
       var el = $('#tab-'+t); if(!el) return;
       el.classList.toggle('hidden', t !== b.dataset.tab);
     });
@@ -829,67 +804,26 @@ function langText(){ return 'English'; }
    them keeps working — they are simply no longer presented as choices that do
    not exist. */
 var FIXED = { type:'Both', horizon:'Both', investor:'All' };
-function formVals(){
-  var co = ($('#company') && $('#company').value ? $('#company').value.trim() : '');
-  return {
-    segment:    ($('#segment')    && $('#segment').value)    ? $('#segment').value.trim()    : '',
-    subsegment: ($('#subsegment') && $('#subsegment').value) ? $('#subsegment').value.trim() : '',
-    company:    co,
-    /* Naming a company changes what is being researched, not just a filter on
-       it: there is no universe to screen and no Top 3 to rank, so the prompt,
-       the payload and the document set are all different. */
-    mode:       co ? 'company' : 'segment',
-    horizon:    ($('#horizon') && $('#horizon').value) || '3-5'
-  };
-}
-function requireCompany(){
-  var v = formVals();
-  /* Either is enough. Researching one company without naming its segment is a
-     perfectly ordinary thing to want, and demanding a segment for it is what
-     made the Research button do nothing when only the company was filled. */
-  if(v.segment || v.company) return true;
-  alert('Name a segment or a company first.');
-  if($('#segment')) $('#segment').focus();
-  return false;
-}
-function renderMode(){
-  var v = formVals(), el = $('#modeNote');
-  if(!el) return;
-  el.innerHTML = v.mode === 'company'
-    ? '<b>Company mode.</b> One Company Research Report on ' + esc(v.company)
-      + ', with a two-page segment backdrop. No universe is screened and nothing is ranked.'
-    : '<b>Segment mode.</b> The listed universe for this segment is screened and ranked, '
-      + 'producing a Sector Research Report, three Company Research Reports, an Executive '
-      + 'Summary and a Score Card.';
-  ['sector','co1','co2','co3','exec'].forEach(function(k){
-    var b = document.querySelector('[data-doc="' + k + '"]');
-    if(b && b.parentNode) b.parentNode.classList.toggle('dim', v.mode === 'company' && k !== 'co1');
-  });
-}
+
+
+function renderMode(){}
 
 /* The prompt is generated by the engine from its own constants — the rubric
    anchors, the register battery, the source tiers and the payload contract.
    There is no template in this page to drift out of step with the scoring. */
-function buildPrompt(){
-  var v = formVals();
-  if(!window.EQ) return 'Loading the research engine\u2026';
-  try{
-    return EQ.buildPrompt({
-      segment: v.segment || (v.company ? '' : '[SEGMENT]'),
-      subsegment: v.subsegment,
-      company: v.company,
-      mode: v.mode,
-      horizon: v.horizon
-    });
-  }catch(err){
-    return 'Enter a segment to generate the prompt.';
-  }
-}
+
+/* Which run each page is showing. Declared here because the first refresh()
+   happens before the page controller further down has run. */
+var SEL = { sector:null, company:null, solo:'' };
+
 function refresh(){
-  var pv=$('#preview'); if(pv) pv.value = buildPrompt();
-  set(LS.form, JSON.stringify(formVals()));
+  var pv = $('#preview'); if(pv) pv.value = buildPrompt() || '';
+  try{ set(LS.form, JSON.stringify(formVals())); }catch(e){}
+  renderSegmentPage();
 }
-['#segment','#subsegment','#company'].forEach(function(sel){ var el=$(sel); if(el) el.addEventListener('input', function(){ renderMode(); refresh(); }); });
+['#segSel','#subSel','#horizon','#soloCo'].forEach(function(sel){
+  var el = $(sel); if(el) el.addEventListener('change', refresh);
+});
 if($('#horizon')) $('#horizon').addEventListener('change', refresh);
 /* The engine loads as a module, so it may arrive after this script runs. */
 window.addEventListener('eq:ready', function(){ refresh(); });
@@ -1033,7 +967,7 @@ function setPending(kind){
   if(row) row.classList.toggle('armed', kind === 'armed');
 }
 
-$$('[data-tool]').forEach(function(b){
+$$('#toolRow [data-tool], #toolRowCo [data-tool]').forEach(function(b){
   b.addEventListener('click', function(){
     var t = TOOLS[b.dataset.tool];
 
@@ -1057,15 +991,7 @@ $$('[data-tool]').forEach(function(b){
     });
   });
 });
-function requireCompany(){
-  if(!$('#segment').value.trim()){
-    $('#segment').focus();
-    $('#segment').style.outline='2px solid var(--red)';
-    setTimeout(function(){ $('#segment').style.outline=''; },1400);
-    return false;
-  }
-  return true;
-}
+
 
 /* ============================== recent ========================== */
 /* saveRecent kept only as a no-op: the Recent list it fed is gone. */
@@ -1170,7 +1096,7 @@ $('#btnRun').addEventListener('click', function(){
   runAnalysis(k, true);
 });
 
-if($('#btnContinue')) $('#btnContinue').addEventListener('click', function(){
+if($('#btnContinue')) if($('#btnContinue')) $('#btnContinue').addEventListener('click', function(){
   if(running) return;
   var k = ($('#key').value||get(LS.key,'')).trim();
   if(!k){ alert('No API key set.'); goTab('setup'); return; }
@@ -1287,12 +1213,12 @@ function runAnalysis(key, fresh){
   }catch(e){}
 })();
 
-if($('#btnCopyOut')) $('#btnCopyOut').addEventListener('click', function(){
+if($('#btnCopyOut')) if($('#btnCopyOut')) $('#btnCopyOut').addEventListener('click', function(){
   var t=$('#out').textContent;
   if(!t.trim()){ alert('Nothing to copy yet.'); return; }
   copyText(t).then(function(){ flash($('#btnCopyOut'),'COPIED'); });
 });
-if($('#btnPrint')) $('#btnPrint').addEventListener('click', function(){
+if($('#btnPrint')) if($('#btnPrint')) $('#btnPrint').addEventListener('click', function(){
   var t=$('#out').textContent;
   if(!t.trim()){ alert('Nothing to save yet.'); return; }
   var w=window.open('','_blank');
@@ -2255,6 +2181,9 @@ function dmyTs(ts){
 
 function drawLibrary(selectId){
   var lib = libRead(), sel = $('#libSel');
+  /* The hidden select the older record code reads. The Segment and Company
+     pages have their own pickers now, so this may not exist at all. */
+  if(!sel){ renderReportPage(); renderScoreTab(); return; }
   sel.innerHTML = '<option value="">— none saved —</option>' + lib.map(function(r){
     return '<option value="' + r.id + '">' + esc(recName(r)) + '</option>';
   }).join('');
@@ -2917,7 +2846,7 @@ $('#btnAddMoreSave').addEventListener('click', function(){
   }
 });
 
-$('#libSel').addEventListener('change', function(){
+if($('#libSel')) $('#libSel').addEventListener('change', function(){
   if(this.value) showRecord(this.value);
   else hideVerdict();
 });
@@ -3459,97 +3388,8 @@ window.addEventListener('eq:ready', renderScoreTab);
    so a segment the taxonomy has never heard of can still be typed and used.
    Typing filters; the caret browses. Choosing a segment narrows the subsegment
    list to that segment's own, which is the point of having two boxes. */
-(function(){
-  var segIn = $('#segment'), subIn = $('#subsegment');
-  if(!segIn || !subIn) return;
-  /* The taxonomy is looked up when it is used, not when the handlers are bound.
-     Binding used to be skipped entirely if segments.js had not loaded yet, and
-     the picker then stayed dead for the rest of the session with no error. */
-  function seg(){ return window.EQSegments; }
-
-  function row(item){
-    var main = item.kind === 'sub' ? item.sub : item.segment;
-    var sub  = item.kind === 'sub' ? item.segment
-             : (item.subCount ? item.subCount + ' subsegments' : '');
-    return '<button type="button" class="pk" role="option"'
-      + ' data-seg="' + esc(item.segment) + '" data-sub="' + esc(item.sub || '') + '">'
-      + '<span class="pk1">' + esc(main) + '</span>'
-      + (sub ? '<span class="pk2">' + esc(sub) + '</span>' : '')
-      + '</button>';
-  }
-  function paint(sel, items, emptyMsg){
-    $(sel).innerHTML = items.length ? items.map(row).join('')
-      : '<div class="pkempty">' + esc(emptyMsg) + '</div>';
-  }
-  function open(sel, btn){ $(sel).classList.remove('hidden');
-    if($(btn)) $(btn).setAttribute('aria-expanded','true'); }
-  function shut(sel, btn){ $(sel).classList.add('hidden');
-    if($(btn)) $(btn).setAttribute('aria-expanded','false'); }
-
-  function segList(q){
-    if(!seg()){ paint('#segPanel', [], 'The segment list has not loaded. Type the segment instead.'); return; }
-    paint('#segPanel', seg().search(q, 60),
-      'Nothing matches. You can still type your own segment.');
-  }
-  function subList(q){
-    if(!seg()){ paint('#subPanel', [], 'The segment list has not loaded. Type the subsegment instead.'); return; }
-    var seg = segIn.value.trim();
-    var subs = seg().subsOf(seg);
-    var items;
-    if(subs.length){
-      items = subs.filter(function(x){
-        return !q || x.toLowerCase().indexOf(q.toLowerCase()) !== -1;
-      }).map(function(x){ return { segment: seg, sub: x, kind:'sub' }; });
-    } else {
-      /* No segment chosen, or one the taxonomy does not carry. Search every
-         subsegment so the box is still useful rather than empty. */
-      items = seg().search(q, 60).filter(function(x){ return x.kind === 'sub'; });
-    }
-    paint('#subPanel', items,
-      subs.length ? 'No subsegment matches. You can still type your own.'
-                  : 'Choose a segment first, or type a subsegment.');
-  }
-
-  segIn.addEventListener('input', function(){ segList(segIn.value.trim()); open('#segPanel','#btnSegPick'); });
-  subIn.addEventListener('input', function(){ subList(subIn.value.trim()); open('#subPanel','#btnSubPick'); });
-
-  if($('#btnSegPick')) $('#btnSegPick').addEventListener('click', function(){
-    if(!$('#segPanel').classList.contains('hidden')){ shut('#segPanel','#btnSegPick'); return; }
-    segList(segIn.value.trim()); open('#segPanel','#btnSegPick');
-  });
-  if($('#btnSubPick')) $('#btnSubPick').addEventListener('click', function(){
-    if(!$('#subPanel').classList.contains('hidden')){ shut('#subPanel','#btnSubPick'); return; }
-    subList(subIn.value.trim()); open('#subPanel','#btnSubPick');
-  });
-
-  document.addEventListener('click', function(ev){
-    if(!ev.target.closest) return;
-    var b = ev.target.closest('#segPanel .pk');
-    if(b){
-      segIn.value = b.getAttribute('data-seg');
-      /* Picking a subsegment row from the segment panel fills both boxes: one
-         tap instead of two, which is how people actually search. */
-      var sub = b.getAttribute('data-sub');
-      if(sub) subIn.value = sub;
-      shut('#segPanel','#btnSegPick'); refresh(); return;
-    }
-    b = ev.target.closest('#subPanel .pk');
-    if(b){
-      if(!segIn.value.trim()) segIn.value = b.getAttribute('data-seg');
-      subIn.value = b.getAttribute('data-sub') || '';
-      shut('#subPanel','#btnSubPick'); refresh(); return;
-    }
-    if(!ev.target.closest('.pickwrap, .pickpanel')){
-      shut('#segPanel','#btnSegPick'); shut('#subPanel','#btnSubPick');
-    }
-  });
-
-  [segIn, subIn].forEach(function(el){
-    el.addEventListener('keydown', function(ev){
-      if(ev.key === 'Escape'){ shut('#segPanel','#btnSegPick'); shut('#subPanel','#btnSubPick'); }
-    });
-  });
-})();
+/* The segment and subsegment typeahead panels were replaced by real select
+   dropdowns on the Segment page, so the picker that drove them is gone. */
 
 /* The Search button copies the prompt without opening anything, for pasting
    into a tool that is already open, or somewhere else entirely. */
@@ -3565,41 +3405,77 @@ if($('#btnSearch')) $('#btnSearch').addEventListener('click', function(){
   });
 });
 
-/* ============ Sector and Company pages =============================
-   Two independent pages over the same library. A sector run is a segment study
-   and the documents that need one; a company run is one company and its report.
-   Neither waits on the other: a company researched on its own from the Analyse
-   page appears on the Company page with a working report and no sector at all. */
+/* ============ Segment and Company pages =============================
+   Two pages, each self-contained: pick what to research, research it, import the
+   reply, get the documents. There is no separate Analyse step — the choosing
+   and the researching happen where the results land. */
 
-var SEL = { sector: null, company: null };
+/* already declared near the top, where the first refresh needs it */
 
 function sectorRecords(){
   return libRead().filter(function(r){ return r && r.kind !== 'company' && r.data && r.data.run; });
 }
-function companyRecords(){
-  return libRead().filter(function(r){ return r && r.kind === 'company'; });
-}
+function companyRecords(){ return libRead().filter(function(r){ return r && r.kind === 'company'; }); }
 function segRecord(){
-  var list = sectorRecords();
-  if(!list.length) return null;
-  return list.filter(function(r){ return r.id === SEL.sector; })[0] || list[0];
+  var l = sectorRecords(); if(!l.length) return null;
+  return l.filter(function(r){ return r.id === SEL.sector; })[0] || l[0];
 }
 function coRecords(){
   var seg = segRecord();
   return companyRecords().filter(function(r){ return !seg || !r.parentId || r.parentId === seg.id; });
 }
 function coRecord(){
-  var list = companyRecords();
-  if(!list.length) return null;
-  return list.filter(function(r){ return r.id === SEL.company; })[0] || list[0];
+  var l = companyRecords(); if(!l.length) return null;
+  return l.filter(function(r){ return r.id === SEL.company; })[0] || l[0];
 }
 
-/* A run's label, the way IPO Analyst writes it: what it is, when it arrived and
-   which tool produced it. */
+/* What the form is asking for right now. The hidden inputs are kept so the
+   older code paths that read them keep working. */
+function formVals(){
+  var seg = ($('#segSel') && $('#segSel').value) || '';
+  var sub = ($('#subSel') && $('#subSel').value) || '';
+  var co  = ($('#soloCo') && $('#soloCo').value ? $('#soloCo').value.trim() : '');
+  if($('#segment')) $('#segment').value = seg;
+  if($('#subsegment')) $('#subsegment').value = sub;
+  if($('#company')) $('#company').value = co;
+  return { segment: seg, subsegment: sub, company: co,
+           mode: co ? 'company' : 'segment',
+           horizon: ($('#horizon') && $('#horizon').value) || '3-5' };
+}
+function requireCompany(){ return true; }
+
+/* ---------- the two taxonomy dropdowns ---------- */
+function fillSegmentSelect(){
+  var el = $('#segSel'); if(!el || !window.EQSegments) return;
+  var names = [];
+  (EQSegments.index || []).forEach(function(e){
+    if(e.kind === 'segment' && names.indexOf(e.segment) < 0) names.push(e.segment);
+  });
+  if(!names.length) (EQSegments.search('') || []).forEach(function(e){
+    if(names.indexOf(e.segment) < 0) names.push(e.segment);
+  });
+  names.sort();
+  var keep = el.value;
+  el.innerHTML = '<option value="">— choose a segment —</option>'
+    + names.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+  if(keep) el.value = keep;
+}
+/* The subsegment list is whatever belongs to the segment chosen, and nothing
+   else. It was previously a free-text box that never filtered. */
+function fillSubSelect(){
+  var el = $('#subSel'); if(!el) return;
+  var seg = ($('#segSel') && $('#segSel').value) || '';
+  var subs = (seg && window.EQSegments) ? (EQSegments.subsOf(seg) || []) : [];
+  var keep = el.value;
+  el.innerHTML = '<option value="">' + (seg ? '— all of ' + esc(seg) + ' —' : '— choose a segment first —') + '</option>'
+    + subs.map(function(x){ return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join('');
+  el.disabled = !seg;
+  if(keep && subs.indexOf(keep) >= 0) el.value = keep;
+}
+
 function runLabel(r){
   if(!r) return '';
-  var name = r.kind === 'company'
-    ? (r.company || 'Company')
+  var name = r.kind === 'company' ? (r.company || 'Company')
     : ((r.segment || 'Segment') + (r.subsegment ? ' \u2014 ' + r.subsegment : ''));
   var when = r.ts ? new Date(r.ts).toLocaleDateString('en-IN') : '';
   var via = (r.source && r.source !== 'unknown') ? r.source : null;
@@ -3610,8 +3486,7 @@ function fillPicker(sel, records, current, empty){
   el.innerHTML = records.length
     ? records.map(function(r){
         return '<option value="' + esc(r.id) + '"' + (r.id === current ? ' selected' : '') + '>'
-          + esc(runLabel(r)) + '</option>';
-      }).join('')
+          + esc(runLabel(r)) + '</option>'; }).join('')
     : '<option value="">' + esc(empty) + '</option>';
 }
 
@@ -3619,184 +3494,187 @@ function composedPayload(){
   var seg = segRecord();
   if(!window.EQ || !window.EQ.compose) return null;
   if(seg) return EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; }));
-  /* No sector run at all: a standalone company still gets its report, with
-     whatever segment backdrop that company's own research carried. */
   var co = coRecord();
   return co ? co.data : null;
 }
 function composedReport(){
-  var p = composedPayload();
-  if(!p) return null;
+  var p = composedPayload(); if(!p) return null;
   try{ var b = EQ.buildReport(p); return b.ok ? b : null; }catch(e){ return null; }
 }
 
 var IMPORT_TARGET = { kind:'segment', rank:0 };
+var LAST_PROMPT = '';
 
-function renderSectorPage(){
-  var recs = sectorRecords();
-  var seg = segRecord();
+/* The prompt, or nothing. It used to fall back to a placeholder string when the
+   engine had not loaded, and that placeholder was what got copied and pasted
+   into the AI tool. Never again: if there is no engine there is no prompt, and
+   the app says so instead of handing over something meaningless. */
+function buildPromptFor(opts){
+  if(!window.EQ || !EQ.buildPrompt) return null;
+  var v = formVals();
+  var seg = opts.useSaved ? segRecord() : null;
+  var segment = opts.segment || v.segment || (seg && seg.segment) || '';
+  if(!segment && !opts.company) return null;
+  try{
+    return EQ.buildPrompt({
+      segment: segment,
+      subsegment: opts.subsegment != null ? opts.subsegment : (v.subsegment || (seg && seg.subsegment) || ''),
+      company: opts.company || '',
+      mode: opts.company ? 'company' : 'segment',
+      horizon: v.horizon
+    });
+  }catch(e){ return null; }
+}
+function buildPrompt(){ var v = formVals(); return buildPromptFor({ company: v.company }) || ''; }
+
+function researchNow(opts, what){
+  var text = buildPromptFor(opts);
+  if(!window.EQ || !EQ.buildPrompt){
+    alert('The research engine has not finished loading. Wait a moment and press Research again.\n\n'
+      + 'If it keeps happening, close the app and open it twice: a new build is fetched on the '
+      + 'first launch and runs on the second.');
+    return;
+  }
+  if(!text){
+    alert('Nothing to research yet. Choose a segment, or name a company.');
+    return;
+  }
+  LAST_PROMPT = text;
+  copyText(text).then(function(){
+    setPending('armed');
+    alert('Prompt copied for ' + what + '.\n\nNow pick a tool below. It opens with your '
+      + 'clipboard ready \u2014 paste, send, then bring the reply back with Import Data.');
+  }).catch(function(){
+    alert('Copying was blocked by the browser. Pick a tool below and the app will copy again '
+      + 'as it opens.');
+  });
+}
+
+/* ---------- rendering ---------- */
+function renderSegmentPage(){
+  if(!SEL) SEL = { sector:null, company:null, solo:'' };
+  fillSegmentSelect(); fillSubSelect();
+  var recs = sectorRecords(), seg = segRecord();
   if(seg) SEL.sector = seg.id;
   fillPicker('#segPick', recs, SEL.sector, '\u2014 none imported \u2014');
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
-    ? ((seg.segment || 'Sector') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
-    : 'Sector research';
+    ? ((seg.segment || 'Segment') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
+    : 'Segment research';
   var tag = $('#segBoxTag');
   if(tag){ tag.textContent = seg ? 'imported' : 'empty'; tag.className = 'tag' + (seg ? ' ok' : ''); }
   if($('#segBoxMeta')) $('#segBoxMeta').textContent = seg
     ? ('Imported ' + new Date(seg.ts).toLocaleString('en-IN')
        + (seg.source && seg.source !== 'unknown' ? ' \u00b7 via ' + seg.source : ''))
-    : 'Name a segment on the Analyse page, research it, then import the reply here. '
-      + 'The sector study also names the three companies worth a full report.';
+    : 'Choose a segment above, press Research, then pick a tool.';
 
   if($('#docTools')) $('#docTools').classList.toggle('hidden', !seg);
   if($('#btnDelRep')) $('#btnDelRep').disabled = !seg;
   var box = $('#segBox'); if(box) box.classList.toggle('done', !!seg);
-
-  var sel = $('#libSel');
-  if(sel){
-    sel.innerHTML = libRead().map(function(r){
-      return '<option value="' + esc(r.id) + '">' + esc(r.company || r.segment || r.id) + '</option>';
-    }).join('') || '<option value="">— none saved —</option>';
-    if(seg) sel.value = seg.id;
-  }
 }
 
-function renderCompanyPage(){
-  var recs = companyRecords();
-  var cur = coRecord();
-  if(cur) SEL.company = cur.id;
-  fillPicker('#coPick', recs, SEL.company, '\u2014 none imported \u2014');
-
-  ['btnCoDelete'].forEach(function(id){ if($('#'+id)) $('#'+id).disabled = !cur; });
-
-  var host = $('#coDocs');
-  if(host){
-    if(!cur){
-      host.innerHTML = '<p class="hint">Research a company on the Analyse page, or import one '
-        + 'of the Top 3 named by a sector study, and its report appears here.</p>';
-    } else {
-      var rank = rankOfCompany(cur);
-      host.innerHTML = '<div class="doc-row">'
-        + '<span class="doc-name">Company Research Report<small>' + esc(cur.company || '') + ' &middot; A4 PDF</small></span>'
-        + '<button class="ico ico-pdf" data-doc="co' + rank + '" data-act="make" aria-label="Generate report">PDF</button>'
-        + '<button class="ico ico-sh" data-doc="co' + rank + '" data-act="share" aria-label="Share report">&#8682;</button>'
-        + '</div>';
-    }
-  }
-  renderCompanySlots();
-}
-
-/* Which position in the composed run this company occupies, so the document
-   buttons address the right one. */
 function rankOfCompany(rec){
   var built = composedReport();
   var sym = rec && rec.data && rec.data.companies && rec.data.companies[0]
     && rec.data.companies[0].symbol;
   if(!built || !sym) return 1;
   var ix = (built.report.full || []).findIndex(function(c){
-    return String(c.symbol).toUpperCase() === String(sym).toUpperCase();
-  });
+    return String(c.symbol).toUpperCase() === String(sym).toUpperCase(); });
   return Math.max(1, Math.min(3, ix + 1));
 }
-
-/* The three slots a sector study named, shown under the Company page so the
-   Top 3 can be researched one at a time. */
 function runSlots(){
   var seg = segRecord();
   if(!window.EQ || !EQ.compose) return [];
   return EQ.compose.slots(seg ? seg.data : null, coRecords());
 }
-function renderCompanySlots(){
-  var host = $('#coBoxes'); if(!host) return;
+
+function renderCompanyPage(){
+  var recs = companyRecords(), cur = coRecord();
+  if(cur) SEL.company = cur.id;
+  fillPicker('#coPick', recs, SEL.company, '\u2014 none imported \u2014');
+  if($('#btnSoloDelete')) $('#btnSoloDelete').disabled = !cur;
+
+  var host = $('#coDocs');
+  if(host){
+    host.innerHTML = cur
+      ? ('<div class="doc-row">'
+         + '<span class="doc-name">Company Research Report<small>' + esc(cur.company || '') + ' &middot; A4 PDF</small></span>'
+         + '<button class="ico ico-pdf" data-doc="co' + rankOfCompany(cur) + '" data-act="make" aria-label="Generate report">PDF</button>'
+         + '<button class="ico ico-sh" data-doc="co' + rankOfCompany(cur) + '" data-act="share" aria-label="Share report">&#8682;</button>'
+         + '</div>')
+      : '<p class="hint">Research a company above, or import one of the Top 3, and its report appears here.</p>';
+  }
+
+  var slots = $('#coBoxes'); if(!slots) return;
   var seg = segRecord();
-  if(!seg){ host.innerHTML = ''; return; }
-  host.innerHTML = '<h2 style="margin:18px 0 8px;">Named by ' + esc(seg.segment || 'the sector study') + '</h2>'
+  if(!seg){ slots.innerHTML = ''; return; }
+  slots.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 from '
+      + esc(seg.segment || 'the segment study') + '</h2>'
     + runSlots().map(function(s){
-    var named = !!s.name, done = s.state === 'imported';
-    return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
-      + '<h2><span class="rank-badge">' + s.rank + '</span>'
-        + '<span>' + esc(s.name || 'Company ' + s.rank) + '</span>'
-        + '<span class="tag' + (done ? ' ok' : '') + '">'
-        + (done ? 'imported' : (named ? 'to research' : 'not named')) + '</span></h2>'
-      + (s.why ? '<div class="slotwhy">' + esc(s.why) + '</div>' : '')
-      + '<div class="grid3" style="margin-top:9px;">'
-        + '<button class="btn sm pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
-          + (named ? '' : ' disabled') + '>Research</button>'
-        + '<button class="btn sm co-import" data-rank="' + s.rank + '" style="margin:0;">Import Data</button>'
-        + '<button class="btn sm dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
-          + (done ? '' : ' disabled') + '>Delete</button>'
-      + '</div></div>';
-  }).join('');
+      var named = !!s.name, done = s.state === 'imported';
+      return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
+        + '<h2><span class="rank-badge">' + s.rank + '</span>'
+          + '<span>' + esc(s.name || 'Company ' + s.rank) + '</span>'
+          + '<span class="tag' + (done ? ' ok' : '') + '">'
+          + (done ? 'imported' : (named ? 'to research' : 'not named')) + '</span></h2>'
+        + (s.why ? '<div class="slotwhy">' + esc(s.why) + '</div>' : '')
+        + '<div class="grid3" style="margin-top:9px;">'
+          + '<button class="btn sm pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
+            + (named ? '' : ' disabled') + '>Research</button>'
+          + '<button class="btn sm co-import" data-rank="' + s.rank + '" style="margin:0;">Import Data</button>'
+          + '<button class="btn sm dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
+            + (done ? '' : ' disabled') + '>Delete</button>'
+        + '</div></div>';
+    }).join('');
 }
+function renderReportPage(){ renderSegmentPage(); renderCompanyPage(); }
 
-function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
-
-/* One prompt builder for every Research button on every page. */
-function promptFor(opts){
-  if(!window.EQ) return '';
-  var v = formVals();
-  var seg = segRecord();
-  return EQ.buildPrompt({
-    segment: opts.segment || (seg && seg.segment) || v.segment || '[SEGMENT]',
-    subsegment: opts.subsegment != null ? opts.subsegment : ((seg && seg.subsegment) || v.subsegment || ''),
-    company: opts.company || '',
-    mode: opts.company ? 'company' : 'segment',
-    horizon: opts.horizon || (seg && seg.data && seg.data.run && seg.data.run.horizon) || v.horizon
-  });
-}
-function copyPrompt(text, what){
-  return copyText(text).then(function(){
-    setPending('armed');
-    alert('Prompt copied for ' + what + '.\n\nOpen your AI tool from the Analyse page, paste it, '
-      + 'and bring the reply back with Import Data.');
-  }).catch(function(){
-    alert('Copying was blocked by the browser. Use the tool buttons on the Analyse page instead.');
-  });
+function openImport(target){
+  IMPORT_TARGET = target;
+  if($('#importCard')) $('#importCard').classList.remove('hidden');
+  if($('#importText')) $('#importText').value = '';
+  try{ $('#importCard').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
 }
 
 document.addEventListener('change', function(ev){
-  if(ev.target.id === 'segPick'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
-  if(ev.target.id === 'coPick'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
-  if(ev.target.id === 'scSector'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
-  if(ev.target.id === 'scCompany'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
+  var id = ev.target.id;
+  if(id === 'segSel'){ fillSubSelect(); return; }
+  if(id === 'segPick'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
+  if(id === 'coPick'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
+  if(id === 'scSector'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
+  if(id === 'scCompany'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
 });
 
 document.addEventListener('click', function(ev){
   if(!ev.target.closest) return;
 
-  /* --- the sector page --- */
+  /* --- segment page --- */
   if(ev.target.closest('#btnSegSearch')){
-    var seg = segRecord();
-    copyPrompt(promptFor({ segment: (seg && seg.segment) || formVals().segment }),
-      'the ' + ((seg && seg.segment) || formVals().segment || 'segment') + ' sector study');
+    var v = formVals();
+    if(!v.segment){ alert('Choose a segment first.'); return; }
+    researchNow({ segment: v.segment, subsegment: v.subsegment },
+      'the ' + v.segment + (v.subsegment ? ' \u2014 ' + v.subsegment : '') + ' segment study');
     return;
   }
+  if(ev.target.closest('#btnImport')){ openImport({ kind:'segment', rank:0 }); return; }
   if(ev.target.closest('#btnDelRep')){
     var s = segRecord(); if(!s) return;
-    if(!confirm('Delete the ' + (s.segment || 'sector') + ' research?\n\n'
+    if(!confirm('Delete the ' + (s.segment || 'segment') + ' research?\n\n'
       + 'Its companies go with it, so nothing is left orphaned.')) return;
     libWrite(libRead().filter(function(r){ return r.id !== s.id && r.parentId !== s.id; }));
     SEL.sector = null; renderReportPage(); renderScoreTab();
     return;
   }
 
-  /* --- the company page --- */
-  if(ev.target.closest('#btnCoSearch')){
-    var c = coRecord();
-    var nm = (c && c.company) || formVals().company;
-    if(!nm){ alert('Name a company on the Analyse page first, or pick one below.'); return; }
-    copyPrompt(promptFor({ company: nm }), nm);
+  /* --- company on its own --- */
+  if(ev.target.closest('#btnSoloSearch')){
+    var nm = ($('#soloCo') && $('#soloCo').value.trim()) || '';
+    if(!nm){ alert('Type a company name first.'); return; }
+    researchNow({ company: nm }, nm);
     return;
   }
-  if(ev.target.closest('#btnCoImport')){
-    IMPORT_TARGET = { kind:'company', rank:0, merge:false };
-    if($('#importCard')) $('#importCard').classList.remove('hidden');
-    if($('#importText')) $('#importText').value = '';
-    try{ $('#importCard').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
-    return;
-  }
-  if(ev.target.closest('#btnCoDelete')){
+  if(ev.target.closest('#btnSoloImport')){ openImport({ kind:'company', rank:0 }); return; }
+  if(ev.target.closest('#btnSoloDelete')){
     var cr = coRecord(); if(!cr) return;
     if(!confirm('Delete the research for ' + (cr.company || 'this company')
       + '?\n\nIts report goes with it. Nothing else is touched.')) return;
@@ -3805,27 +3683,21 @@ document.addEventListener('click', function(ev){
     return;
   }
 
-  /* --- the Top 3 slots --- */
+  /* --- the Top 3 --- */
   var b = ev.target.closest('.co-search, .co-import, .co-del');
   if(!b) return;
   var rank = Number(b.getAttribute('data-rank')) || 1;
   var sl = runSlots()[rank - 1];
 
   if(b.classList.contains('co-search')){
-    copyPrompt(promptFor({ company: sl && sl.name }), (sl && sl.name) || 'company ' + rank);
+    researchNow({ company: sl && sl.name, useSaved: true }, (sl && sl.name) || 'company ' + rank);
     return;
   }
-  if(b.classList.contains('co-import')){
-    IMPORT_TARGET = { kind:'company', rank:rank, merge:false };
-    if($('#importCard')) $('#importCard').classList.remove('hidden');
-    if($('#importText')) $('#importText').value = '';
-    try{ $('#importCard').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
-    return;
-  }
+  if(b.classList.contains('co-import')){ openImport({ kind:'company', rank:rank }); return; }
   if(b.classList.contains('co-del')){
     if(!sl || !sl.record) return;
     if(!confirm('Delete the research for ' + (sl.name || 'this company')
-      + '?\n\nThe sector run and the other companies are untouched.')) return;
+      + '?\n\nThe segment run and the other companies are untouched.')) return;
     libWrite(libRead().filter(function(r){ return r.id !== sl.record.id; }));
     renderCompanyPage(); renderScoreTab();
   }
