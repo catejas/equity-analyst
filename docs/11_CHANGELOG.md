@@ -495,3 +495,49 @@ Fixed:
 Changed:
 - Score Card everywhere, and "Segment / Subsegment Research" in place of the
   sector wording.
+
+## v1.4.2 — 2026-09-08
+Fixed:
+- **A company prompt asked for the whole segment study again.** The mode was
+  right — it named the company and did not screen a universe — but every segment
+  instruction was still in it: the Union Budget, the value chain, TAM, the
+  programmes, the global market. So what you pasted told the model to research
+  the sector a second time, and the searches went there instead of into the
+  company. Both the segment section and the search-depth list are now written
+  per mode. A company run gets a two-page backdrop brief that says plainly not
+  to research the segment, and a search budget spent on ratings, theses, moat,
+  management, capital allocation, mispricing, forensic, litigation, the model,
+  valuation, market context, peers and narrative. A segment run is unchanged.
+  The company prompt drops from 56,217 to 54,234 characters, and none of the
+  segment study survives in it.
+
+Confirmed by test, not by inspection: the Top 3 buttons build a prompt for their
+own company at every rank, and a name typed into the standalone box does not
+leak into them — rank 1 still asks about State Bank of India while the box says
+Tata Motors.
+
+Tests: 342 engine assertions.
+
+## v1.4.3 — 2026-09-09
+Checked by reading the prompt text rather than trusting the confirmation popup,
+which is how the previous build was passed as correct while still wrong.
+
+Fixed:
+- **The tool buttons rebuilt the prompt from the form.** Research on rank 2
+  copied Bank of Baroda correctly, but tapping Claude afterwards re-derived a
+  prompt from the standalone company box and sent that instead. Pressing
+  Research on a Top 3 company and then opening a tool sent the standalone
+  company. The tool buttons now send exactly what the last Research press built
+  and never derive anything of their own; with no Research pressed they say so
+  rather than guessing.
+- **A failed Research left the previous prompt loaded**, so a tool tap after it
+  sent something unrelated. The stored prompt is cleared before every attempt.
+- **Segment Research did nothing on a reopened run.** The dropdown is empty
+  every time the app reopens on an imported segment, and the button refused
+  rather than falling back to the saved research. It now uses the saved run when
+  the dropdown is unset.
+
+The test that found this extracts the verbatim "Company:" and "Segment:" lines
+from whatever reached the clipboard, for all three ranks, the standalone box,
+and both tool rows — with a different company typed into the standalone box
+throughout.
