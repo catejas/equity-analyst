@@ -267,10 +267,23 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT: WHAT MAKES THIS RESEARCH RATHER THAN SCORING
+7. THE SEGMENT
 ═══════════════════════════════════════════════════════════════════
+${single ? `This is a company run, so the segment work is a BACKDROP, not a study.
+Two pages at most, and only what is needed to judge this one company:
 
-The reference standard for this document is a sector thematic that spends fifty
+  where the industry sits in its cycle, and the two or three demand drivers
+  that actually move this company's revenue
+  the policy or regulation that touches it, named, with the money attached
+  who it competes with and roughly what share each holds
+  anything in the macro picture that changes its earnings — the policy rate for
+  a lender, the currency for an exporter, input costs for a manufacturer
+
+Do NOT research the whole segment. No global market sizing, no Budget history,
+no value chain, no programme-by-programme treatment, no TAM. Those belong to a
+segment run and the application already has them if one was done. Every search
+you spend on segment breadth here is a search not spent on the company, and the
+company is what this run is for.` : `The reference standard for this document is a sector thematic that spends fifty
 pages establishing why an industry will compound before it names a company. The
 segment is the argument; the companies are how it is expressed. Work in that
 order.
@@ -324,7 +337,7 @@ the sector-level equivalent of a thesis breaker.
 
 **Glossary.** Every sector has its own vocabulary. A reader who does not know
 what book-to-bill or indigenous content or persistency means cannot use the
-report.
+report.`}
 
 ═══════════════════════════════════════════════════════════════════
 8. EACH COMPANY: THE ARGUMENT
@@ -602,7 +615,26 @@ Every empty section in the payload is a section missing from the report. The
 application prints the gap rather than hiding it, so a thin run produces a thin
 document with holes in it, and the reader sees exactly what was not done.
 
-Search until each block below has something in it. These are not optional
+${single ? `Spend the whole budget on this one company. Search until each of these has
+something in it:
+
+  ratings          all 52 components, each with its evidence sentence
+  theses           three, each with a mechanism and a figure
+  moat             the barrier named, and what it has survived
+  management       who they are, and promised against delivered
+  capital          ten years of where the cash went and what it earned
+  mispricing       the bear's own words, each answered
+  forensic         two consecutive years of line items, and ten years of
+                   profit against operating cash
+  litigation       every register, with the clean ones recorded as clean
+  model            segment drivers, costs, capex, working capital, debt, shares
+  valuation        price with its date, discount rate, and three scenarios
+  market           consensus, shareholding by quarter, liquidity, price history
+  peers            the sector's own metrics
+  narrative        catalysts, risks with sizes, thesis breakers, questions
+
+Roughly twenty-five searches. The segment backdrop should take two or three of
+them, no more.` : `Search until each block below has something in it. These are not optional
 extras; each one is a named section of the finished report:
 
   the world        global market size, its growth over 15/10/5/3 years, and a
@@ -620,10 +652,12 @@ extras; each one is a named section of the finished report:
   programmes       the contracts driving demand, traced to listed suppliers
   competition      share by player, with the basis stated
 
-Budget for roughly twenty-five searches on a segment run and twenty-five per
-company. If a block is still empty after searching for it properly, write null
-and say so in researchNotes — that is honest and the report will print it. What
-is not acceptable is leaving it empty because it was never looked for.
+Roughly twenty-five searches, and name the three companies worth a full report
+in run.top3 before you stop.`}
+
+If a block is still empty after searching for it properly, write null and say so
+in researchNotes — that is honest and the report will print it. What is not
+acceptable is leaving it empty because it was never looked for.
 
 Two habits that fill these sections fastest: search the primary source directly
 rather than commentary about it — the ministry, the regulator, the budget
