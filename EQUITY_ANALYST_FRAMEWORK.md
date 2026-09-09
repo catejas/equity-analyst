@@ -537,9 +537,8 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT: WHAT MAKES THIS RESEARCH RATHER THAN SCORING
+7. THE SEGMENT
 ═══════════════════════════════════════════════════════════════════
-
 The reference standard for this document is a sector thematic that spends fifty
 pages establishing why an industry will compound before it names a company. The
 segment is the argument; the companies are how it is expressed. Work in that
@@ -890,10 +889,12 @@ extras; each one is a named section of the finished report:
   programmes       the contracts driving demand, traced to listed suppliers
   competition      share by player, with the basis stated
 
-Budget for roughly twenty-five searches on a segment run and twenty-five per
-company. If a block is still empty after searching for it properly, write null
-and say so in researchNotes — that is honest and the report will print it. What
-is not acceptable is leaving it empty because it was never looked for.
+Roughly twenty-five searches, and name the three companies worth a full report
+in run.top3 before you stop.
+
+If a block is still empty after searching for it properly, write null and say so
+in researchNotes — that is honest and the report will print it. What is not
+acceptable is leaving it empty because it was never looked for.
 
 Two habits that fill these sections fastest: search the primary source directly
 rather than commentary about it — the ministry, the regulator, the budget
@@ -1442,64 +1443,23 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT: WHAT MAKES THIS RESEARCH RATHER THAN SCORING
+7. THE SEGMENT
 ═══════════════════════════════════════════════════════════════════
+This is a company run, so the segment work is a BACKDROP, not a study.
+Two pages at most, and only what is needed to judge this one company:
 
-The reference standard for this document is a sector thematic that spends fifty
-pages establishing why an industry will compound before it names a company. The
-segment is the argument; the companies are how it is expressed. Work in that
-order.
+  where the industry sits in its cycle, and the two or three demand drivers
+  that actually move this company's revenue
+  the policy or regulation that touches it, named, with the money attached
+  who it competes with and roughly what share each holds
+  anything in the macro picture that changes its earnings — the policy rate for
+  a lender, the currency for an exporter, input costs for a manufacturer
 
-**The world.** Global market size and its compound growth over fifteen, ten,
-five and three years. The structural forces reshaping it. A table of global
-peers with market capitalisation, five-year return, forward multiple, growth
-history and forecast, and a plain sentence on what each one actually makes.
-Then where India sits, and the trade flowing each way.
-
-**India.** Growth, inflation, the policy rate, the currency, credit growth and
-capacity utilisation, each with its period and source. An undated macro figure
-is not usable.
-
-**The Union Budget.** The allocations that touch this segment, over five years,
-each with what was announced and what was actually spent. The gap between the
-two is usually the story. Add the Economic Survey's own reading of the segment.
-
-**Policy.** Each scheme to the same template: name, ministry, objective,
-funding and scope, outcomes to date, challenges, and how it reaches this
-segment. Then the evolution of the regime by era, with dates. A segment thesis
-that never mentions policy is not an Indian equity thesis.
-
-**Regulation.** The regulator, the rules, what is under review, and what a
-change would cost.
-
-**Geopolitics and supply chains.** Import dependence, export exposure, tariff
-and sanction risk, and supply-chain concentration, with the trade data behind
-each claim.
-
-**The industry.** Structure, where it sits in its cycle, the demand drivers each
-tagged positive or negative, where the profit pool sits and whether it is
-moving, and the technology shift.
-
-**The value chain.** Node by node, upstream to downstream, with the listed
-companies at each node named — direct beneficiaries and second order both.
-
-**TAM, SAM and SOM**, each with its basis, year and source.
-
-**Programmes and contracts.** The major national programmes, tenders or order
-pipelines driving demand. Each with scale, timeline, participants, and — this is
-the part that matters — which listed companies supply what into it. A programme
-that is not traced to a listed supplier is background, not research.
-
-**Competition.** Share by player with the basis stated, because volume share and
-value share are different numbers. Concentration, entry barriers, substitution
-and pricing behaviour.
-
-**Key monitorables.** What would confirm or break the segment thesis. This is
-the sector-level equivalent of a thesis breaker.
-
-**Glossary.** Every sector has its own vocabulary. A reader who does not know
-what book-to-bill or indigenous content or persistency means cannot use the
-report.
+Do NOT research the whole segment. No global market sizing, no Budget history,
+no value chain, no programme-by-programme treatment, no TAM. Those belong to a
+segment run and the application already has them if one was done. Every search
+you spend on segment breadth here is a search not spent on the company, and the
+company is what this run is for.
 
 ═══════════════════════════════════════════════════════════════════
 8. EACH COMPANY: THE ARGUMENT
@@ -1777,28 +1737,30 @@ Every empty section in the payload is a section missing from the report. The
 application prints the gap rather than hiding it, so a thin run produces a thin
 document with holes in it, and the reader sees exactly what was not done.
 
-Search until each block below has something in it. These are not optional
-extras; each one is a named section of the finished report:
+Spend the whole budget on this one company. Search until each of these has
+something in it:
 
-  the world        global market size, its growth over 15/10/5/3 years, and a
-                   handful of global peers with what each of them makes
-  macro            six readings, each with its period and its source
-  budget           the allocations touching this segment over five years, with
-                   what was announced AND what was actually spent
-  economic survey  the Survey's own words on this segment
-  policy           every scheme that touches it, each to the full template
-  regulation       the regulator, the rules, what is under review
-  geopolitics      import dependence and export exposure WITH the trade data
-  industry         structure, cycle, drivers tagged, profit pool
-  value chain      every node, and the listed companies sitting at each one
-  tam              three figures, each with a basis and a source
-  programmes       the contracts driving demand, traced to listed suppliers
-  competition      share by player, with the basis stated
+  ratings          all 52 components, each with its evidence sentence
+  theses           three, each with a mechanism and a figure
+  moat             the barrier named, and what it has survived
+  management       who they are, and promised against delivered
+  capital          ten years of where the cash went and what it earned
+  mispricing       the bear's own words, each answered
+  forensic         two consecutive years of line items, and ten years of
+                   profit against operating cash
+  litigation       every register, with the clean ones recorded as clean
+  model            segment drivers, costs, capex, working capital, debt, shares
+  valuation        price with its date, discount rate, and three scenarios
+  market           consensus, shareholding by quarter, liquidity, price history
+  peers            the sector's own metrics
+  narrative        catalysts, risks with sizes, thesis breakers, questions
 
-Budget for roughly twenty-five searches on a segment run and twenty-five per
-company. If a block is still empty after searching for it properly, write null
-and say so in researchNotes — that is honest and the report will print it. What
-is not acceptable is leaving it empty because it was never looked for.
+Roughly twenty-five searches. The segment backdrop should take two or three of
+them, no more.
+
+If a block is still empty after searching for it properly, write null and say so
+in researchNotes — that is honest and the report will print it. What is not
+acceptable is leaving it empty because it was never looked for.
 
 Two habits that fill these sections fastest: search the primary source directly
 rather than commentary about it — the ministry, the regulator, the budget

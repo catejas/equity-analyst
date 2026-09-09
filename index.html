@@ -420,7 +420,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.08.2";</script>
+<script>window.APP_BUILD="2026.09.09.1";</script>
 </head>
 <body>
 
@@ -975,27 +975,28 @@ function setPending(kind){
   if(row) row.classList.toggle('armed', kind === 'armed');
 }
 
+/* A tool button opens the tool with the prompt already copied. It must send the
+   prompt the person actually asked for — the one the last Research press built.
+   It used to rebuild from the form, which reads the standalone company box, so
+   pressing Research on rank 2 and then tapping a tool sent the standalone
+   company instead. The prompt is never derived here. */
 $$('#toolRow [data-tool], #toolRowCo [data-tool]').forEach(function(b){
   b.addEventListener('click', function(){
     var t = TOOLS[b.dataset.tool];
+    if(!t) return;
 
-    if(!requireCompany()) return;
-    var payload = buildPrompt(), mode = get('eq.mode','full'), base = get('eq.base','');
-    if(mode === 'link'){
-      if(!base){ alert('Set your hosted address under Setup first, or switch back to full text.');
-                 goTab('setup'); return; }
-      var v = formVals();
-      payload = 'Fetch and follow every instruction in this document, in full:\n'
-        + base + '/protocol.md\n\n'
-        + 'Company: ' + v.company + '\nIPO type: ' + v.type
-        + '\nHorizon: ' + v.horizon + '\nInvestor: ' + v.investor
-        + '\n\nTurn web search on. Produce all six files and the File 7 import block exactly as the document specifies.';
+    if(!LAST_PROMPT){
+      alert('Press Research first.\n\nThe tool buttons send the prompt that Research '
+        + 'built \u2014 they do not build one of their own, so there is nothing to send yet.');
+      return;
     }
+    var payload = LAST_PROMPT;
     copyText(payload).then(function(){
-      saveRecent();
-      b.textContent = 'Copied — opening…';
+      b.textContent = 'Copied \u2014 opening\u2026';
       setTimeout(function(){ b.textContent = t.name; }, 2500);
       openTool(t);
+    }).catch(function(){
+      alert('Copying was blocked by the browser. Press Research again, then tap the tool.');
     });
   });
 });
@@ -3575,6 +3576,9 @@ function buildPromptFor(opts){
 function buildPrompt(){ var v = formVals(); return buildPromptFor({ company: v.company }) || ''; }
 
 function researchNow(opts, what){
+  /* Cleared first. If this attempt produces nothing, the tool buttons must have
+     nothing to send rather than the prompt from a previous, unrelated press. */
+  LAST_PROMPT = '';
   var text = buildPromptFor(opts);
   if(!window.EQ || !EQ.buildPrompt){
     alert('The research engine has not finished loading. Wait a moment and press Research again.\n\n'
@@ -3698,9 +3702,14 @@ document.addEventListener('click', function(ev){
   /* --- segment page --- */
   if(ev.target.closest('#btnSegSearch')){
     var v = formVals();
-    if(!v.segment){ alert('Choose a segment first.'); return; }
-    researchNow({ segment: v.segment, subsegment: v.subsegment },
-      'the ' + v.segment + (v.subsegment ? ' \u2014 ' + v.subsegment : '') + ' segment study');
+    /* The dropdown is empty every time the app reopens on an imported run, so
+       the saved research is the fallback rather than a dead button. */
+    var rec = segRecord();
+    var segName = v.segment || (rec && rec.segment) || '';
+    var subName = v.segment ? v.subsegment : ((rec && rec.subsegment) || '');
+    if(!segName){ alert('Choose a segment first.'); return; }
+    researchNow({ segment: segName, subsegment: subName },
+      'the ' + segName + (subName ? ' \u2014 ' + subName : '') + ' segment study');
     return;
   }
   if(ev.target.closest('#btnImport')){ openImport({ kind:'segment', rank:0 }); return; }
