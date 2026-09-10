@@ -590,3 +590,74 @@ one.
 
 Tests: 350 engine assertions, plus browser suites for both pages, the prompt
 subjects, the five-page flow and the standalone company.
+
+## v1.6.0 — 10-09-2026
+Fixed:
+- **The independent company's PDF and Share acted on the wrong company.** Those
+  buttons resolved through the Saved Company Research picker, so they produced
+  whichever company that list happened to be showing. The independent box now
+  has its own picker and its own record, and its documents are built from that
+  company's own payload.
+- **Only one segment run was ever kept.** Importing a second segment deleted the
+  first, which is why a Top 3 vanished when another segment was researched.
+  Every run is now held: the same segment on another date, or with another tool,
+  is its own run with its own Top 3. Only an identical run from the same tool on
+  the same day is treated as a re-import.
+- Companies are tied to the segment run they were imported under, by record, so
+  selecting any saved run loads that run's own Top 3 and nothing bleeds across.
+
+Changed:
+- **The AI tool comes from the payload.** run.tool is part of the contract and
+  the prompt asks the model to name itself, so the app no longer asks. The
+  picker is gone from the import panel.
+- **Dates are day first everywhere** — the app, the pickers, the reports and the
+  build number. A report stamp that read 2026-09-09T01:28:46.740Z now reads
+  09-09-2026 01:28.
+
+Verified:
+- The Sector and Executive Summary reports absorb Top 3 research as it arrives
+  and build without it: sector 129,600 chars with no company imported, 176,517
+  with one, 257,379 with three; the summary 59,460, 74,230 and 103,245.
+- Three segment runs held at once — Banking/Claude, Defence/Claude and
+  Banking/Gemini — each loading its own Top 3 when selected.
+
+Tests: 350 engine assertions and seven browser suites.
+
+## v1.7.0 — 10-09-2026
+The engine chooses the Top 3.
+
+The fault: the prompt said "You do not produce scores, ratios, intrinsic values
+or rankings — the application computes all of those", and then asked the model
+to "name the three companies worth a full report". Naming three IS a ranking,
+and it was the only one in the system with no rubric behind it: no anchors, no
+weights, no evidence required, just one line on why. Worse, the segment run
+supplied nothing about the twelve it screened except counts and exclusions, so
+the 52-component engine and the kill switch never saw the shortlist at all —
+they scored only the three already chosen. Everything downstream was
+reproducible; the decision that determined what got researched was opinion.
+
+Changed:
+- **A new screen.** The segment run now rates every shortlisted company on the
+  four pillars, each with a sentence of evidence carrying a figure, and the
+  application ranks them and takes the three. Equal weights, missing pillars
+  renormalised rather than counted as zero, a company rated on fewer than three
+  pillars ranked below every fully rated one, and ties reported rather than
+  broken silently.
+- The prompt now says DO NOT CHOOSE THE THREE, and explains why: this was the
+  one judgement with no rubric, and it is exactly where two tools diverged on
+  identical research. run.top3 is no longer requested.
+- Each company box shows the score that put it there.
+- An older run that named its own three still loads, and is marked as stated
+  rather than screened, because a name chosen by opinion should not look like
+  one chosen by the engine.
+
+Verified: the same twelve ratings submitted in two different orders by two
+different tools produce the same three — State Bank of India, Indian Bank, Union
+Bank of India — and the ranking is order-independent under reversal and
+alphabetical sorting.
+
+Still true, and worth saying: two tools can still differ if they searched
+different sources and found different numbers. The screening is now
+reproducible; the inputs to it are not.
+
+Tests: 358 engine assertions and eight browser suites.
