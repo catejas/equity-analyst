@@ -865,8 +865,15 @@ function gmpTile(ipo, lang){
 function dmy(v){
   var t = S(v);
   if(!t) return '';
-  /* An ISO date anywhere in the string, with whatever follows it left alone —
-     that keeps the time and the IST suffix on the analysis stamp. */
+  /* A full machine timestamp is printed the way a reader writes one: day first,
+     minutes, no seconds and no Z. It used to reach the page as
+     2026-09-09T01:28:46.740Z, which is a stamp for a log, not a report. */
+  t = t.replace(/\b(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?/g,
+    function(_, y, mo, d, hh, mm, tz){
+      var suffix = (tz && tz !== 'Z') ? '' : '';
+      return d + '-' + mo + '-' + y + ' ' + hh + ':' + mm + suffix;
+    });
+  /* A bare date anywhere else in the string. */
   return t.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function(_, y, mo, d){
     return d + '-' + mo + '-' + y; });
 }

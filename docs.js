@@ -18,8 +18,28 @@ var PNG_SCALE = 4;   /* 4960 x 7016 = 600 DPI at A4. Messaging apps downscale
 /* Every document is built from the whole run: the segment study plus whichever
    companies have been imported. The pieces are stored separately so each can be
    researched in one reply; they are only reassembled here. */
-function currentPayload(){
+function currentPayload(kind){
   if(!window.composedReport) return null;
+  /* An independent company is its own run. Its documents are built from its own
+     payload, addressed by the picker in its own box — not through the Saved
+     Company Research list, which is what made its PDF button hand over whichever
+     company that list was showing. */
+  if(kind === 'solo' && typeof soloRecord === 'function'){
+    var solo = soloRecord();
+    if(solo && solo.data){
+      try{
+        var b = EQ.buildReport(solo.data);
+        if(b.ok) return {
+          meta: { segment: (solo.data.run && solo.data.run.segment) || null,
+                  subsegment: (solo.data.run && solo.data.run.subsegment) || null,
+                  company: solo.company,
+                  analysis_datetime: new Date(solo.ts).toISOString() },
+          report: b.report, warnings: b.warnings || [], companyIndex: 0
+        };
+      }catch(e){}
+    }
+    return null;
+  }
   var built = composedReport();
   if(!built) return null;
   var seg = (typeof segRecord === 'function') ? segRecord() : null;
@@ -477,10 +497,12 @@ function share(files, title){
   return shareNow(files, title).then(function(r){ return r.ok; });
 }
 
-function needPayload(){
-  var p = currentPayload();
+function needPayload(kind){
+  var p = currentPayload(kind);
   if(!p){
-    msg('Select a saved analysis first — and it must be a v3 data block imported with Import Data.', true);
+    msg(kind === 'solo'
+      ? 'Import an independent company first — its report is built from its own research.'
+      : 'Import a research payload first.', true);
     return null;
   }
   return p;
@@ -563,7 +585,7 @@ function doAll(act, msgTarget){
 function doAction(kind, act, msgTarget){
   if(kind === 'all') return doAll(act, msgTarget);
   MSG_EL = msgTarget || '#docMsg';
-  var p = needPayload(); if(!p) return;
+  var p = needPayload(kind); if(!p) return;
   var langs = langsWanted();
 
   if(act === 'make' && !isPng(kind)){
