@@ -55,13 +55,14 @@ function currentPayload(){
 function langsWanted(){ return [ALL_LANG]; }
 function docLang(){ return ALL_LANG; }
 function shareTitle(p, kind){
-  if(/^co[123]$/.test(kind) && p.report && p.report.full){
+  if((kind==='solo' || /^co[123]$/.test(kind)) && p.report && p.report.full){
     var c = p.report.full[companyIndexFor(p, kind)];
     if(c) return EQDocs.S(c.name || c.symbol);
   }
   return EQDocs.S((p.meta && (p.meta.segment || p.meta.company)) || 'Equity Analyst');
 }
 function companyIndexFor(p, kind){
+  if(kind === 'solo') return (p && p.companyIndex) || 0;
   var m = /^co([123])$/.exec(kind);
   if(m) return Number(m[1]) - 1;
   return (p && p.companyIndex) || 0;
@@ -70,7 +71,7 @@ function fileBase(p, kind, lang){
   /* Per-company documents are named for the company; run-level ones for the
      segment, since naming three companies' report after one of them is how a
      file ends up filed in the wrong place. */
-  var perCompany = /^co[123]$/.test(kind) || kind === 'score' || kind === 'scorepng';
+  var perCompany = kind === 'solo' || /^co[123]$/.test(kind) || kind === 'score' || kind === 'scorepng';
   var co = null;
   if(perCompany && p.report && p.report.full){
     co = p.report.full[companyIndexFor(p, kind)];
@@ -80,7 +81,7 @@ function fileBase(p, kind, lang){
     : '';
   var nm = (raw || 'Equity').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
   var k = kind==='sector' ? 'Sector_Research_Report'
-        : /^co[123]$/.test(kind) ? 'Company_Research_Report'
+        : (kind==='solo' || /^co[123]$/.test(kind)) ? 'Company_Research_Report'
         : kind==='exec' ? 'Executive_Summary'
         : 'Score_Card';
   return nm + '_' + k + '_' + lang.toUpperCase();
@@ -107,7 +108,7 @@ function buildHTML(p, kind, lang){
   p = withLocalGmp(p);
   /* The three company reports are the same builder pointed at a different
      rank. Nothing else distinguishes them. */
-  if(/^co[123]$/.test(kind)){
+  if(kind === 'solo' || /^co[123]$/.test(kind)){
     return EQDocs.buildCompany(Object.assign({}, p, { companyIndex: companyIndexFor(p, kind) }), lang);
   }
   if(kind === 'sector') return EQDocs.buildSector(p, lang);
@@ -122,7 +123,7 @@ function msgEl(){
   /* Progress belongs next to the button that was pressed, so each page has its
      own line. Rendering a 41-page report with the message on another tab is why
      the company reports looked like they were doing nothing. */
-  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-sector','#docMsg']];
+  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-segment','#docMsg']];
   for(var i=0;i<pages.length;i++){
     var sec = document.getElementById(pages[i][0]);
     if(sec && !sec.classList.contains('hidden') && document.querySelector(pages[i][1])) return pages[i][1];

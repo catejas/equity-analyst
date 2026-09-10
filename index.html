@@ -272,6 +272,8 @@ details .in{padding:0 14px 14px;}
 .pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
 .runbox{margin-bottom:12px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.btn.xs{font-size:.72rem;padding:11px 2px;min-height:44px;letter-spacing:.01em;}
 .ico{position:relative;z-index:2;min-width:52px;min-height:44px;}
 .runbox h2 .tag{font-size:.62rem;vertical-align:middle;margin-left:8px;}
 .runbox.waiting{opacity:.72;}
@@ -420,7 +422,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="2026.09.09.1";</script>
+<script>window.APP_BUILD="2026.09.10.1";</script>
 </head>
 <body>
 
@@ -496,11 +498,6 @@ body.previewing{overflow:hidden;}
         <button class="ico ico-pdf" data-doc="exec" data-act="make" aria-label="Generate Executive Summary">PDF</button>
         <button class="ico ico-sh" data-doc="exec" data-act="share" aria-label="Share Executive Summary">&#8682;</button>
       </div>
-      <div class="doc-row">
-        <span class="doc-name">Score Card<small>every rating with its anchor</small></span>
-        <button class="ico ico-pdf" data-doc="score" data-act="make" aria-label="Generate Score Card">PDF</button>
-        <button class="ico ico-sh" data-doc="score" data-act="share" aria-label="Share Score Card">&#8682;</button>
-      </div>
     </div>
       <div id="docMsg" class="note" style="margin-top:8px;"></div>
     </div>
@@ -526,17 +523,20 @@ body.previewing{overflow:hidden;}
 <section id="tab-company" class="hidden">
 
   <div class="card runbox">
-    <h2>A company on its own</h2>
+    <h2>Independent Company Research</h2>
     <p class="hint">No segment needed. Name any listed company and research it; its report
     stands alone.</p>
     <label for="soloCo">Company name</label>
     <input type="text" id="soloCo" placeholder="e.g. Punjab National Bank"
            autocomplete="off" autocapitalize="words" enterkeyhint="done">
-    <div class="grid3" style="margin-top:11px;">
-      <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
-      <button class="btn sm" id="btnSoloImport" style="margin:0;">Import Data</button>
-      <button class="btn sm dang" id="btnSoloDelete" style="margin:0;">Delete</button>
+    <div class="grid5" style="margin-top:11px;">
+      <button class="btn xs pri" id="btnSoloSearch" style="margin:0;">Research</button>
+      <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
+      <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
+      <button class="btn xs" id="btnSoloPdf" data-doc="solo" data-act="make" style="margin:0;">PDF</button>
+      <button class="btn xs" id="btnSoloShare" data-doc="solo" data-act="share" style="margin:0;">Share</button>
     </div>
+    <div id="soloMsg" class="note" style="margin-top:8px;"></div>
   </div>
 
   <div id="coBoxes"></div>
@@ -545,7 +545,6 @@ body.previewing{overflow:hidden;}
     <h2>Saved company research</h2>
     <label for="coPick">Every company imported into this app</label>
     <select id="coPick"><option value="">— none imported —</option></select>
-    <div id="coDocs" style="margin-top:11px;"></div>
     <div id="coMsg" class="note" style="margin-top:8px;"></div>
 
     <label style="margin-top:16px;">Open AI tool</label>
@@ -3593,8 +3592,19 @@ function researchNow(opts, what){
   LAST_PROMPT = text;
   copyText(text).then(function(){
     setPending('armed');
-    alert('Prompt copied for ' + what + '.\n\nNow pick a tool below. It opens with your '
-      + 'clipboard ready \u2014 paste, send, then bring the reply back with Import Data.');
+    /* Take the person to the tool row rather than telling them it is somewhere
+       below. On the Company page it is past three company boxes, which is why
+       pressing Research there felt like nothing happened. */
+    var row = document.querySelector('#tab-company:not(.hidden) #toolRowCo')
+           || document.querySelector('#tab-segment:not(.hidden) #toolRow')
+           || $('#toolRowCo') || $('#toolRow');
+    if(row){
+      row.classList.add('armed');
+      try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){}
+    }
+    alert('Prompt copied for ' + what + '.\n\nPick a tool \u2014 the four buttons are '
+      + 'highlighted below. The tool opens with your clipboard ready: paste, send, then '
+      + 'bring the reply back with Import Data.');
   }).catch(function(){
     alert('Copying was blocked by the browser. Pick a tool below and the app will copy again '
       + 'as it opens.');
@@ -3669,13 +3679,18 @@ function renderCompanyPage(){
           + '<span class="tag' + (done ? ' ok' : '') + '">'
           + (done ? 'imported' : (named ? 'to research' : 'not named')) + '</span></h2>'
         + (s.why ? '<div class="slotwhy">' + esc(s.why) + '</div>' : '')
-        + '<div class="grid3" style="margin-top:9px;">'
-          + '<button class="btn sm pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
+        + '<div class="grid5" style="margin-top:9px;">'
+          + '<button class="btn xs pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
             + (named ? '' : ' disabled') + '>Research</button>'
-          + '<button class="btn sm co-import" data-rank="' + s.rank + '" style="margin:0;">Import Data</button>'
-          + '<button class="btn sm dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
+          + '<button class="btn xs co-import" data-rank="' + s.rank + '" style="margin:0;">Import</button>'
+          + '<button class="btn xs dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
             + (done ? '' : ' disabled') + '>Delete</button>'
-        + '</div></div>';
+          + '<button class="btn xs" data-doc="co' + s.rank + '" data-act="make" style="margin:0;"'
+            + (done ? '' : ' disabled') + '>PDF</button>'
+          + '<button class="btn xs" data-doc="co' + s.rank + '" data-act="share" style="margin:0;"'
+            + (done ? '' : ' disabled') + '>Share</button>'
+        + '</div>'
+        + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
 }
 function renderReportPage(){ renderSegmentPage(); renderCompanyPage(); }

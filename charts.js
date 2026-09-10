@@ -592,20 +592,20 @@
   /* The stylesheet the figures need, appended to the document CSS. */
   var CSS = `
 .fig{margin:2.5mm 0 3.5mm;break-inside:avoid;page-break-inside:avoid;}
-.fig-t{font:600 8.2pt/1.35 var(--sans);color:var(--ink2);margin-bottom:1.2mm;}
+.fig-t{font:600 9.6pt/1.35 var(--sans);color:var(--ink2);margin-bottom:1.2mm;}
 .fig-t b{color:var(--navy);}
 .fig-b{background:var(--panel2);border:1px solid var(--rule2);padding:2mm 2mm 1mm;}
-.fig-s{font:400 6.6pt/1.3 var(--sans);color:var(--ink4);margin-top:0.8mm;}
-.fig-na{font:italic 400 7.6pt/1.4 var(--sans);color:var(--ink3);padding:6mm 2mm;text-align:center;}
-.fig-l{display:flex;flex-wrap:wrap;gap:3mm;margin-top:1mm;font:400 6.8pt/1.2 var(--sans);color:var(--ink2);}
+.fig-s{font:400 8pt/1.3 var(--sans);color:var(--ink4);margin-top:0.8mm;}
+.fig-na{font:italic 400 9pt/1.4 var(--sans);color:var(--ink3);padding:6mm 2mm;text-align:center;}
+.fig-l{display:flex;flex-wrap:wrap;gap:3mm;margin-top:1mm;font:400 8.2pt/1.2 var(--sans);color:var(--ink2);}
 .fig-l.col{display:block;}
 .fig-l span{display:flex;align-items:center;gap:1.2mm;margin-bottom:0.8mm;}
 .fig-l i{width:2.4mm;height:2.4mm;border-radius:0.5mm;display:inline-block;flex:0 0 auto;}
 .fig-row{display:flex;align-items:center;gap:3mm;}
 .fig svg{display:block;}
-.fig text.ax{font:400 6.4pt var(--sans);fill:var(--ink3);}
+.fig text.ax{font:400 7.8pt var(--sans);fill:var(--ink3);}
 .fig text.ax.ink{fill:var(--ink2);}
-table.heat{width:100%;border-collapse:collapse;font:400 7pt var(--sans);}
+table.heat{width:100%;border-collapse:collapse;font:400 8.6pt var(--sans);}
 table.heat th{font-weight:600;color:var(--ink2);padding:1mm;text-align:left;}
 table.heat th.num,table.heat td.num{text-align:right;}
 table.heat td{padding:1mm 1.4mm;border:1px solid var(--paper);}

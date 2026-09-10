@@ -594,7 +594,7 @@ var CSS = (window.EQCharts && window.EQCharts.CSS ? window.EQCharts.CSS : '') + 
 }
 html,body{ background:#E9E7E1; }
 body{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; color:var(--ink);
-      font-size:8.5pt; line-height:1.45; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      font-size:10.2pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 body.gu{ font-family:"Noto Sans Gujarati","Shruti","Gujarati Sangam MN",Helvetica,Arial,sans-serif;
          font-size:8.7pt; line-height:1.7; }
 body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-height:1.4; }
@@ -605,8 +605,8 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
 .body{ flex:1; display:flex; flex-direction:column; padding:0 15mm; overflow:hidden; }
 .rh{ display:flex; justify-content:space-between; align-items:center;
      padding:7mm 15mm 3.5mm; border-bottom:.6pt solid var(--rule); }
-.rh .l{ font-size:7pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
-.rh .r{ font-size:6.8pt; color:var(--ink3); letter-spacing:.05em; }
+.rh .l{ font-size:8.6pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
+.rh .r{ font-size:8.2pt; color:var(--ink3); letter-spacing:.05em; }
 .ch{ margin:3mm 0 2mm; }
 .ch svg{ display:block; max-width:100%; }
 .chbars{ margin:2.5mm 0; }
@@ -623,59 +623,59 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
 .chleg i{ display:inline-block; width:3mm; height:3mm; border-radius:1mm; margin-right:1.5mm; vertical-align:-0.3mm; }
 .sc2col{ column-count:2; column-gap:7mm; margin-top:1mm; }
 .sc2blk{ break-inside:avoid; -webkit-column-break-inside:avoid; margin-bottom:3mm; }
-.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:7.6pt;
+.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:9.2pt;
         font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.05em;
         border-bottom:.7pt solid var(--navy); padding-bottom:.8mm; margin-bottom:1mm; }
-.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:7.4pt; }
+.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:10.8pt; }
 .sc2row .l{ flex:1; color:var(--ink2); line-height:1.25; }
 .sc2row .t{ flex:0 0 14mm; height:2mm; background:#EEF1F5; border-radius:1mm; overflow:hidden; }
 .sc2row .t i{ display:block; height:100%; border-radius:0 1mm 1mm 0; }
 .sc2row .v{ flex:0 0 11mm; text-align:right; font-weight:700; }
-.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:6.4pt; }
+.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:9.4pt; }
 .rfw{ border-top:.6pt solid var(--rule); }
-.rfn{ padding:2.2mm 15mm 0; font-size:5.4pt; line-height:1.42; color:var(--ink4);
+.rfn{ padding:2.2mm 15mm 0; font-size:7.2pt; line-height:1.42; color:var(--ink4);
       text-align:justify; }
-body.gu .rfn{ font-size:5.5pt; line-height:1.55; }
+body.gu .rfn{ font-size:7.2pt; line-height:1.55; }
 .rfw .rf{ border-top:0; padding-top:1.6mm; }
 .rf{ display:flex; justify-content:space-between; align-items:center;
-     padding:3mm 15mm 7mm; border-top:.6pt solid var(--rule); font-size:6.4pt; color:var(--ink4); }
+     padding:3mm 15mm 7mm; border-top:.6pt solid var(--rule); font-size:9.4pt; color:var(--ink4); }
 .rf b{ color:var(--ink2); font-weight:700; }
 h1{ font-size:22pt; line-height:1.1; letter-spacing:-.025em; font-weight:700; }
 .sec{ display:flex; align-items:baseline; gap:3mm; margin:5mm 0 2.5mm; }
-.sec .no{ font-size:7pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
+.sec .no{ font-size:8.6pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
 .sec .ti{ font-size:10.5pt; font-weight:700; letter-spacing:-.01em; color:var(--navy); }
 .sec .ln{ flex:1; height:.6pt; background:var(--rule); }
-.lead{ font-size:9pt; line-height:1.55; color:var(--ink2); }
+.lead{ font-size:10.8pt; line-height:1.55; color:var(--ink2); }
 body.gu .lead{ line-height:1.75; }
-.mut{ font-size:7pt; color:var(--ink3); line-height:1.4; }
+.mut{ font-size:8.6pt; color:var(--ink3); line-height:1.4; }
 body.gu .mut{ line-height:1.65; }
-.eyebrow{ font-size:6.6pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
+.eyebrow{ font-size:9.6pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
 body.gu .eyebrow{ letter-spacing:.06em; }
-table{ width:100%; border-collapse:collapse; font-size:7.4pt; }
-th{ text-align:left; font-size:6.3pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+table{ width:100%; border-collapse:collapse; font-size:10.8pt; }
+th{ text-align:left; font-size:7.6pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
     color:var(--ink3); padding:2mm; border-bottom:.9pt solid var(--navy); white-space:nowrap; }
-body.gu th{ font-size:6.9pt; letter-spacing:.02em; }
+body.gu th{ font-size:8.2pt; letter-spacing:.02em; }
 td{ padding:1.9mm 2mm; border-bottom:.5pt solid var(--rule2); vertical-align:top; }
 td.n,th.n{ text-align:right; font-variant-numeric:tabular-nums;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 tr.hi td{ background:var(--teal2); font-weight:600; }
 tr.tot td{ border-top:.9pt solid var(--navy); font-weight:700; background:var(--panel); }
 .vb{ border:1.4pt solid var(--navy); border-radius:2mm; overflow:hidden; }
-.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:6.6pt; font-weight:800;
+.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:9.6pt; font-weight:800;
         letter-spacing:.17em; text-transform:uppercase; }
-body.gu .vb .h{ letter-spacing:.05em; font-size:7.4pt; }
+body.gu .vb .h{ letter-spacing:.05em; font-size:10.8pt; }
 .vb .c{ padding:4mm; }
 .vb .v{ font-size:15.5pt; font-weight:700; letter-spacing:-.02em; line-height:1.2; color:var(--navy); }
 .tiles{ display:flex; gap:2.5mm; }
 .tile{ flex:1; border:.6pt solid var(--rule); border-top:2pt solid var(--navy); border-radius:1mm;
        padding:2.6mm 3mm; background:var(--panel2); }
-.tile .k{ font-size:5.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
-body.gu .tile .k{ letter-spacing:.03em; font-size:6.6pt; }
+.tile .k{ font-size:7.3pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
+body.gu .tile .k{ letter-spacing:.03em; font-size:9.6pt; }
 .tile .v{ font-size:17pt; font-weight:700; letter-spacing:-.03em; line-height:1.05; margin-top:.6mm;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .tile .v small{ font-size:7.5pt; color:var(--ink4); font-weight:600; }
-.tile .s{ font-size:6.4pt; color:var(--ink2); margin-top:.4mm; }
-.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:7.2pt; }
+.tile .s{ font-size:9.4pt; color:var(--ink2); margin-top:.4mm; }
+.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:8.8pt; }
 .bar .bl{ flex:0 0 40mm; color:var(--ink2); }
 .bar .bt{ flex:1; height:3.1mm; background:var(--rule2); border-radius:.8mm; overflow:hidden; position:relative; }
 .bar .bf{ height:100%; background:var(--navy2); border-radius:0 .8mm .8mm 0; }
@@ -702,21 +702,21 @@ body.gu .tile .k{ letter-spacing:.03em; font-size:6.6pt; }
 .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:3mm; }
 .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:2.5mm; }
 .kv{ border:.6pt solid var(--rule); border-radius:1mm; padding:2.4mm 2.8mm; background:var(--panel2); }
-.kv .k{ font-size:5.9pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.kv .k{ font-size:7.3pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
         color:var(--ink3); line-height:1.3; min-height:6mm; }
-body.gu .kv .k{ letter-spacing:.02em; font-size:6.6pt; }
+body.gu .kv .k{ letter-spacing:.02em; font-size:9.6pt; }
 .kv .v{ font-size:12.5pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:.5mm;
         font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.kv .s{ font-size:6.2pt; color:var(--ink3); margin-top:.5mm; }
+.kv .s{ font-size:7.6pt; color:var(--ink3); margin-top:.5mm; }
 /* ---- IPO snapshot, redesigned ----------------------------------------
    A sub-heading, the fresh/OFS split as one two-colour bar, a date rail and a
    compact table. Everything here is print-safe: flat fills and borders only,
    nothing html2canvas cannot rasterise. */
-.ssub{ font-size:5.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+.ssub{ font-size:7.3pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
        color:var(--ink3); margin:0 0 1.4mm; }
-body.gu .ssub{ letter-spacing:.02em; font-size:6.6pt; }
+body.gu .ssub{ letter-spacing:.02em; font-size:9.6pt; }
 .fsplit{ display:flex; height:5mm; border-radius:1mm; overflow:hidden; border:.6pt solid var(--rule); }
-.fsplit i{ display:block; font-style:normal; font-size:6.2pt; font-weight:800; color:#fff;
+.fsplit i{ display:block; font-style:normal; font-size:7.6pt; font-weight:800; color:#fff;
            line-height:5mm; text-align:center; white-space:nowrap; overflow:hidden;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .fsplit i.a{ background:var(--navy2); }
@@ -731,55 +731,55 @@ body.gu .ssub{ letter-spacing:.02em; font-size:6.6pt; }
 .drail .stp:before{ left:0; right:50%; }
 .drail .stp:after{ left:50%; right:0; }
 .drail .stp:first-child:before,.drail .stp:last-child:after{ display:none; }
-.drail .stp .lb{ font-size:5.6pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+.drail .stp .lb{ font-size:7.3pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
                  color:var(--ink3); }
-body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:6.2pt; }
-.drail .stp .dt{ font-size:7.6pt; font-weight:700; color:var(--ink); margin-top:.4mm;
+body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:7.6pt; }
+.drail .stp .dt{ font-size:9.2pt; font-weight:700; color:var(--ink); margin-top:.4mm;
                  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.drail .stp .dt small{ display:block; font-size:5.4pt; font-weight:600; color:var(--ink4);
+.drail .stp .dt small{ display:block; font-size:7.2pt; font-weight:600; color:var(--ink4);
                        letter-spacing:.04em; text-transform:uppercase; }
-.mini{ width:100%; border-collapse:collapse; font-size:7.2pt; }
-.mini th{ font-size:5.8pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.mini{ width:100%; border-collapse:collapse; font-size:8.8pt; }
+.mini th{ font-size:8.8pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
           color:var(--ink3); background:var(--panel); border-bottom:.6pt solid var(--rule);
           padding:1.2mm 1.6mm; text-align:left; }
-body.gu .mini th{ letter-spacing:.02em; font-size:6.4pt; }
+body.gu .mini th{ letter-spacing:.02em; font-size:9.4pt; }
 .mini td{ padding:1.2mm 1.6mm; border-bottom:.4pt solid var(--rule2); vertical-align:middle; }
 .mini tr:last-child td{ border-bottom:0; }
 .mini .k{ color:var(--ink2); }
 .mini .n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* ---- provenance and fair value ---------------------------------------- */
-.srctag{ font-size:5.2pt; font-weight:800; color:var(--ink4); vertical-align:super;
+.srctag{ font-size:7.2pt; font-weight:800; color:var(--ink4); vertical-align:super;
          letter-spacing:.02em; margin-left:.3mm;
          font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.srckey{ font-size:6.4pt; color:var(--ink3); margin-top:2mm; }
+.srckey{ font-size:9.4pt; color:var(--ink3); margin-top:2mm; }
 .srckey b{ color:var(--ink2); }
 .srckey i{ font-style:normal; font-weight:800; color:var(--ink2); }
-.srcpill{ display:inline-block; font-size:5.8pt; font-weight:800; padding:.2mm 1.3mm;
+.srcpill{ display:inline-block; font-size:8.8pt; font-weight:800; padding:.2mm 1.3mm;
           border-radius:1mm; background:var(--panel); border:.4pt solid var(--rule);
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.provline{ font-size:6.8pt; color:var(--ink3); margin-top:2mm; }
+.provline{ font-size:8.2pt; color:var(--ink3); margin-top:2mm; }
 .provline b{ color:var(--ink2); font-weight:800; }
 .provline i{ font-style:normal; font-weight:800; }
 .provline .pv-yes{ color:var(--good); }
 .provline .pv-no{ color:var(--ink3); }
 .fvbox{ border:.6pt solid var(--rule); border-left:2pt solid var(--navy); border-radius:1mm;
         background:var(--panel2); padding:2mm 2.6mm; margin:2mm 0; }
-.fvbox .k{ font-size:5.9pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+.fvbox .k{ font-size:7.3pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
            color:var(--ink3); }
-body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
+body.gu .fvbox .k{ letter-spacing:.02em; font-size:9.6pt; }
 .fvbox .v{ font-size:13pt; font-weight:700; letter-spacing:-.02em; margin-top:.5mm; color:var(--navy);
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.fvbox .g{ display:inline-block; font-size:7.4pt; font-weight:700; margin-left:2mm; }
+.fvbox .g{ display:inline-block; font-size:10.8pt; font-weight:700; margin-left:2mm; }
 .fvbox .g.up{ color:var(--good); } .fvbox .g.dn{ color:var(--bad); }
-.fvbox .m{ font-size:6.6pt; color:var(--ink3); margin-top:.6mm; }
+.fvbox .m{ font-size:9.6pt; color:var(--ink3); margin-top:.6mm; }
 .mvrow{ display:block; border-bottom:.4pt solid var(--rule2); padding:1.4mm 0; }
 .mvrow:last-child{ border-bottom:0; }
-.mvrow .l{ font-size:7.6pt; font-weight:700; }
-.mvrow .v{ float:right; font-size:7.6pt; font-weight:700;
+.mvrow .l{ font-size:9.2pt; font-weight:700; }
+.mvrow .v{ float:right; font-size:9.2pt; font-weight:700;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:6.4pt; }
-.mvrow .b{ display:block; clear:both; font-size:6.8pt; color:var(--ink3); line-height:1.4;
+.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:9.4pt; }
+.mvrow .b{ display:block; clear:both; font-size:8.2pt; color:var(--ink3); line-height:1.4;
            margin-top:.3mm; }
 /* A column of the snapshot, and a table inside it that takes up the slack, so
    the two columns finish level with each other. */
@@ -790,14 +790,14 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
    — enough, in Gujarati, to push the whole section onto another page. */
 .snapcol .mini.grow{ flex:1 1 auto; }
 .snapcol .mini.grow td{ vertical-align:middle; }
-.lotb{ display:inline-block; font-size:5.8pt; font-weight:800; letter-spacing:.06em;
+.lotb{ display:inline-block; font-size:8.8pt; font-weight:800; letter-spacing:.06em;
        padding:.3mm 1.4mm; border-radius:2mm; margin-right:1.2mm;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .lotb.r{ background:#E7F0FB; color:#1B4370; }
 .lotb.s{ background:#FCF1DA; color:#8A6208; }
 .lotb.b{ background:#EFEBFB; color:#453796; }
 .tn-good{ color:var(--good); } .tn-bad{ color:var(--bad); } .tn-warn{ color:var(--amber); }
-.pill{ display:inline-block; font-size:5.9pt; font-weight:800; letter-spacing:.07em;
+.pill{ display:inline-block; font-size:7.3pt; font-weight:800; letter-spacing:.07em;
        text-transform:uppercase; color:#fff; padding:.5mm 1.8mm; border-radius:2.5mm; white-space:nowrap;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* kept as aliases so any stray reference still lands on the five-step scale */
@@ -811,12 +811,12 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
 .pie-l{ flex:0 0 52mm; }
 .pie-r{ flex:1; min-width:0; }
 .pie-r table{ margin-top:0; }
-.pie-lg{ margin-top:2mm; font-size:7.4pt; line-height:1.5; }
+.pie-lg{ margin-top:2mm; font-size:10.8pt; line-height:1.5; }
 .pie-lg div{ display:flex; align-items:baseline; gap:1.6mm; }
 .pie-lg i{ width:2.4mm; height:2.4mm; border-radius:.6mm; flex:0 0 auto; display:inline-block; }
 .pie-lg b{ flex:1; font-weight:600; color:var(--ink2); }
 /* The concentration tables were set a step down from everything else. */
-.ir-conc table{ font-size:9pt; }
+.ir-conc table{ font-size:10.8pt; }
 .ir-conc td, .ir-conc th{ padding-top:2.1mm; padding-bottom:2.1mm; }
 .note{ border-left:1.6pt solid var(--teal); background:var(--teal2); padding:2.4mm 3mm;
        border-radius:0 1mm 1mm 0; font-size:7.3pt; line-height:1.5; }
@@ -825,11 +825,11 @@ body.gu .note{ line-height:1.7; }
 .note.good{ border-left-color:var(--good); background:#EDF5F0; }
 .note b{ display:block; margin-bottom:.5mm; }
 ul{ margin-left:4mm; } li{ margin:.9mm 0; }
-.blist li{ font-size:7.4pt; line-height:1.45; }
+.blist li{ font-size:10.8pt; line-height:1.45; }
 body.gu .blist li{ line-height:1.68; }
 .blist b{ color:var(--navy); }
 .donut{ width:32mm; height:32mm; border-radius:50%; flex:0 0 32mm; }
-.dlegend{ font-size:7pt; line-height:1.7; }
+.dlegend{ font-size:8.6pt; line-height:1.7; }
 .dlegend i{ display:inline-block; width:2.4mm; height:2.4mm; border-radius:.5mm; margin-right:1.6mm; }
 .grow{ flex:1; }
 `;
@@ -1016,8 +1016,36 @@ function tbl(cols, rows, opts){
       return '<td'+(num.indexOf(i)>=0?' class="n en"':'')+'>'+(c==null?'—':c)+'</td>'; }).join('');
     return '<tr'+cls+'>'+cells+'</tr>';
   }).join('');
-  return '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+h+'</tr></thead><tbody>'
-       + b+'</tbody></table>';
+  /* A long table is emitted as several tables of at most CHUNK rows, each
+     repeating the header. The packer places whole blocks, so a forty-row table
+     that will not fit is moved entire and leaves most of a page blank; in
+     chunks it flows, and the page below it fills. The rule that follows the
+     first chunk carries "continued" so the split is visible rather than looking
+     like two unrelated tables. */
+  var CHUNK = (opts.chunk === false) ? Infinity : (opts.chunk || 12);
+  if(live.length <= CHUNK){
+    return '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+h+'</tr></thead><tbody>'
+         + b+'</tbody></table>';
+  }
+  var out = '', part = 0;
+  for(var i = 0; i < live.length; i += CHUNK){
+    part += 1;
+    var slice = live.slice(i, i + CHUNK).map(function(r){
+      var cls = r.__cls ? ' class="'+r.__cls+'"' : '';
+      var cells = (r.cells||r).map(function(c, j){
+        return '<td'+(num.indexOf(j)>=0?' class="n en"':'')+'>'+(c==null?'—':c)+'</td>'; }).join('');
+      return '<tr'+cls+'>'+cells+'</tr>';
+    }).join('');
+    var head = h;
+    if(part > 1){
+      head = cols.map(function(c, j){
+        return '<th'+(num.indexOf(j)>=0?' class="n en"':'')+'>'+e(c)
+          + (j === 0 ? ' <span class="contd">continued</span>' : '')+'</th>'; }).join('');
+    }
+    out += '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+head+'</tr></thead><tbody>'
+         + slice+'</tbody></table>';
+  }
+  return out;
 }
 function barRow(label, pctW, value, colour, tick){
   return '<div class="bar"><div class="bl">'+e(label)+'</div><div class="bt">'
@@ -1258,7 +1286,7 @@ function mktSize(p, lang, ind){
           + '</div><div class="v en">' + t[1] + '</div>'
           + (t[2] ? '<div class="s en">' + e(t[2]) + '</div>' : '') + '</div>';
       }).join('') + '</div>'
-    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:6.6pt">'
+    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:8pt">'
         + e(L(lang,'mkt_study')) + ': <span class="en">' + e(st) + '</span></div>' : '');
 }
 
@@ -2073,7 +2101,7 @@ function buildCompany(p, lang){
     B: built.B, TITLES: built.TITLES, leadIn: leadIn,
     runHead: 'Company Research Report', docName: 'Company Research Report',
     shellTitle: (S(c.name) || S(c.symbol)) + ' — Company Research Report',
-    toc: true, seedPages: 28
+    toc: true, seedPages: 40
   });
 }
 
@@ -3079,7 +3107,7 @@ function buildExec(p, lang){
     B: built.B, TITLES: built.TITLES, leadIn: leadIn,
     runHead: 'Executive Summary', docName: 'Executive Summary',
     shellTitle: eqTitle(p) + ' — Executive Summary',
-    seedPages: 10
+    seedPages: 16
   });
 }
 
@@ -3568,6 +3596,11 @@ function buildScorecard(p, lang){
        from the same layout instead of compounding the previous one. */
     + 'var ORDER=[].slice.call(boxes[0].querySelectorAll(".sc-blk"));'
     + 'function reset(){ ORDER.forEach(function(el){ boxes[0].appendChild(el); }); }'
+    /* Two passes. The first pushes whatever overflows onto the next page, which
+       is all this used to do — and it is why pages ended up mostly blank: once
+       a block moved forward, the page it left kept the hole, and so did every
+       page after it. The second pass pulls blocks back while they still fit, so
+       each page fills to the bottom before the next one starts. */
     + 'function pack(){'
       + 'for(var i=0;i<ps.length-1;i++){'
         + 'var A=avail(ps[i]), guard=0;'
@@ -3575,6 +3608,18 @@ function buildScorecard(p, lang){
           + 'var kids=boxes[i].querySelectorAll(".sc-blk");'
           + 'if(kids.length<(i===0?2:1)) break;'
           + 'boxes[i+1].insertBefore(kids[kids.length-1], boxes[i+1].firstChild);'
+        + '}'
+      + '}'
+      + 'for(var p=0;p<ps.length-1;p++){'
+        + 'var Ap=avail(ps[p]), pull=0;'
+        + 'while(pull++<60){'
+          + 'var nxt=boxes[p+1].querySelector(".sc-blk");'
+          + 'if(!nxt) break;'
+          + 'boxes[p].appendChild(nxt);'
+          + 'if(boxes[p].scrollHeight>Ap){'
+            /* it did not fit after all: put it straight back and stop */
+            + 'boxes[p+1].insertBefore(nxt, boxes[p+1].firstChild); break;'
+          + '}'
         + '}'
       + '}'
       + 'var last=boxes[boxes.length-1];'
@@ -4161,7 +4206,7 @@ function packDoc(p, lang, cfg){
     + ' text-transform:uppercase; margin:3.5mm 0 1.5mm; }\n'
     + '.ir-toc{ margin-top:2mm; column-count:2; column-gap:8mm; }\n'
     + '.ir-toc-row{ display:flex; gap:3mm; align-items:baseline; padding:1mm 0;'
-    + ' border-bottom:.4pt solid var(--rule); font-size:8pt; text-decoration:none; color:inherit;'
+    + ' border-bottom:.4pt solid var(--rule); font-size:9.6pt; text-decoration:none; color:inherit;'
     + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
     + '.ir-toc-row span{ color:var(--ink4); font-weight:700; flex:0 0 6.5mm; }\n'
     + '.ir-toc-row b{ flex:1; font-weight:600; }\n'
@@ -4197,7 +4242,7 @@ function packDoc(p, lang, cfg){
     + '.ir-score td.nm{ width:33mm; }\n'
     + '.ir-score td.bar-c{ width:22mm; }\n'
     + '.ir-score td.n{ text-align:right; white-space:nowrap; width:15mm; font-weight:700; }\n'
-    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:7.2pt; }\n'
+    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:8.8pt; }\n'
     + '.ir-score .mini{ display:block; height:2.4mm; background:#EEF1F5; border-radius:1.2mm;'
     + ' overflow:hidden; }\n'
     + '.ir-score .mini i{ display:block; height:100%; border-radius:0 1.2mm 1.2mm 0; }\n'
@@ -4206,7 +4251,7 @@ function packDoc(p, lang, cfg){
        scoring section onto a third page. Tightening only the scoring tables
        keeps it to the two pages the brief calls for without touching the rest
        of the document. */
-    + 'body.gu .ir-score{ font-size:7.6pt; }\n'
+    + 'body.gu .ir-score{ font-size:9.2pt; }\n'
     + 'body.gu .ir-score td{ padding:.85mm 1.6mm; line-height:1.42; }\n'
     + 'body.gu .ir-scorehd{ font-size:8.8pt; padding:1mm 0 .7mm; }\n'
     + 'body.gu .ir-scoreblk{ margin-bottom:1.8mm; }\n'
@@ -4838,7 +4883,7 @@ function buildSector(p, lang){
     B: built.B, TITLES: built.TITLES, leadIn: leadIn,
     runHead: 'Sector Research Report', docName: 'Sector Research Report',
     shellTitle: eqTitle(p) + ' — Sector Research Report',
-    toc: true, seedPages: 34
+    toc: true, seedPages: 48
   });
 }
 
