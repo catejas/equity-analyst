@@ -541,3 +541,52 @@ The test that found this extracts the verbatim "Company:" and "Segment:" lines
 from whatever reached the clipboard, for all three ranks, the standalone box,
 and both tool rows — with a different company typed into the standalone box
 throughout.
+
+## v1.5.0 — 2026-09-10
+Import, prompt, controls and typography.
+
+Fixed — a company run is now near-impossible to refuse:
+- Register searches run against the auditor, the directors, the group, the
+  parent or an associate are read as one of the three canonical subjects rather
+  than rejected. Fourteen occurrences killed one real run.
+- A scenario with no fair value, a missing current price, an unsourced macro
+  reading and an unsourced consensus block are all gaps on the page, not
+  rejections.
+- An unreadable price series is set aside; it costs a chart, not the run.
+- An unreadable generatedAt is dropped and the import time used.
+- A shortlist entry or a global peer with no name is dropped and the rest kept.
+
+Fixed — the prompt:
+- It now opens by requiring a web search as the first action, and names the
+  failure directly: a model that says search is unavailable is wrong, and every
+  one that has done it admitted the tool simply never fired. It must also state
+  how many searches it ran, and not send a payload if the answer is zero.
+
+Changed — controls:
+- Five buttons on one row per company: Research, Import, Delete, PDF, Share, on
+  the independent box and all three Top 3 boxes. The separate report row is
+  gone, and so is the duplicate Score Card row on the Segment page.
+- "A company on its own" is now "Independent Company Research".
+- Research scrolls to the tool buttons and highlights them, rather than saying
+  they are somewhere below — on the Company page they sit past three boxes,
+  which is why pressing Research there felt like nothing happened.
+
+Changed — typography and pagination:
+- Body type from 8.5pt to 10.2pt, and nothing anywhere is below 7.2pt. The
+  reports measured 8.1pt glyphs throughout, which is roughly six-point type.
+- The packer gained a second pass. It only ever pushed overflow forward, so once
+  a block moved the page it left kept the hole and so did every page after it —
+  measured ink coverage was 2.0% to 4.4% on sector pages. It now pulls blocks
+  back while they still fit, so each page fills before the next starts.
+- Long tables are emitted in chunks of twelve rows with the header repeated and
+  marked continued, so a table that will not fit no longer moves whole and
+  leaves most of a page blank.
+- Page shells are seeded generously; the packer drops the ones nothing lands on.
+
+Measured on the real Banking run: ink coverage 4.5% to 15.2% on the sector
+report, 8.8% to 11.7% on the company report, 10.7% to 16.0% on the summary.
+Final page counts need a browser to confirm — the packer does not run outside
+one.
+
+Tests: 350 engine assertions, plus browser suites for both pages, the prompt
+subjects, the five-page flow and the standalone company.
