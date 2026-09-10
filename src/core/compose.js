@@ -1,3 +1,4 @@
+import { top3For } from './screen.js';
 // compose.js — one run assembled from separately imported pieces.
 //
 // The segment is researched on its own, then each of the three companies on its
@@ -37,7 +38,7 @@ export function composePayload(segment, companyPayloads = []) {
 
   /* Order the companies by the segment's own shortlist, so rank 1 in the app is
      rank 1 in the research even before scoring runs. */
-  const nominated = (base.run && Array.isArray(base.run.top3)) ? base.run.top3 : [];
+  const nominated = top3For(base).list;
   if (nominated.length && base.companies.length > 1) {
     const order = new Map(nominated.map((x, i) => [String(x.symbol || x.name).toUpperCase(), i]));
     base.companies.sort((a, b) => {
@@ -49,10 +50,12 @@ export function composePayload(segment, companyPayloads = []) {
   return base;
 }
 
-/** The three slots the Report page shows, filled or waiting. */
+/** The three slots the Company page shows, filled or waiting. */
 export function slots(segmentPayload, companyRecords = []) {
-  const nominated = (segmentPayload && segmentPayload.run && Array.isArray(segmentPayload.run.top3))
-    ? segmentPayload.run.top3.slice(0, 3) : [];
+  /* The three come from the screen when the segment run supplied a shortlist,
+     and from run.top3 only for an older run that named them itself. */
+  const chosen = top3For(segmentPayload || {});
+  const nominated = chosen.list.slice(0, 3);
   const out = [];
   for (let i = 0; i < 3; i++) {
     const nom = nominated[i] || null;
@@ -72,6 +75,8 @@ export function slots(segmentPayload, companyRecords = []) {
         || (nom && (nom.name || nom.symbol)) || null,
       symbol: (imported && imported.symbol) || (nom && nom.symbol) || null,
       why: nom ? nom.why : null,
+      screenScore: nom && typeof nom.score === 'number' ? nom.score : null,
+      chosenBy: chosen.source,
       record: rec,
       state: rec ? 'imported' : (nom ? 'named' : 'empty'),
     });

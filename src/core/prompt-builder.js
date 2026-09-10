@@ -92,8 +92,27 @@ shortlist roughly ${shortlistSize} companies.
 
 THIS RUN IS THE SEGMENT ONLY. Do the whole segment study — the world, macro, the
 Budget, policy, regulation, geopolitics, industry, value chain, market sizing,
-programmes, competition — and then name the three companies worth a full report
-in run.top3, with one line each on why. Leave the companies array empty.
+programmes, competition — and then rate every company on your shortlist.
+
+DO NOT CHOOSE THE THREE. The application chooses them, from your ratings.
+
+This matters more than it looks. Everything else in this system is scored
+against written anchors and computed, which is why two runs on the same facts
+agree. Naming three favourites was the one judgement with no rubric behind it,
+and it is exactly where two tools diverged on identical research. So you do not
+name them: you rate the shortlist and the engine ranks it.
+
+For every company on the shortlist, give four ratings from 0 to 100 — business
+quality, growth and multibagger potential, valuation and opportunity, risk and
+quality control — each with one sentence of evidence carrying a figure. Rate all
+four. A company rated on fewer than three ranks below every fully rated one,
+however good it looks, because it cannot be compared.
+
+Rate honestly and comparably: 50 is average for the segment, not a polite
+default. If two companies genuinely deserve the same number, give them the same
+number — the application reports a tie rather than inventing an order.
+
+Leave the companies array empty. Leave run.top3 out.
 
 The three companies are researched separately, one per run, each with its own
 prompt from the application. That keeps every reply inside one code block with a
@@ -397,8 +416,9 @@ including pledged shares.
     "subsegment": ${subsegment.trim() ? `"${subsegment.trim()}"` : 'null'},
     "horizon": "${h.key}",
     "generatedAt": "ISO 8601 timestamp",
+    "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
     "searchesRun": 0,
-    "top3": [ { "symbol": "", "name": "", "why": "one line on why it makes the three" } ],
+
     "researchNotes": "what you could and could not establish, and why"
   },
   "industryMap": {
@@ -407,6 +427,16 @@ including pledged shares.
     "policy": "", "geopolitics": ""
   },
   "universe": { "identified": 0, "screened": 0, "exclusions": [ { "symbol": "", "reason": "" } ] },
+
+  "shortlist": [
+    { "symbol": "", "name": "",
+      "ratings": {
+        "businessQuality":      { "score": 0, "evidence": "one sentence with a figure in it" },
+        "growthMultibagger":    { "score": 0, "evidence": "one sentence with a figure in it" },
+        "valuationOpportunity": { "score": 0, "evidence": "one sentence with a figure in it" },
+        "riskQuality":          { "score": 0, "evidence": "one sentence with a figure in it" }
+      } }
+  ],
 
   "global": { "marketSize": 0, "unit": "", "source": "",
     "cagr": { "y15": 0, "y10": 0, "y5": 0, "y3": 0 },
@@ -668,8 +698,9 @@ extras; each one is a named section of the finished report:
   programmes       the contracts driving demand, traced to listed suppliers
   competition      share by player, with the basis stated
 
-Roughly twenty-five searches, and name the three companies worth a full report
-in run.top3 before you stop.`}
+Roughly twenty-five searches. Before you stop, make sure every company on the
+shortlist carries all four ratings with evidence — that is what the application
+ranks, and an unrated company cannot be chosen however good it is.`}
 
 If a block is still empty after searching for it properly, write null and say so
 in researchNotes — that is honest and the report will print it. What is not
@@ -722,7 +753,11 @@ honesty would be the worst outcome of all.
     above is spaced out so you can read the contract; what you send must not be.
 
 12. State in run.researchNotes how many searches you actually ran. If the answer
-    is zero, do not send the payload at all — go back and search.`;
+    is zero, do not send the payload at all — go back and search.
+
+13. Put your own name in run.tool — Claude, ChatGPT, Gemini, Perplexity, or
+    whatever you are. The application records which tool produced each run and
+    reads it from there, so it never has to ask.`;
 }
 
 export const PROMPT_USAGE = [

@@ -12,6 +12,7 @@ import { readRating } from './rubrics.js';
 import { REGISTERS, OUTCOMES, SUBJECTS, normaliseSubject } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
 import { repairPayload } from './repair.js';
+import { SCREEN_KEYS, MIN_RATED } from './screen.js';
 
 export const PAYLOAD_SCHEMA_VERSION = '3.0.0';
 
@@ -79,9 +80,12 @@ export function validatePayload(payload, { repair = true } = {}) {
     }
     if (!isStr(run.horizon)) w('run.horizon not stated; defaulting to 3-5 years.');
     if (!isNum(run.searchesRun)) w('run.searchesRun not stated, so the depth of the search cannot be reported.');
+    if (!isStr(run.tool)) w('run.tool not stated, so the run is filed without the tool that produced it.');
 
-    /* A segment run names the three companies worth a full report, so the app
-       can label the three company boxes before any of them is researched. */
+    /* A segment run rates its shortlist; the application ranks them and takes
+       the three. run.top3 is still read from older runs and from a model that
+       would not supply a shortlist, but it is no longer how the three are
+       chosen. */
     if (given(run.top3)) {
       if (!isArr(run.top3)) e('run.top3 must be an array of up to three companies.');
       else run.top3.forEach((x, i) => {
@@ -110,6 +114,44 @@ export function validatePayload(payload, { repair = true } = {}) {
   }
 
   // ---------------------------------------------------------- companies
+  /* The shortlist the segment run screened. Every entry needs a name and the
+     four pillar ratings with a line of evidence each; that is what lets the
+     application choose the three instead of taking three on trust. */
+  if (given(payload.shortlist)) {
+    if (!isArr(payload.shortlist)) e('shortlist must be an array of screened companies.');
+    else {
+      payload.shortlist.forEach((x, i) => {
+        const at = `shortlist[${i}]`;
+        if (!isObj(x)) { e(`${at} is not an object.`); return; }
+        if (!isStr(x.name) && !isStr(x.symbol)) { x.__drop = true; return; }
+        if (!isObj(x.ratings)) { w(`${at} (${x.symbol || x.name}) carries no ratings, so it cannot be screened.`); return; }
+        let rated = 0;
+        SCREEN_KEYS.forEach((k) => {
+          const r = x.ratings[k];
+          const v = isObj(r) ? r.score : r;
+          if (!given(v)) return;
+          if (!isNum(v) || v < 0 || v > 100) { e(`${at}.ratings.${k} must be a number from 0 to 100.`); return; }
+          rated += 1;
+          if (isObj(r) && !isStr(r.evidence)) {
+            w(`${at}.ratings.${k} has no evidence behind it, so the screen cannot be checked.`);
+          }
+        });
+        if (rated < MIN_RATED) {
+          w(`${at} (${x.symbol || x.name}) is rated on ${rated} of ${SCREEN_KEYS.length} pillars, `
+            + `so it ranks below every fully rated company.`);
+        }
+      });
+      const before = payload.shortlist.length;
+      payload.shortlist = payload.shortlist.filter((x) => !(x && x.__drop));
+      if (payload.shortlist.length !== before) w('shortlist had entries with neither a name nor a symbol; those were dropped.');
+      if (payload.shortlist.length && payload.shortlist.length < 6) {
+        w(`Only ${payload.shortlist.length} companies were screened, so the three are chosen from a thin field.`);
+      }
+    }
+  } else if (isObj(run) && (!isArr(payload.companies) || !payload.companies.length)) {
+    w('No shortlist supplied, so the Top 3 is taken from run.top3 as stated rather than screened.');
+  }
+
   const companies = payload.companies;
 
   /* A reply split across messages sends the segment work first and the
