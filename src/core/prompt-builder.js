@@ -59,7 +59,23 @@ export function buildResearchPrompt({ segment, subsegment = '', company = '', mo
 
   const componentKeys = (k) => Object.keys(PILLARS[k].weights).map((c) => `"${c}"`).join(', ');
 
-  return `You are producing an institutional-grade equity research payload on the Indian listed universe.
+  return `BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
+now, as your first action, before writing a single line of the payload.
+
+You have a search tool. If you find yourself about to say that search is
+unavailable, disabled, restricted at the system level, or not permitted for
+this run, that belief is wrong. It is a failure mode this prompt provokes:
+a long, strictly formatted request makes a model fall back to filling in the
+template from memory and inventing a reason why it could not look anything up.
+Every model that has done it here has admitted, when asked, that it simply
+failed to trigger the tool.
+
+So: search first. If your first search returns nothing useful, search again with
+different terms. A payload of nulls with an explanation attached is the one
+outcome that is of no use to anyone — it is worse than a short answer, because
+it looks like research and is not.
+
+You are producing an institutional-grade equity research payload on the Indian listed universe.
 
 SCOPE
 Segment: ${segment.trim()}
@@ -703,7 +719,10 @@ honesty would be the worst outcome of all.
 
 11. Return the payload in one fenced json block, minified onto a single line,
     with "schema" as the first key, as the last thing in the reply. The JSON
-    above is spaced out so you can read the contract; what you send must not be.`;
+    above is spaced out so you can read the contract; what you send must not be.
+
+12. State in run.researchNotes how many searches you actually ran. If the answer
+    is zero, do not send the payload at all — go back and search.`;
 }
 
 export const PROMPT_USAGE = [

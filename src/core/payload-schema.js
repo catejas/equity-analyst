@@ -9,7 +9,7 @@ import { PILLARS, OVERALL_WEIGHTS } from './scoring.js';
 import { EVIDENCE } from './integrity.js';
 import { FLAG_CATEGORIES, SEVERITIES, normaliseSeverity } from './ranking.js';
 import { readRating } from './rubrics.js';
-import { REGISTERS, OUTCOMES, SUBJECTS } from './litigation.js';
+import { REGISTERS, OUTCOMES, SUBJECTS, normaliseSubject } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
 import { repairPayload } from './repair.js';
 
@@ -67,7 +67,10 @@ export function validatePayload(payload, { repair = true } = {}) {
   else {
     if (!isStr(run.segment)) e('run.segment is required.');
     if (!isStr(run.generatedAt)) e('run.generatedAt is required (ISO date).');
-    else if (Number.isNaN(Date.parse(run.generatedAt))) e('run.generatedAt is not a readable date.');
+    else if (Number.isNaN(Date.parse(run.generatedAt))) {
+      run.generatedAt = null;
+      w('run.generatedAt was not a readable date and was dropped; the report uses the import time.');
+    }
     if (!isStr(run.schemaVersion)) e('run.schemaVersion is required.');
     else if (run.schemaVersion !== PAYLOAD_SCHEMA_VERSION) {
       const major = String(run.schemaVersion).split('.')[0];
@@ -83,10 +86,15 @@ export function validatePayload(payload, { repair = true } = {}) {
       if (!isArr(run.top3)) e('run.top3 must be an array of up to three companies.');
       else run.top3.forEach((x, i) => {
         if (!isObj(x)) { e(`run.top3[${i}] is not an object.`); return; }
-        if (!isStr(x.name) && !isStr(x.symbol)) e(`run.top3[${i}]: a name or symbol is required.`);
+        if (!isStr(x.name) && !isStr(x.symbol)) x.__drop = true;
         if (!isStr(x.why)) w(`run.top3[${i}]: no reason given for the shortlist place.`);
       });
-      if (isArr(run.top3) && run.top3.length > 3) w('run.top3 lists more than three; only the first three are used.');
+      if (isArr(run.top3)) {
+        const before = run.top3.length;
+        run.top3 = run.top3.filter((x) => !(x && x.__drop));
+        if (run.top3.length !== before) w('run.top3 had entries with neither a name nor a symbol; those were dropped.');
+        if (run.top3.length > 3) w('run.top3 lists more than three; only the first three are used.');
+      }
     } else if (!isArr(payload.companies) || payload.companies.length === 0) {
       w('run.top3 not supplied, so the three company boxes cannot be labelled until a company is imported.');
     }
@@ -214,7 +222,11 @@ export function validatePayload(payload, { repair = true } = {}) {
         if (!isObj(sr)) { e(`${where} is not an object.`); return; }
         if (!REGISTER_IDS.includes(sr.register)) e(`${where}: "${sr.register}" is not a known register.`);
         if (!OUTCOMES.includes(sr.outcome)) e(`${where}: outcome must be one of ${OUTCOMES.join(', ')}.`);
-        if (given(sr.subject) && !SUBJECTS.includes(sr.subject)) e(`${where}: subject must be one of ${SUBJECTS.join(', ')}.`);
+        if (given(sr.subject)) {
+          const subj = normaliseSubject(sr.subject);
+          if (!subj) e(`${where}: subject "${sr.subject}" is not readable as company, promoter or subsidiary.`);
+          else sr.subject = subj;
+        }
         if (sr.outcome === 'matters found' && (!isArr(sr.matters) || sr.matters.length === 0)) {
           e(`${where}: outcome is "matters found" but no matters are listed.`);
         }
@@ -260,13 +272,14 @@ export function validatePayload(payload, { repair = true } = {}) {
     else {
       for (const k of ['bear', 'base', 'bull']) {
         if (!isObj(v[k])) { w(`${at}: valuation.${k} missing.`); continue; }
-        if (!isNum(v[k].fairValue)) e(`${at}: valuation.${k}.fairValue must be a number.`);
+        if (!given(v[k].fairValue)) w(`${at}: valuation.${k} has no fair value, so the scenario prints without one.`);
+        else if (!isNum(v[k].fairValue)) e(`${at}: valuation.${k}.fairValue must be a number.`);
         if (!isStr(v[k].assumptions)) w(`${at}: valuation.${k} has no stated assumptions.`);
       }
       if (isObj(v.bear) && isObj(v.bull) && isNum(v.bear.fairValue) && isNum(v.bull.fairValue)
           && v.bear.fairValue > v.bull.fairValue) e(`${at}: bear fair value exceeds bull fair value.`);
       if (given(v.currentPrice) && (!isNum(v.currentPrice) || v.currentPrice <= 0)) {
-        e(`${at}: valuation.currentPrice must be a positive number.`);
+        w(`${at}: no usable current price, so the valuation range prints without one.`);
       }
       if (given(v.currentPrice) && !isStr(v.priceAsOf)) w(`${at}: currentPrice has no as-of date; it will be labelled undated.`);
       const probs = ['bear', 'base', 'bull'].map((k) => v[k]?.probability).filter(isNum);
@@ -289,7 +302,7 @@ export function validatePayload(payload, { repair = true } = {}) {
       if (csEmpty) {
         w(`${at}: a consensus block was supplied with nothing in it, which is read as no consensus existing.`);
       } else if (!isStr(c.consensus.source)) {
-        e(`${at}: consensus.source is required, so the figure can be checked.`);
+        w(`${at}: consensus has no source, so it prints as unsourced.`);
       }
       if (!isStr(c.consensus.asOf)) w(`${at}: consensus has no as-of date.`);
       if (given(c.consensus.estimateCount) && !isNum(c.consensus.estimateCount)) {
@@ -325,13 +338,17 @@ export function validatePayload(payload, { repair = true } = {}) {
       else {
         if (!isArr(ph.closes)) e(`${at}: priceHistory.closes must be an array.`);
         else {
-          if (ph.closes.some((x) => !isNum(x))) e(`${at}: priceHistory.closes contains non-numeric values.`);
+          if (ph.closes.some((x) => !isNum(x))) {
+            /* One unreadable series costs a chart, not the run. */
+            delete c.priceHistory;
+            w(`${at}: priceHistory could not be read as numbers and was set aside.`);
+          }
           if (ph.closes.length < 200) w(`${at}: only ${ph.closes.length} closes supplied; longer-period indicators will be withheld.`);
         }
         for (const k of ['volumes', 'benchmarkCloses', 'highs', 'lows']) {
           if (ph[k] === undefined) continue;
           if (!isArr(ph[k])) { e(`${at}: priceHistory.${k} must be an array.`); continue; }
-          if (ph[k].some((x) => !isNum(x))) e(`${at}: priceHistory.${k} contains non-numeric values.`);
+          if (ph[k].some((x) => !isNum(x))) { delete ph[k]; w(`${at}: priceHistory.${k} was not numeric and was set aside.`); }
           if (isArr(ph.closes) && ph[k].length !== ph.closes.length) {
             e(`${at}: priceHistory.${k} must be the same length as closes.`);
           }
@@ -425,9 +442,14 @@ function validateRunResearch(payload, e, w) {
     if (given(g.peers) && !isArr(g.peers)) e('global.peers must be an array.');
     (g.peers || []).forEach((x, i) => {
       if (!isObj(x)) { e(`global.peers[${i}] is not an object.`); return; }
-      if (!isStr(x.name)) e(`global.peers[${i}]: name is required.`);
+      if (!isStr(x.name)) x.__drop = true;
       if (!isStr(x.makes)) w(`global.peers[${i}]: no note on what the company makes, which is the point of the table.`);
     });
+    if (isArr(g.peers)) {
+      const before = g.peers.length;
+      g.peers = g.peers.filter((x) => !(x && x.__drop));
+      if (g.peers.length !== before) w('global.peers had unnamed entries; those were dropped.');
+    }
   }
 
   const m = payload.macro;
@@ -439,7 +461,7 @@ function validateRunResearch(payload, e, w) {
       if (!given(m[k].value)) w(`macro.${k} carries no value; it will print as not established.`);
       else if (!isNum(m[k].value)) e(`macro.${k}.value must be a number.`);
       if (!isStr(m[k].period)) w(`macro.${k} has no period; an undated macro figure is not usable.`);
-      if (!isStr(m[k].source)) e(`macro.${k}.source is required.`);
+      if (!isStr(m[k].source)) w(`macro.${k} has no source, so it prints as unsourced.`);
     }
   }
 

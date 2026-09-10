@@ -45,6 +45,28 @@ export const REGISTERS = Object.freeze([
 export const OUTCOMES = Object.freeze(['clear', 'matters found', 'register unreachable']);
 export const SUBJECTS = Object.freeze(['company', 'promoter', 'subsidiary']);
 
+/* Who a register search was run against. Three canonical values, but a
+   researcher naming the auditor, a director, the parent or the group is
+   describing one of the three, not making a mistake. Anything unambiguous maps
+   to its canonical subject rather than costing the whole run. */
+const SUBJECT_SYNONYMS = Object.freeze({
+  company: 'company', issuer: 'company', 'the company': 'company', entity: 'company',
+  borrower: 'company', bank: 'company', self: 'company',
+  promoter: 'promoter', promoters: 'promoter', director: 'promoter',
+  directors: 'promoter', 'key management': 'promoter', kmp: 'promoter',
+  management: 'promoter', founder: 'promoter', chairman: 'promoter',
+  'promoter group': 'promoter', auditor: 'promoter', auditors: 'promoter',
+  subsidiary: 'subsidiary', subsidiaries: 'subsidiary', associate: 'subsidiary',
+  associates: 'subsidiary', 'group entity': 'subsidiary', group: 'subsidiary',
+  parent: 'subsidiary', 'holding company': 'subsidiary', 'joint venture': 'subsidiary',
+  affiliate: 'subsidiary', 'related party': 'subsidiary',
+});
+/** Canonical subject, or null when the word cannot be read as one of the three. */
+export function normaliseSubject(v) {
+  if (typeof v !== 'string') return null;
+  return SUBJECT_SYNONYMS[v.trim().toLowerCase()] || null;
+}
+
 /**
  * Assess what was actually searched.
  * `searched` is one entry per register per subject:
@@ -66,7 +88,7 @@ export function assessLitigation(searched, { listed = true } = {}) {
     if (!s || typeof s !== 'object') { errors.push(`searched[${i}] is not an object.`); continue; }
     if (!byId.has(s.register)) errors.push(`searched[${i}]: "${s.register}" is not a known register.`);
     if (!OUTCOMES.includes(s.outcome)) errors.push(`searched[${i}]: outcome must be one of ${OUTCOMES.join(', ')}.`);
-    if (s.subject && !SUBJECTS.includes(s.subject)) errors.push(`searched[${i}]: subject must be one of ${SUBJECTS.join(', ')}.`);
+    if (s.subject && !normaliseSubject(s.subject)) errors.push(`searched[${i}]: subject "${s.subject}" is not readable as company, promoter or subsidiary.`);
   }
   if (errors.length) return { available: false, reason: errors.join(' '), errors };
 
