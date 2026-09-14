@@ -860,3 +860,83 @@ Tests: 381 engine assertions and fourteen browser suites.
   the app would still work with the native control.
 
 Tests: 381 engine assertions and sixteen browser suites.
+
+## v4.0.3 — 14-09-2026
+Import, dropdowns, typography and pagination.
+
+Fixed:
+- **A null price series was rejected.** The prompt tells the model to send null
+  rather than approximate a series it cannot get; the validator then refused the
+  payload for it. That is what stopped the Anlon import — the model did exactly
+  as asked. It now imports with 0 errors.
+- **An unknown red-flag category crashed the report build.** A litigation matter
+  categorised "credit rating / debt servicing" threw, killing every document.
+  An unrecognised category is now recorded and reported; it cannot trip the kill
+  switch, because guessing which of the five was meant would invent a finding.
+- **The picker scrolled the page behind it** instead of the list. Scroll is
+  contained and the body is locked while it is open.
+- **Sub-sectors are sorted alphabetically.**
+- **The footer was larger than the research.** 9.4pt footer over 6.9pt body;
+  the footer is now 7.4pt and the small print 6.6pt, and the whole document
+  scale is up about a fifth.
+- **Tables overflowed the page** on 16 of 23 pages, reaching x=601 on a 595pt
+  sheet. Tables are fixed-layout and nothing may exceed the page box.
+- **Pages ran at 8% ink.** The research paginator only ever spilled forward and
+  never pulled back — I had added a pull-back to the Score Card packer and
+  wrongly assumed it covered both. There is now a fill pass that moves the next
+  page's blocks up while they fit, never stranding a heading, and drops any page
+  it empties.
+
+Added:
+- **A contents list with true page numbers**, written after pagination because
+  the numbers cannot be known before it. 31 entries on the Anlon report, each
+  anchored, with bookmarks in the PDF.
+- **A standalone safety verdict.** The kill switch computes identically for
+  every run but only ever barred a company from a Top 3 — and an independent run
+  has no Top 3, so on Anlon seven severe findings and a forensic score of 16
+  appeared nowhere in forty pages. They are now stated at the top.
+- Import review wording per payload kind: a sector study, a Top 3 company and an
+  independent company no longer share one confusing headline.
+- A truncated paste says so loudly, because the "X is required" errors it causes
+  send the reader hunting for fields that are present in their reply.
+- The prompt asks for the payload as a .json file as well as a fenced block.
+
+Note on the technical panel: a short history is now used in full and labelled
+rather than refused, so a newly listed company gets its charts with a plain note
+that the period is short.
+
+Tests: 384 engine assertions and seventeen browser suites.
+
+## v4.0.4 — 14-09-2026
+The three things left outstanding.
+
+Pagination, now verified rather than asserted:
+- jsdom has no layout, so scrollHeight is always zero and the packer believed
+  everything fitted — which is why no test ever caught a pagination fault.
+  `tests/packer.mjs` gives every block a real height and runs the shipped fill
+  pass against it. That found three faults the eye would not have:
+  the fill stopped at the first emptied page instead of continuing to the one
+  after; an orphan heading was pushed back and the fill abandoned, because its
+  content was on the page after next rather than the next; and the empty-page
+  check looked for a table or a paragraph, so a page holding only a chart
+  wrapper counted as empty and was deleted with its content inside it.
+  Twelve blocks that filled two pages at 9% now fill one at 94%; six blocks
+  across six pages become one at 73%; a block too tall to move still gets its
+  own page, and nothing is lost.
+  A device may still paginate differently — this tests the algorithm, not the
+  browser — but "does it fill, and does it strand a heading" is answered.
+
+Duplicates:
+- **Six of the company report's eight figures were the same three charts drawn
+  twice.** Focus charts reproduced the scoring bars, the valuation football
+  field and the multibagger grid, all of which already appear in their own
+  sections beside the text that explains them. The gallery is gone; five
+  distinct figures remain.
+
+Charts a non-specialist can read:
+- The score now sits above its bar and says what it is out of — "64.8 / 100" —
+  rather than to the right at axis size, where it read as a gridline label.
+- Figures can carry a plain-English note under them, and the scoring chart does:
+  what the bars are, how the four models combine, and what a low score means.
+
+Tests: 384 engine assertions and nineteen browser suites.
