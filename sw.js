@@ -2,7 +2,7 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '14-09-2026.4';
+var BUILD = '14-09-2026.5';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
@@ -63,8 +63,29 @@ self.addEventListener('fetch', function(e){
     return;
   }
 
-  /* Everything else is served from cache but refreshed in the background, so
-     the next load is current without ever waiting on the network. */
+  /* Scripts follow the page: network-first, cache as the fallback.
+     They used to be cache-first, and that is what made a new build half-load.
+     The page is network-first, so after an upload the browser ran the NEW
+     index.html against the OLD cached modules — and when a build added a module
+     the old cache had never heard of, the engine failed to assemble, EQ was
+     never defined, and every control that needs it silently did nothing.
+     That is also why closing and reopening twice "fixed" it: the second launch
+     finally had both halves from the same build. A page and its code must come
+     from one build or the other, never one of each. */
+  if(/\.(js|mjs)$/.test(url.pathname)){
+    e.respondWith(
+      fetch(e.request).then(function(res){
+        var copy = res.clone();
+        caches.open(CACHE).then(function(c){ c.put(e.request, copy); });
+        return res;
+      }).catch(function(){ return caches.match(e.request); })
+    );
+    return;
+  }
+
+  /* Everything else — icons, fonts, the vendor bundles — is served from cache
+     and refreshed behind the scenes. None of it changes between builds in a way
+     that can break the other half. */
   e.respondWith(
     caches.match(e.request).then(function(hit){
       var net = fetch(e.request).then(function(res){

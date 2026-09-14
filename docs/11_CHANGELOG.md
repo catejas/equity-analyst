@@ -810,3 +810,32 @@ with its caveat, and companies without a series saying so plainly rather than
 showing an empty section.
 
 Tests: 381 engine assertions and thirteen browser suites.
+
+## v4.0.1 — 14-09-2026
+Two faults, both of which had been hiding behind passing tests.
+
+- **A new build could half-load, and that is what broke READ IT.** The page was
+  fetched network-first but every script cache-first, so the launch after an
+  upload ran the NEW index.html against the OLD cached modules. When a build
+  added a module the old cache had never heard of — indicators.js and models.js
+  in v4.0.0 — the engine failed to assemble, EQ was never defined, and every
+  control needing it silently did nothing. This is also why closing and
+  reopening twice always "fixed" it: the second launch finally had both halves
+  from the same build. Scripts now follow the page, network-first with cache as
+  the fallback, so a page and its code always come from one build.
+- **The gold chevron never rendered.** `linear-gradient(var(--grad-gold))` is
+  invalid, because that token is already a gradient — so the browser dropped the
+  whole declaration and the chevron was a dark glyph on nothing. The gold square
+  now sits on the wrapper, where it applies.
+
+Added:
+- READ IT reports its own failures. An empty paste, a missing engine and a
+  thrown reader now say which they were, in the panel, instead of the button
+  appearing to do nothing.
+- `tests/cssaudit.mjs`: checks for declarations that never apply — a gradient
+  token nested inside another gradient, a colour used as an image, unbalanced
+  braces, and every visible select having its chevron. CSS that never applies is
+  invisible to every JS test we have: nothing throws, the page still renders,
+  and the styling is simply absent.
+
+Tests: 381 engine assertions and fourteen browser suites.
