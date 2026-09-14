@@ -700,3 +700,27 @@ Fixed:
 Tests: 358 engine assertions and nine browser suites, including one that asserts
 READ IT is visible and works on both pages and that the import card does not
 follow the reader between tabs.
+
+## v1.8.2 — 14-09-2026
+Found the cause of the blank pages, which was never what I thought.
+
+- **The import card was never closed.** When it was restored from an earlier
+  build it came back one `</div>` short, so every section after it — Score Card
+  and Setup — became a *child* of that card rather than a sibling. Whenever the
+  card was hidden, both pages went with it. Hiding the card on a tab change, the
+  "fix" in the previous build, is what made them blank permanently.
+  jsdom repairs unbalanced markup silently, which is why nine browser suites
+  passed while the app was broken on a phone. There is now a test that reads the
+  markup directly, checks the div depth returns to zero, and asserts the four
+  pages sit at the same depth.
+- The Sector Report was not broken: it was unreachable behind that bug. Driven
+  end to end from an older payload — one that names its own three and has no
+  shortlist — it imports, saves and builds: sector 129,691 chars, executive
+  summary 59,556, score card 46,786.
+
+Changed:
+- Every picker now carries the chevron button from IPO Analyst. The control
+  underneath is still a native select, deliberately: iOS renders its own wheel
+  picker, which needs no custom list of ours to go wrong.
+
+Tests: 358 engine assertions and eleven browser suites.
