@@ -661,3 +661,26 @@ different sources and found different numbers. The screening is now
 reproducible; the inputs to it are not.
 
 Tests: 358 engine assertions and eight browser suites.
+
+## v1.8.0 — 11-09-2026
+Changed:
+- **Sector and sub-sector** throughout the interface, the prompt, the framework
+  and every report. The payload keys stay "segment" and "subsegment", because
+  renaming those would invalidate every payload already imported and every run
+  already saved. The rename happens on the finished text, where there are no
+  identifiers to damage — renaming the source was tried first and it rewrote
+  ${subsegment.trim()} into something that did not parse.
+
+Added:
+- **A visible failure when the engine does not load.** The engine is a module
+  and can fail to arrive: a half-updated cache, a file that 404s, a browser that
+  refuses the import. When that happened the app showed empty pages and a Read
+  It button that did nothing, which looks like the app is broken rather than
+  like something did not load. It now says so after four seconds and says what
+  to do.
+
+On the blank Score Card and Setup pages: both pages, and the Read It button,
+were exercised in a browser at this build and all work — tabs render, the
+importer reads a 165 KB payload and saves it. The three faults share one cause,
+which is the engine failing to load, so the banner above is the fix that will
+tell us if it happens again rather than leaving a blank screen.
