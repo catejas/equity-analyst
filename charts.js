@@ -42,6 +42,9 @@
       + (title ? '<figcaption class="fig-t">'
           + (n ? '<b>Fig ' + n + '</b> ' : '') + esc(title) + '</figcaption>' : '')
       + '<div class="fig-b">' + body + '</div>'
+      /* How to read it, for someone who does not read charts for a living.
+         A figure that needs prior knowledge to interpret is decoration. */
+      + (opts.note ? '<div class="fig-n">' + esc(opts.note) + '</div>' : '')
       + (source ? '<div class="fig-s">Source: ' + esc(source) + '</div>' : '')
       + '</figure>';
   }
@@ -355,7 +358,7 @@
   function bullets(opts) {
     var rows = (opts.rows || []).filter(function (r) { return r; });
     if (!rows.length) return unavailable(opts.title, 'Nothing scored.');
-    var w = 560, rowH = 26, h = rows.length * rowH + 12, pad = { l: 170, r: 44, t: 6 };
+    var w = 560, rowH = 34, h = rows.length * rowH + 16, pad = { l: 170, r: 16, t: 14 };
     var plotW = w - pad.l - pad.r;
     var body = '';
     rows.forEach(function (r, i) {
@@ -367,10 +370,13 @@
       body += '<rect x="' + pad.l + '" y="' + (y - 6) + '" width="' + plotW + '" height="12" fill="' + C.grid + '"/>';
       body += '<rect x="' + pad.l + '" y="' + (y - 6) + '" width="' + (plotW * pc).toFixed(1)
         + '" height="12" fill="' + scaleColour(pc * 100) + '"/>';
-      body += '<text x="' + (w - pad.r + 5) + '" y="' + (y + 3) + '" class="ax">'
-        + (isNum(r.value) ? esc(r.value.toFixed(1)) : '—') + '</text>';
+      /* The number sits above its own bar and says what it is out of. It used
+         to sit to the right at axis size, which read as a gridline label rather
+         than as the score the bar represents. */
+      body += '<text x="' + pad.l + '" y="' + (y - 10) + '" class="barv">'
+        + (isNum(r.value) ? esc(r.value.toFixed(1)) + ' / ' + max : 'not scored') + '</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note });
   }
 
   function scaleColour(v) {
@@ -604,6 +610,8 @@
 .fig-row{display:flex;align-items:center;gap:3mm;}
 .fig svg{display:block;}
 .fig text.ax{font:400 7.8pt var(--sans);fill:var(--ink3);}
+.fig text.barv{font:700 9.6pt var(--sans);fill:var(--ink);}
+.fig .fig-n{font:400 8.6pt var(--sans);color:var(--ink2);margin-top:1.6mm;line-height:1.45;}
 .fig text.ax.ink{fill:var(--ink2);}
 table.heat{width:100%;border-collapse:collapse;font:400 8.6pt var(--sans);}
 table.heat th{font-weight:600;color:var(--ink2);padding:1mm;text-align:left;}

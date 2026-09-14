@@ -594,9 +594,9 @@ var CSS = (window.EQCharts && window.EQCharts.CSS ? window.EQCharts.CSS : '') + 
 }
 html,body{ background:#E9E7E1; }
 body{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; color:var(--ink);
-      font-size:10.2pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      font-size:12.4pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 body.gu{ font-family:"Noto Sans Gujarati","Shruti","Gujarati Sangam MN",Helvetica,Arial,sans-serif;
-         font-size:8.7pt; line-height:1.7; }
+         font-size:10.6pt; line-height:1.7; }
 body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-height:1.4; }
 .page{ width:210mm; height:297mm; background:var(--paper); position:relative; overflow:hidden;
        page-break-after:always; display:flex; flex-direction:column; margin:0 auto 8mm; }
@@ -605,77 +605,77 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
 .body{ flex:1; display:flex; flex-direction:column; padding:0 15mm; overflow:hidden; }
 .rh{ display:flex; justify-content:space-between; align-items:center;
      padding:7mm 15mm 3.5mm; border-bottom:.6pt solid var(--rule); }
-.rh .l{ font-size:8.6pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
-.rh .r{ font-size:8.2pt; color:var(--ink3); letter-spacing:.05em; }
+.rh .l{ font-size:10.5pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
+.rh .r{ font-size:10.0pt; color:var(--ink3); letter-spacing:.05em; }
 .ch{ margin:3mm 0 2mm; }
 .ch svg{ display:block; max-width:100%; }
 .chbars{ margin:2.5mm 0; }
-.chbar{ display:flex; align-items:center; gap:3mm; margin:1.8mm 0; font-size:8.6pt; }
+.chbar{ display:flex; align-items:center; gap:3mm; margin:1.8mm 0; font-size:10.5pt; }
 .chbar .cl{ flex:0 0 34mm; color:var(--ink2); }
 .chbar .ct{ flex:1; height:4.2mm; background:#EEF1F5; border-radius:2mm; overflow:hidden; }
 .chbar .ct i{ display:block; height:100%; border-radius:0 2mm 2mm 0; }
 .chbar .cv{ flex:0 0 16mm; text-align:right; font-weight:700; }
 .chbar.me .cl{ font-weight:800; color:var(--ink); }
-.chheat{ width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:8.4pt; }
+.chheat{ width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:10.2pt; }
 .chheat th{ padding:1.8mm 2mm; text-align:left; color:var(--ink3); font-weight:700; }
 .chheat td{ padding:2.2mm 2mm; text-align:center; font-weight:700; }
-.chleg{ display:flex; flex-wrap:wrap; gap:4mm; margin-top:1.5mm; font-size:8.4pt; color:var(--ink2); }
+.chleg{ display:flex; flex-wrap:wrap; gap:4mm; margin-top:1.5mm; font-size:10.2pt; color:var(--ink2); }
 .chleg i{ display:inline-block; width:3mm; height:3mm; border-radius:1mm; margin-right:1.5mm; vertical-align:-0.3mm; }
 .sc2col{ column-count:2; column-gap:7mm; margin-top:1mm; }
 .sc2blk{ break-inside:avoid; -webkit-column-break-inside:avoid; margin-bottom:3mm; }
-.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:9.2pt;
+.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:11.2pt;
         font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.05em;
         border-bottom:.7pt solid var(--navy); padding-bottom:.8mm; margin-bottom:1mm; }
-.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:10.8pt; }
+.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:13.2pt; }
 .sc2row .l{ flex:1; color:var(--ink2); line-height:1.25; }
 .sc2row .t{ flex:0 0 14mm; height:2mm; background:#EEF1F5; border-radius:1mm; overflow:hidden; }
 .sc2row .t i{ display:block; height:100%; border-radius:0 1mm 1mm 0; }
 .sc2row .v{ flex:0 0 11mm; text-align:right; font-weight:700; }
-.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:9.4pt; }
+.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:11.5pt; }
 .rfw{ border-top:.6pt solid var(--rule); }
-.rfn{ padding:2.2mm 15mm 0; font-size:7.2pt; line-height:1.42; color:var(--ink4);
+.rfn{ padding:2.2mm 15mm 0; font-size:6.6pt; line-height:1.42; color:var(--ink4);
       text-align:justify; }
-body.gu .rfn{ font-size:7.2pt; line-height:1.55; }
+body.gu .rfn{ font-size:8.8pt; line-height:1.55; }
 .rfw .rf{ border-top:0; padding-top:1.6mm; }
 .rf{ display:flex; justify-content:space-between; align-items:center;
-     padding:3mm 15mm 7mm; border-top:.6pt solid var(--rule); font-size:9.4pt; color:var(--ink4); }
+     padding:3mm 15mm 7mm; border-top:.6pt solid var(--rule); font-size:7.4pt; color:var(--ink4); }
 .rf b{ color:var(--ink2); font-weight:700; }
 h1{ font-size:22pt; line-height:1.1; letter-spacing:-.025em; font-weight:700; }
 .sec{ display:flex; align-items:baseline; gap:3mm; margin:5mm 0 2.5mm; }
-.sec .no{ font-size:8.6pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
-.sec .ti{ font-size:10.5pt; font-weight:700; letter-spacing:-.01em; color:var(--navy); }
+.sec .no{ font-size:10.5pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
+.sec .ti{ font-size:12.8pt; font-weight:700; letter-spacing:-.01em; color:var(--navy); }
 .sec .ln{ flex:1; height:.6pt; background:var(--rule); }
-.lead{ font-size:10.8pt; line-height:1.55; color:var(--ink2); }
+.lead{ font-size:13.2pt; line-height:1.55; color:var(--ink2); }
 body.gu .lead{ line-height:1.75; }
-.mut{ font-size:8.6pt; color:var(--ink3); line-height:1.4; }
+.mut{ font-size:10.5pt; color:var(--ink3); line-height:1.4; }
 body.gu .mut{ line-height:1.65; }
-.eyebrow{ font-size:9.6pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
+.eyebrow{ font-size:11.7pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
 body.gu .eyebrow{ letter-spacing:.06em; }
-table{ width:100%; border-collapse:collapse; font-size:10.8pt; }
-th{ text-align:left; font-size:7.6pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+table{ width:100%; border-collapse:collapse; font-size:13.2pt; }
+th{ text-align:left; font-size:9.3pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
     color:var(--ink3); padding:2mm; border-bottom:.9pt solid var(--navy); white-space:nowrap; }
-body.gu th{ font-size:8.2pt; letter-spacing:.02em; }
+body.gu th{ font-size:10.0pt; letter-spacing:.02em; }
 td{ padding:1.9mm 2mm; border-bottom:.5pt solid var(--rule2); vertical-align:top; }
 td.n,th.n{ text-align:right; font-variant-numeric:tabular-nums;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 tr.hi td{ background:var(--teal2); font-weight:600; }
 tr.tot td{ border-top:.9pt solid var(--navy); font-weight:700; background:var(--panel); }
 .vb{ border:1.4pt solid var(--navy); border-radius:2mm; overflow:hidden; }
-.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:9.6pt; font-weight:800;
+.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:11.7pt; font-weight:800;
         letter-spacing:.17em; text-transform:uppercase; }
-body.gu .vb .h{ letter-spacing:.05em; font-size:10.8pt; }
+body.gu .vb .h{ letter-spacing:.05em; font-size:13.2pt; }
 .vb .c{ padding:4mm; }
 .vb .v{ font-size:15.5pt; font-weight:700; letter-spacing:-.02em; line-height:1.2; color:var(--navy); }
 .tiles{ display:flex; gap:2.5mm; }
 .tile{ flex:1; border:.6pt solid var(--rule); border-top:2pt solid var(--navy); border-radius:1mm;
        padding:2.6mm 3mm; background:var(--panel2); }
-.tile .k{ font-size:7.3pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
-body.gu .tile .k{ letter-spacing:.03em; font-size:9.6pt; }
+.tile .k{ font-size:8.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
+body.gu .tile .k{ letter-spacing:.03em; font-size:11.7pt; }
 .tile .v{ font-size:17pt; font-weight:700; letter-spacing:-.03em; line-height:1.05; margin-top:.6mm;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.tile .v small{ font-size:7.5pt; color:var(--ink4); font-weight:600; }
-.tile .s{ font-size:9.4pt; color:var(--ink2); margin-top:.4mm; }
-.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:8.8pt; }
+.tile .v small{ font-size:9.2pt; color:var(--ink4); font-weight:600; }
+.tile .s{ font-size:11.5pt; color:var(--ink2); margin-top:.4mm; }
+.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:10.7pt; }
 .bar .bl{ flex:0 0 40mm; color:var(--ink2); }
 .bar .bt{ flex:1; height:3.1mm; background:var(--rule2); border-radius:.8mm; overflow:hidden; position:relative; }
 .bar .bf{ height:100%; background:var(--navy2); border-radius:0 .8mm .8mm 0; }
@@ -702,21 +702,21 @@ body.gu .tile .k{ letter-spacing:.03em; font-size:9.6pt; }
 .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:3mm; }
 .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:2.5mm; }
 .kv{ border:.6pt solid var(--rule); border-radius:1mm; padding:2.4mm 2.8mm; background:var(--panel2); }
-.kv .k{ font-size:7.3pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.kv .k{ font-size:8.9pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
         color:var(--ink3); line-height:1.3; min-height:6mm; }
-body.gu .kv .k{ letter-spacing:.02em; font-size:9.6pt; }
-.kv .v{ font-size:12.5pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:.5mm;
+body.gu .kv .k{ letter-spacing:.02em; font-size:11.7pt; }
+.kv .v{ font-size:15.2pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:.5mm;
         font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.kv .s{ font-size:7.6pt; color:var(--ink3); margin-top:.5mm; }
+.kv .s{ font-size:9.3pt; color:var(--ink3); margin-top:.5mm; }
 /* ---- IPO snapshot, redesigned ----------------------------------------
    A sub-heading, the fresh/OFS split as one two-colour bar, a date rail and a
    compact table. Everything here is print-safe: flat fills and borders only,
    nothing html2canvas cannot rasterise. */
-.ssub{ font-size:7.3pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+.ssub{ font-size:8.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
        color:var(--ink3); margin:0 0 1.4mm; }
-body.gu .ssub{ letter-spacing:.02em; font-size:9.6pt; }
+body.gu .ssub{ letter-spacing:.02em; font-size:11.7pt; }
 .fsplit{ display:flex; height:5mm; border-radius:1mm; overflow:hidden; border:.6pt solid var(--rule); }
-.fsplit i{ display:block; font-style:normal; font-size:7.6pt; font-weight:800; color:#fff;
+.fsplit i{ display:block; font-style:normal; font-size:9.3pt; font-weight:800; color:#fff;
            line-height:5mm; text-align:center; white-space:nowrap; overflow:hidden;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .fsplit i.a{ background:var(--navy2); }
@@ -731,55 +731,55 @@ body.gu .ssub{ letter-spacing:.02em; font-size:9.6pt; }
 .drail .stp:before{ left:0; right:50%; }
 .drail .stp:after{ left:50%; right:0; }
 .drail .stp:first-child:before,.drail .stp:last-child:after{ display:none; }
-.drail .stp .lb{ font-size:7.3pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+.drail .stp .lb{ font-size:8.9pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
                  color:var(--ink3); }
-body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:7.6pt; }
-.drail .stp .dt{ font-size:9.2pt; font-weight:700; color:var(--ink); margin-top:.4mm;
+body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:9.3pt; }
+.drail .stp .dt{ font-size:11.2pt; font-weight:700; color:var(--ink); margin-top:.4mm;
                  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.drail .stp .dt small{ display:block; font-size:7.2pt; font-weight:600; color:var(--ink4);
+.drail .stp .dt small{ display:block; font-size:8.8pt; font-weight:600; color:var(--ink4);
                        letter-spacing:.04em; text-transform:uppercase; }
-.mini{ width:100%; border-collapse:collapse; font-size:8.8pt; }
-.mini th{ font-size:8.8pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.mini{ width:100%; border-collapse:collapse; font-size:10.7pt; }
+.mini th{ font-size:10.7pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
           color:var(--ink3); background:var(--panel); border-bottom:.6pt solid var(--rule);
           padding:1.2mm 1.6mm; text-align:left; }
-body.gu .mini th{ letter-spacing:.02em; font-size:9.4pt; }
+body.gu .mini th{ letter-spacing:.02em; font-size:11.5pt; }
 .mini td{ padding:1.2mm 1.6mm; border-bottom:.4pt solid var(--rule2); vertical-align:middle; }
 .mini tr:last-child td{ border-bottom:0; }
 .mini .k{ color:var(--ink2); }
 .mini .n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* ---- provenance and fair value ---------------------------------------- */
-.srctag{ font-size:7.2pt; font-weight:800; color:var(--ink4); vertical-align:super;
+.srctag{ font-size:8.8pt; font-weight:800; color:var(--ink4); vertical-align:super;
          letter-spacing:.02em; margin-left:.3mm;
          font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.srckey{ font-size:9.4pt; color:var(--ink3); margin-top:2mm; }
+.srckey{ font-size:11.5pt; color:var(--ink3); margin-top:2mm; }
 .srckey b{ color:var(--ink2); }
 .srckey i{ font-style:normal; font-weight:800; color:var(--ink2); }
-.srcpill{ display:inline-block; font-size:8.8pt; font-weight:800; padding:.2mm 1.3mm;
+.srcpill{ display:inline-block; font-size:10.7pt; font-weight:800; padding:.2mm 1.3mm;
           border-radius:1mm; background:var(--panel); border:.4pt solid var(--rule);
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.provline{ font-size:8.2pt; color:var(--ink3); margin-top:2mm; }
+.provline{ font-size:10.0pt; color:var(--ink3); margin-top:2mm; }
 .provline b{ color:var(--ink2); font-weight:800; }
 .provline i{ font-style:normal; font-weight:800; }
 .provline .pv-yes{ color:var(--good); }
 .provline .pv-no{ color:var(--ink3); }
 .fvbox{ border:.6pt solid var(--rule); border-left:2pt solid var(--navy); border-radius:1mm;
         background:var(--panel2); padding:2mm 2.6mm; margin:2mm 0; }
-.fvbox .k{ font-size:7.3pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+.fvbox .k{ font-size:8.9pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
            color:var(--ink3); }
-body.gu .fvbox .k{ letter-spacing:.02em; font-size:9.6pt; }
-.fvbox .v{ font-size:13pt; font-weight:700; letter-spacing:-.02em; margin-top:.5mm; color:var(--navy);
+body.gu .fvbox .k{ letter-spacing:.02em; font-size:11.7pt; }
+.fvbox .v{ font-size:15.9pt; font-weight:700; letter-spacing:-.02em; margin-top:.5mm; color:var(--navy);
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.fvbox .g{ display:inline-block; font-size:10.8pt; font-weight:700; margin-left:2mm; }
+.fvbox .g{ display:inline-block; font-size:13.2pt; font-weight:700; margin-left:2mm; }
 .fvbox .g.up{ color:var(--good); } .fvbox .g.dn{ color:var(--bad); }
-.fvbox .m{ font-size:9.6pt; color:var(--ink3); margin-top:.6mm; }
+.fvbox .m{ font-size:11.7pt; color:var(--ink3); margin-top:.6mm; }
 .mvrow{ display:block; border-bottom:.4pt solid var(--rule2); padding:1.4mm 0; }
 .mvrow:last-child{ border-bottom:0; }
-.mvrow .l{ font-size:9.2pt; font-weight:700; }
-.mvrow .v{ float:right; font-size:9.2pt; font-weight:700;
+.mvrow .l{ font-size:11.2pt; font-weight:700; }
+.mvrow .v{ float:right; font-size:11.2pt; font-weight:700;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:9.4pt; }
-.mvrow .b{ display:block; clear:both; font-size:8.2pt; color:var(--ink3); line-height:1.4;
+.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:11.5pt; }
+.mvrow .b{ display:block; clear:both; font-size:10.0pt; color:var(--ink3); line-height:1.4;
            margin-top:.3mm; }
 /* A column of the snapshot, and a table inside it that takes up the slack, so
    the two columns finish level with each other. */
@@ -790,14 +790,14 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:9.6pt; }
    — enough, in Gujarati, to push the whole section onto another page. */
 .snapcol .mini.grow{ flex:1 1 auto; }
 .snapcol .mini.grow td{ vertical-align:middle; }
-.lotb{ display:inline-block; font-size:8.8pt; font-weight:800; letter-spacing:.06em;
+.lotb{ display:inline-block; font-size:10.7pt; font-weight:800; letter-spacing:.06em;
        padding:.3mm 1.4mm; border-radius:2mm; margin-right:1.2mm;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .lotb.r{ background:#E7F0FB; color:#1B4370; }
 .lotb.s{ background:#FCF1DA; color:#8A6208; }
 .lotb.b{ background:#EFEBFB; color:#453796; }
 .tn-good{ color:var(--good); } .tn-bad{ color:var(--bad); } .tn-warn{ color:var(--amber); }
-.pill{ display:inline-block; font-size:7.3pt; font-weight:800; letter-spacing:.07em;
+.pill{ display:inline-block; font-size:8.9pt; font-weight:800; letter-spacing:.07em;
        text-transform:uppercase; color:#fff; padding:.5mm 1.8mm; border-radius:2.5mm; white-space:nowrap;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* kept as aliases so any stray reference still lands on the five-step scale */
@@ -811,25 +811,25 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:9.6pt; }
 .pie-l{ flex:0 0 52mm; }
 .pie-r{ flex:1; min-width:0; }
 .pie-r table{ margin-top:0; }
-.pie-lg{ margin-top:2mm; font-size:10.8pt; line-height:1.5; }
+.pie-lg{ margin-top:2mm; font-size:13.2pt; line-height:1.5; }
 .pie-lg div{ display:flex; align-items:baseline; gap:1.6mm; }
 .pie-lg i{ width:2.4mm; height:2.4mm; border-radius:.6mm; flex:0 0 auto; display:inline-block; }
 .pie-lg b{ flex:1; font-weight:600; color:var(--ink2); }
 /* The concentration tables were set a step down from everything else. */
-.ir-conc table{ font-size:10.8pt; }
+.ir-conc table{ font-size:13.2pt; }
 .ir-conc td, .ir-conc th{ padding-top:2.1mm; padding-bottom:2.1mm; }
 .note{ border-left:1.6pt solid var(--teal); background:var(--teal2); padding:2.4mm 3mm;
-       border-radius:0 1mm 1mm 0; font-size:7.3pt; line-height:1.5; }
+       border-radius:0 1mm 1mm 0; font-size:8.9pt; line-height:1.5; }
 body.gu .note{ line-height:1.7; }
 .note.bad{ border-left-color:var(--bad); background:#FBEEEC; }
 .note.good{ border-left-color:var(--good); background:#EDF5F0; }
 .note b{ display:block; margin-bottom:.5mm; }
 ul{ margin-left:4mm; } li{ margin:.9mm 0; }
-.blist li{ font-size:10.8pt; line-height:1.45; }
+.blist li{ font-size:13.2pt; line-height:1.45; }
 body.gu .blist li{ line-height:1.68; }
 .blist b{ color:var(--navy); }
 .donut{ width:32mm; height:32mm; border-radius:50%; flex:0 0 32mm; }
-.dlegend{ font-size:8.6pt; line-height:1.7; }
+.dlegend{ font-size:10.5pt; line-height:1.7; }
 .dlegend i{ display:inline-block; width:2.4mm; height:2.4mm; border-radius:.5mm; margin-right:1.6mm; }
 .grow{ flex:1; }
 `;
@@ -884,7 +884,10 @@ function shell(title, bodyCls, pages, extraCss){
     /* One language now, so nothing is held back and nothing is swept. */
   return '<!DOCTYPE html><html lang="'+'en'+'"><head><meta charset="utf-8">'
     + '<title>'+ttl+'</title><style>'+CSS+(extraCss||'')+'</style></head><body class="'+bodyCls+'">'
-    + pages + '<!--FIT-->' + AUTOFIT + '</body></html>';
+    /* Order matters: fill the pages first, then let autofit shrink whatever
+       still overflows. Shrinking before filling would scale down a page that
+       was about to receive more content. */
+    + pages + '<!--FIT-->' + FILL_AND_TOC + AUTOFIT + '</body></html>';
 }
 
 /* Universal last-resort guard. `.page` has overflow:hidden, so anything that
@@ -927,6 +930,9 @@ var AUTOFIT = '<script>(function(){'
       + 'var nm=live[r].querySelector(".pgnum"); if(nm) nm.textContent=(r+1);'
     + '}'
   + '}'
+
+
+
   /* Box text that outgrows its box.
      Several tiles carry a sentence rather than a number — a verdict, a scenario
      comment, a group activity — and at the fixed tile size the words spilled or
@@ -974,6 +980,104 @@ var AUTOFIT = '<script>(function(){'
     + '});'
   + '}'
 + '})();<\/script>';
+
+/* Filling the pages, and the contents list.
+   Written as its own script rather than appended to the concatenated one above:
+   that string is built by hand out of hundreds of fragments, and every edit I
+   made to it put a brace in the wrong place. This is plain source. */
+var FILL_AND_TOC = '<script>(function(){\n'
++ 'function boxOf(p){ return p.querySelector(".body"); }\n'
++ 'function full(b){ return b.scrollHeight > b.clientHeight + 1; }\n'
++ 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
+
+/* The paginator above only spills forward, so every page it touched kept the
+   hole it made — the reports were running at about eight per cent ink with a
+   fifth of each page blank. This pulls the next page back up while it fits. */
++ 'var pages = [].slice.call(document.querySelectorAll(".page"));\n'
++ 'for(var i = 0; i < pages.length - 1; i++){\n'
++ '  var here = boxOf(pages[i]);\n'
++ '  if(!here) continue;\n'
++ '  var grow = here.querySelector(".grow"); if(grow) grow.parentNode.removeChild(grow);\n'
++ '  var moved = 0, src = i + 1;\n'
++ '  while(moved++ < 200 && src < pages.length){\n'
++ '    var next = boxOf(pages[src]);\n'
+/* a page emptied by the pulling is not the end of the work: keep taking from
+   the page after it, or the fill stops one page short every time */
++ '    if(!next || !next.children.length){ src++; continue; }\n'
++ '    var cand = next.children[0];\n'
++ '    if(cand.className === "grow"){ next.removeChild(cand); continue; }\n'
++ '    here.appendChild(cand);\n'
++ '    if(full(here)){ next.insertBefore(cand, next.firstChild); break; }\n'
+/* a heading must never be left alone at the foot of a page */
++ '  }\n'
+/* A heading left as the last thing on a page is an orphan: its section starts
+   overleaf. Checked after the pulling rather than during it, because the block
+   that belongs to it is often on the page after next, and looking only at the
+   immediately following page sent the heading back and stopped the fill. */
++ '  var kids = here.children, lastEl = kids[kids.length - 1];\n'
++ '  if(isHeading(lastEl)){\n'
++ '    var dest = null;\n'
++ '    for(var q = i + 1; q < pages.length; q++){\n'
++ '      var bx = boxOf(pages[q]);\n'
++ '      if(bx){ dest = bx; break; }\n'
++ '    }\n'
++ '    if(dest) dest.insertBefore(lastEl, dest.firstChild);\n'
++ '  }\n'
++ '  if(!here.querySelector(".grow")){\n'
++ '    var sp = document.createElement("div"); sp.className = "grow"; here.appendChild(sp);\n'
++ '  }\n'
++ '}\n'
+
+/* drop any page the pull-back emptied */
++ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
++ 'for(var d = pages.length - 1; d >= 1; d--){\n'
++ '  var b = boxOf(pages[d]);\n'
+/* Empty means no element left but the spacer. The old test looked for a table
+   or a paragraph, so a page holding only a chart wrapper or a plain div counted
+   as empty and was deleted with its content inside it. */
++ '  if(!b) continue;\n'
++ '  var real = 0;\n'
++ '  for(var k = 0; k < b.children.length; k++){\n'
++ '    if(b.children[k].className !== "grow") real++;\n'
++ '  }\n'
++ '  if(!real) pages[d].parentNode.removeChild(pages[d]);\n'
++ '}\n'
+
+/* renumber, because pages may have gone */
++ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
++ 'for(var r = 0; r < pages.length; r++){\n'
++ '  var t = pages[r].querySelector(".pgtot"); if(t) t.textContent = pages.length;\n'
++ '  var n = pages[r].querySelector(".pgnum"); if(n) n.textContent = (r + 1);\n'
++ '}\n'
+
+/* the contents, with page numbers that are true because the packing is done */
++ 'var map = [];\n'
++ 'for(var p = 0; p < pages.length; p++){\n'
++ '  var secs = pages[p].querySelectorAll(".sec");\n'
++ '  for(var x = 0; x < secs.length; x++){\n'
++ '    var nEl = secs[x].querySelector(".no"), tEl = secs[x].querySelector(".ti");\n'
++ '    var title = tEl ? tEl.textContent.trim() : "";\n'
++ '    if(!title) continue;\n'
++ '    secs[x].id = "sec-" + (map.length + 1);\n'
++ '    map.push({ num: nEl ? nEl.textContent.trim() : "", title: title,\n'
++ '               page: p + 1, id: secs[x].id });\n'
++ '  }\n'
++ '}\n'
++ 'window.__EQ_TOC = map;\n'
++ 'var host = document.querySelector("[data-toc]");\n'
++ 'if(host && map.length){\n'
++ '  var out = "<div class=@toc-h@>Contents</div>";\n'
++ '  for(var m = 0; m < map.length; m++){\n'
++ '    out += "<a class=@toc-row@ href=@#" + map[m].id + "@>"\n'
++ '         + "<span class=@toc-n@>" + map[m].num + "</span>"\n'
++ '         + "<span class=@toc-t@>" + map[m].title + "</span>"\n'
++ '         + "<span class=@toc-d@></span>"\n'
++ '         + "<span class=@toc-p@>" + map[m].page + "</span></a>";\n'
++ '  }\n'
++ '  host.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
++ '}\n'
++ '})();<\/script>';
+
 /* The document title header stays English in every edition, by design. */
 function head(p, label){
   /* The company name stays in Latin script — it is a proper noun. The page
@@ -1293,7 +1397,7 @@ function mktSize(p, lang, ind){
           + '</div><div class="v en">' + t[1] + '</div>'
           + (t[2] ? '<div class="s en">' + e(t[2]) + '</div>' : '') + '</div>';
       }).join('') + '</div>'
-    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:8pt">'
+    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:9.8pt">'
         + e(L(lang,'mkt_study')) + ': <span class="en">' + e(st) + '</span></div>' : '');
 }
 
@@ -1703,7 +1807,7 @@ function cover(p, lang, docTitle, pages){
     '<div style="height:7mm"></div>'
     + '<div class="eyebrow en">'+EN(e(docTitle))+' &nbsp;·&nbsp; '+e(A(lang,m.ipo_type||'Mainboard'))+' &nbsp;·&nbsp; '+e(L(lang,'india'))+'</div>'
     + '<h1 class="en" style="margin-top:2mm">'+EN(e(m.company||''))+'</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:8pt">'+sectorHtml(p,lang)
+    + '<div class="mut" style="margin-top:1mm;font-size:9.8pt">'+sectorHtml(p,lang)
       + (m.sector?' &nbsp;·&nbsp; ':'')+e(dmy(m.analysis_datetime))
       /* X3 / E1 — what this analysis was built on, before anything built on it.
          The Executive Summary is a fixed four pages, so there it rides on the
@@ -1866,7 +1970,7 @@ function buildCompany(p, lang){
     + '<div class="eyebrow en">' + EN(e('Company Research Report')) + ' &nbsp;·&nbsp; '
       + e(eqTitle(p)) + '</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:20pt">' + EN(e(S(c.name) || S(c.symbol))) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:8pt">' + e(S(c.symbol))
+    + '<div class="mut" style="margin-top:1mm;font-size:9.8pt">' + e(S(c.symbol))
       + (c.exchange ? ' · ' + e(S(c.exchange)) : '') + (c.sector ? ' · ' + e(S(c.sector)) : '')
       + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt)) + '</div>'
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -1886,7 +1990,11 @@ function buildCompany(p, lang){
 
   if(window.EQCharts) window.EQCharts.resetFigures();
   var focusC = focusPage(p, c);
-  if(focusC) out += S3('Focus charts') + focusC;
+  /* Focus charts drew the scoring bars, the valuation football field and the
+     multibagger grid a second time — the same three SVGs already appear in
+     Scoring, Valuation scenarios and Multibagger arithmetic, where the text
+     that explains them is. Six of this report's eight figures were duplicates.
+     The charts stay in their own sections; the gallery goes. */
 
   /* A two-page backdrop, not a sector study: a company cannot be judged
      without its industry, its policy regime and its peers, but the sector
@@ -1919,6 +2027,8 @@ function buildCompany(p, lang){
   out += S3('Snapshot') + eqSnapshot(c, lang);
 
   if(arr(c.theses).length){
+  var sv = (p.standalone ? eqStandaloneVerdict(c, lang) : '');
+  if(sv) out += sv;
     out += S3('The case') + eqTheses(c, lang);
   } else if(arr(c.thesis).length > 1){
     out += S3('Thesis')
@@ -2148,7 +2258,7 @@ function eqCover(p, lang, docLabel, titleFontPt){
     + '<div class="eyebrow en">' + EN(e(docLabel)) + ' &nbsp;·&nbsp; India &nbsp;·&nbsp; listed equity</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:' + (titleFontPt || 19) + 'pt">'
       + EN(e(eqTitle(p))) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:8pt">'
+    + '<div class="mut" style="margin-top:1mm;font-size:9.8pt">'
       + e(S(run.horizon) || '') + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt))
       + (run.searchesRun ? ' &nbsp;·&nbsp; ' + run.searchesRun + ' searches' : '') + '</div>'
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -2406,6 +2516,10 @@ function figScoreBullets(c){
   var PIL=(window.EQ&&window.EQ.scoring.PILLARS)||{};
   return K.bullets({ title:'Scoring models — '+(S(c.name)||S(c.symbol)),
     source:'Computed by the application from the component ratings',
+    note:'Each bar is a score out of 100, shown above it. The four models are '
+       + 'weighted together into the Overall figure at the foot: business quality, '
+       + 'growth, valuation and risk. Longer and greener is better; a score under '
+       + 'about 45 means the evidence gathered did not support that model.',
     rows:Object.keys(PIL).map(function(k){
       return { label:PIL[k].label, max:100,
                value:(c.pillars&&c.pillars[k]&&c.pillars[k].score) };
@@ -2923,6 +3037,36 @@ function eqRotation(p, lang){
       ? 'These sectors were researched within a week of each other, so the order is a fair comparison.'
       : '<b>Read this with care.</b> ' + e(S(r.caveat))) + '</p>'
     + tbl(['#','Sector','Median momentum','Basis'], rows, { chunk: 10 });
+}
+
+
+/* The safety verdict, for a company researched on its own.
+   The kill switch computes identically for every run, but its only effect is to
+   bar a company from a Top 3 — and an independent run has no Top 3, so the
+   finding had nowhere to go. On the Anlon report that meant seven severe
+   findings, including a High Risk forensic score, appeared nowhere in forty
+   pages. On a standalone run it is stated at the top, where a reader cannot
+   miss it. Nothing about the switch itself changes. */
+function eqStandaloneVerdict(c, lang){
+  if(!c) return '';
+  var reasons = c.exclusionReasons || [];
+  var unread = c.unreadableFlags || [];
+  var band = c.forensicScore == null ? null : c.forensicScore;
+  if(!reasons.length && !unread.length) return '';
+
+  var rows = reasons.map(function(r){ return { cells:[ e(S(r)) ] }; });
+  unread.forEach(function(u){ rows.push({ cells:[ '<span class="mut">' + e(S(u)) + '</span>' ] }); });
+
+  return '<div class="verdictbox">'
+    + '<div class="vh">This company does not clear the safety screen</div>'
+    + '<p>' + reasons.length + ' severe finding' + (reasons.length === 1 ? '' : 's')
+      + (band != null ? ', and a forensic score of ' + band + ' out of 100' : '')
+      + '. The same screen decides which companies may enter a Top 3; this company '
+      + 'would not have. Every finding below carries its evidence in the sections that follow.</p>'
+    + tbl(['Finding'], rows, { chunk: 12 })
+    + '<p class="mut">This is research, not a recommendation, and not advice. '
+    + 'Verify every figure against the annual report and the exchange filings before acting.</p>'
+    + '</div>';
 }
 
 function eqTechPanel(c, lang){
@@ -3677,7 +3821,7 @@ function buildScorecard(p, lang){
            + '\n.sc-blk{break-inside:avoid}\n.sc-blk table{margin-bottom:0}\n'
            + '.sc-blk .sec{margin:6mm 0 2.5mm}\n.sc-blk .bar{margin:0}\n'
            + '.sc-blk td,.sc-blk th{padding-top:2.3mm;padding-bottom:2.3mm}\n'
-           + '.sc-blk .ti{font-size:10.5pt}\n'
+           + '.sc-blk .ti{font-size:12.8pt}\n'
            + 'body.gu .sc-blk td,body.gu .sc-blk th{padding-top:1.9mm;padding-bottom:1.9mm}\n'
            /* The card is contractually two pages. Rather than spilling onto a
               third, the type is stepped down one notch at a time until all
@@ -3689,12 +3833,12 @@ function buildScorecard(p, lang){
            + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th,'
            + 'body.gu[data-dense="2"] .sc-blk td,body.gu[data-dense="2"] .sc-blk th{padding-top:1.15mm;padding-bottom:1.15mm}\n'
            + '[data-dense="2"] .sc-blk .sec{margin:3mm 0 1.6mm}\n'
-           + '[data-dense="2"] .sc-blk .ti{font-size:9.6pt}\n'
-           + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th{font-size:8.1pt}\n'
+           + '[data-dense="2"] .sc-blk .ti{font-size:11.7pt}\n'
+           + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th{font-size:9.9pt}\n'
            + '[data-dense="3"] .sc-blk td,[data-dense="3"] .sc-blk th,'
-           + 'body.gu[data-dense="3"] .sc-blk td,body.gu[data-dense="3"] .sc-blk th{padding-top:.85mm;padding-bottom:.85mm;font-size:7.5pt}\n'
+           + 'body.gu[data-dense="3"] .sc-blk td,body.gu[data-dense="3"] .sc-blk th{padding-top:.85mm;padding-bottom:.85mm;font-size:9.2pt}\n'
            + '[data-dense="3"] .sc-blk .sec{margin:2.2mm 0 1.2mm}\n'
-           + '[data-dense="3"] .sc-blk .ti{font-size:9pt}\n'
+           + '[data-dense="3"] .sc-blk .ti{font-size:11.0pt}\n'
            + '[data-dense="3"] .sc-top .tile .v{font-size:15pt}\n'
            + '[data-dense="3"] .sc-top h1{font-size:16pt}\n';
 
@@ -4234,7 +4378,7 @@ function coverHead(p, lang, docTitleKey, titleFontPt){
       + e(A(lang, m.ipo_type || 'Mainboard')) + ' &nbsp;·&nbsp; ' + e(L(lang, 'india')) + '</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:' + (titleFontPt || 19) + 'pt">'
       + EN(e(m.company || '')) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:8pt">' + sectorHtml(p, lang)
+    + '<div class="mut" style="margin-top:1mm;font-size:9.8pt">' + sectorHtml(p, lang)
       + (m.sector ? ' &nbsp;·&nbsp; ' : '') + e(dmy(m.analysis_datetime)) + '</div>'
     + provStamp(p, lang)
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -4277,12 +4421,14 @@ function packDoc(p, lang, cfg){
   if(lead){
     shells = page(p, 1, 25, cfg.runHead,
       '<div class="ir-lead">' + cfg.leadIn + '</div>'
+      + '<div class="ir-toc" data-toc></div>'
       + '<div class="ir-box">' + B.join('') + '</div><div class="grow"></div>',
       lang, cfg.docName);
     first = 2;
   } else {
     shells = page(p, 1, 25, cfg.runHead,
-      '<div class="ir-toc-page">' + cfg.tocPage + '</div><div class="grow"></div>',
+      '<div class="ir-toc-page">' + (cfg.tocPage || '') + '</div>'
+      + '<div class="ir-toc" data-toc></div><div class="grow"></div>',
       lang, cfg.docName);
     first = 2;
   }
@@ -4294,39 +4440,39 @@ function packDoc(p, lang, cfg){
 
   var CSS2 = (cfg.extraCss || '') + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
     + '.ir-blk:last-child{ margin-bottom:0; }\n'
-    + '.ir-blk table{ margin-bottom:1.5mm; font-size:8.8pt; }\n'
+    + '.ir-blk table{ margin-bottom:1.5mm; font-size:10.7pt; }\n'
     + '.ir-blk td,.ir-blk th{ padding-top:2.1mm; padding-bottom:2.1mm; }\n'
     + 'body.gu .ir-blk td,body.gu .ir-blk th{ padding-top:1.45mm; padding-bottom:1.45mm; }\n'
     + '.ir-blk .sec{ margin:5mm 0 2.5mm; }\n'
-    + '.ir-blk .ti{ font-size:11.5pt; }\n'
-    + '.ir-blk .note{ font-size:8.8pt; line-height:1.55; margin-top:2mm; }\n'
+    + '.ir-blk .ti{ font-size:14.0pt; }\n'
+    + '.ir-blk .note{ font-size:10.7pt; line-height:1.55; margin-top:2mm; }\n'
     /* A long case runs to several paragraphs. Marking them as blocks the
        packer can divide is what stops one over-long box from being an
        indivisible slab that forces the whole document to be scaled. */
     + '.ir-blk .note p{ margin:0 0 1.8mm; }\n'
     + '.ir-blk .note p:last-child{ margin-bottom:0; }\n'
     + 'body.gu .ir-blk .note{ line-height:1.72; }\n'
-    + '.ir-blk .lead{ font-size:10pt; line-height:1.55; }\n'
+    + '.ir-blk .lead{ font-size:12.2pt; line-height:1.55; }\n'
     + '.ir-ul{ margin:2mm 0 2.5mm 5mm; padding:0; }\n'
-    + '.ir-ul li{ margin:1.9mm 0; line-height:1.55; font-size:9.2pt; }\n'
+    + '.ir-ul li{ margin:1.9mm 0; line-height:1.55; font-size:11.2pt; }\n'
     + 'body.gu .ir-ul li{ line-height:1.75; }\n'
     + '.ir-grp{ break-inside:avoid; margin:5mm 0 1mm; }\n'
     + '.ir-grp:first-child{ margin-top:0; }\n'
     + '.ir-grph{ font-size:15pt; font-weight:800; letter-spacing:-.01em; color:var(--gold);'
     + ' padding-bottom:2mm; border-bottom:1.6pt solid var(--gold); }\n'
     + 'body.gu .ir-grph{ font-size:14pt; }\n'
-    + '.ir-sub{ font-size:8.6pt; font-weight:800; color:var(--navy); letter-spacing:.03em;'
+    + '.ir-sub{ font-size:10.5pt; font-weight:800; color:var(--navy); letter-spacing:.03em;'
     + ' text-transform:uppercase; margin:3.5mm 0 1.5mm; }\n'
     + '.ir-toc{ margin-top:2mm; column-count:2; column-gap:8mm; }\n'
     + '.ir-toc-row{ display:flex; gap:3mm; align-items:baseline; padding:1mm 0;'
-    + ' border-bottom:.4pt solid var(--rule); font-size:9.6pt; text-decoration:none; color:inherit;'
+    + ' border-bottom:.4pt solid var(--rule); font-size:11.7pt; text-decoration:none; color:inherit;'
     + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
     + '.ir-toc-row span{ color:var(--ink4); font-weight:700; flex:0 0 6.5mm; }\n'
     + '.ir-toc-row b{ flex:1; font-weight:600; }\n'
     + '.ir-toc-row .ir-toc-pg{ font-style:normal; color:var(--ink4); font-weight:700;'
     + ' flex:0 0 6mm; text-align:right; }\n'
-    + '.ir-toc.tight{ column-count:3; column-gap:5mm; font-size:8.4pt; }\n'
-    + '.ir-toc.tight .ir-toc-row{ break-inside:avoid; padding:.7mm 0; }\n'    + '.ir-toc.tight .ir-toc-row b{ font-size:8.2pt; }\n'    + '.ir-toc-grp{ font-size:9.2pt; font-weight:800; color:var(--gold); letter-spacing:.02em;'
+    + '.ir-toc.tight{ column-count:3; column-gap:5mm; font-size:10.2pt; }\n'
+    + '.ir-toc.tight .ir-toc-row{ break-inside:avoid; padding:.7mm 0; }\n'    + '.ir-toc.tight .ir-toc-row b{ font-size:10.0pt; }\n'    + '.ir-toc-grp{ font-size:11.2pt; font-weight:800; color:var(--gold); letter-spacing:.02em;'
     + ' margin:3mm 0 1mm; padding-bottom:.8mm; border-bottom:1pt solid var(--gold);'
     + ' break-inside:avoid; -webkit-column-break-inside:avoid;'
     /* A group heading must never be the last thing in a column. "Financials"
@@ -4344,18 +4490,18 @@ function packDoc(p, lang, cfg){
       + ' -webkit-column-break-before:avoid; }\n'
     + '.misscols{ column-count:2; column-gap:7mm; margin-top:1mm; }\n'
     + '.misscols li{ break-inside:avoid; -webkit-column-break-inside:avoid;'
-    + ' margin-bottom:1.1mm; font-size:8.2pt; line-height:1.42; }\n'
+    + ' margin-bottom:1.1mm; font-size:10.0pt; line-height:1.42; }\n'
     + '.ir-toc-grp:first-child{ margin-top:0; }\n'
     + '.ir-scoreblk{ margin-bottom:2.5mm; }\n'
     + '.ir-scorehd{ display:flex; justify-content:space-between; align-items:baseline;'
-    + ' font-size:9.4pt; font-weight:800; color:var(--navy); padding:1.5mm 0 1mm;'
+    + ' font-size:11.5pt; font-weight:800; color:var(--navy); padding:1.5mm 0 1mm;'
     + ' border-bottom:.8pt solid var(--navy); }\n'
-    + '.ir-score{ width:100%; border-collapse:collapse; font-size:8.2pt; }\n'
+    + '.ir-score{ width:100%; border-collapse:collapse; font-size:10.0pt; }\n'
     + '.ir-score td{ padding:1.3mm 2mm; border-bottom:.4pt solid var(--rule); vertical-align:top; }\n'
     + '.ir-score td.nm{ width:33mm; }\n'
     + '.ir-score td.bar-c{ width:22mm; }\n'
     + '.ir-score td.n{ text-align:right; white-space:nowrap; width:15mm; font-weight:700; }\n'
-    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:8.8pt; }\n'
+    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:10.7pt; }\n'
     + '.ir-score .mini{ display:block; height:2.4mm; background:#EEF1F5; border-radius:1.2mm;'
     + ' overflow:hidden; }\n'
     + '.ir-score .mini i{ display:block; height:100%; border-radius:0 1.2mm 1.2mm 0; }\n'
@@ -4364,9 +4510,9 @@ function packDoc(p, lang, cfg){
        scoring section onto a third page. Tightening only the scoring tables
        keeps it to the two pages the brief calls for without touching the rest
        of the document. */
-    + 'body.gu .ir-score{ font-size:9.2pt; }\n'
+    + 'body.gu .ir-score{ font-size:11.2pt; }\n'
     + 'body.gu .ir-score td{ padding:.85mm 1.6mm; line-height:1.42; }\n'
-    + 'body.gu .ir-scorehd{ font-size:8.8pt; padding:1mm 0 .7mm; }\n'
+    + 'body.gu .ir-scorehd{ font-size:10.7pt; padding:1mm 0 .7mm; }\n'
     + 'body.gu .ir-scoreblk{ margin-bottom:1.8mm; }\n'
     /* `.body` is a flex column, so a page that fills up shrinks its children
        rather than overflowing. That silently squashed the recommendation box on

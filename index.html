@@ -292,7 +292,14 @@ details .in{padding:0 14px 14px;}
   padding:14px 18px 10px; font-weight:700; font-size:.95rem;
   border-bottom:1px solid var(--line); flex:0 0 auto;
 }
-.pickpanel .pklist{ overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; }
+.pickpanel .pklist{
+  overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto;
+  /* Without this the scroll gesture passes through to the page once the list
+     reaches an end, which is what made the sector page move behind the open
+     panel instead of the list moving. */
+  overscroll-behavior:contain; touch-action:pan-y;
+}
+body.pklock{ overflow:hidden; }
 .pickpanel .pk{
   display:block; width:100%; text-align:left; background:none; border:0;
   padding:15px 18px; font-size:.95rem; line-height:1.4; color:var(--ink);
@@ -478,7 +485,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="14-09-2026.6";</script>
+<script>window.APP_BUILD="14-09-2026.8";</script>
 </head>
 <body>
 
@@ -1620,6 +1627,7 @@ function scoreFromLine(line, key){
    what had to be repaired.
    ========================================================================== */
 var LAST_REPAIRS = [];
+var LAST_TRUNCATED = false;
 
 /* Pull the outermost JSON object out of a reply, brace-matched and
    string-aware, without needing a closing fence. */
@@ -1795,7 +1803,13 @@ function readOne(text){
   }
   var sal = unwrapPayload(salvageTopLevel(san.text));
   if(looksLikePayload(sal)){
-    return { data:sal, fixes:san.fixes.concat(['recovered the part of a cut-off reply that was complete']) };
+    /* A truncated paste is the single most misleading failure in the app: the
+       recovered fragment is missing whole blocks, and the validator then reports
+       them as "required", which sends the reader hunting for fields that are
+       present in the reply they copied. It is flagged, not buried. */
+    LAST_TRUNCATED = true;
+    return { data:sal, truncated:true,
+      fixes:san.fixes.concat(['THE PASTE WAS CUT OFF — only the part that was complete could be read']) };
   }
   return null;
 }
@@ -2098,6 +2112,7 @@ function parseImport(raw){
      computes everything from it, so there is nothing to scrape and nothing to
      reshape. It is recognised first, before any of the older handling. */
   if(j && j.run && Array.isArray(j.companies)){
+    if(LAST_TRUNCATED) out.truncated = true;
     if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
       + LAST_REPAIRS.join(', ') + ').');
     out.data = j;
@@ -2723,14 +2738,44 @@ function showReview(res, raw){
   if(res.v3){
     var au = auditPayload(d);
     var pct = Math.round(au.filled / au.total * 100);
-    html += '<div class="rvh">Imported ' + au.filled + ' of ' + au.total
-      + ' data sections for ' + esc(au.scope)
-          + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
-    var runSeg = (d.run && d.run.segment) || '(sector not detected)';
+
+    /* Three kinds of payload arrive here and they are not the same thing. One
+       sector study with no companies, one company belonging to a Top 3, and one
+       company researched on its own each get their own headline — describing
+       all three as "the whole run" told the reader nothing and, on a company
+       payload, implied that missing sector blocks were a fault. */
     var nCo = (d.companies && d.companies.length) || 0;
-    html += '<div class="rvm">' + esc(runSeg)
-          + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
-          + ' · ' + nCo + ' companies</div>';
+    var kind = (IMPORT_TARGET && IMPORT_TARGET.kind === 'company')
+      ? (IMPORT_TARGET.rank ? 'top3' : 'solo')
+      : (nCo ? 'company' : 'sector');
+    var coName = nCo ? ((d.companies[0].name || d.companies[0].symbol)) : null;
+    var segName = (d.run && d.run.segment) || null;
+    var headline, subline;
+
+    if(kind === 'sector'){
+      headline = 'Sector research \u2014 ' + (segName || 'sector not named');
+      subline = (segName || '')
+        + ((d.run && d.run.subsegment) ? ' \u00b7 ' + d.run.subsegment : '')
+        + ' \u00b7 ' + au.filled + ' of ' + au.total + ' sector sections'
+        + ((d.shortlist && d.shortlist.length)
+            ? ' \u00b7 ' + d.shortlist.length + ' companies screened' : ' \u00b7 no shortlist');
+    } else if(kind === 'top3'){
+      headline = 'Top 3 company \u2014 ' + (coName || 'company ' + IMPORT_TARGET.rank);
+      subline = 'Rank ' + IMPORT_TARGET.rank + ' of '
+        + (segName ? segName : 'the sector study')
+        + ' \u00b7 ' + au.filled + ' of ' + au.total + ' company sections';
+    } else if(kind === 'solo'){
+      headline = 'Independent company \u2014 ' + (coName || 'company');
+      subline = 'Researched on its own, not part of any sector study'
+        + ' \u00b7 ' + au.filled + ' of ' + au.total + ' company sections';
+    } else {
+      headline = 'Company research \u2014 ' + (coName || '');
+      subline = au.filled + ' of ' + au.total + ' company sections';
+    }
+
+    html += '<div class="rvh">' + esc(headline)
+          + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
+    html += '<div class="rvm">' + esc(subline) + '</div>';
     html += '<div class="rvbar"><i style="width:' + pct + '%"></i></div>';
     html += '<div class="' + (pct >= 80 ? 'rvok' : pct >= 55 ? 'rvwarn' : 'rvbad') + '">'
           + '<b>' + pct + '% of the payload carries data.</b> '
@@ -2749,7 +2794,11 @@ function showReview(res, raw){
     html += '</div>';
 
     /* ---- what will actually build ---- */
-    html += '<div class="rvdocs"><div class="rvdh">What this payload can build</div>';
+    html += '<div class="rvdocs"><div class="rvdh">'
+      + (kind === 'solo' ? 'What this company\u2019s research can build'
+       : kind === 'top3' ? 'What the run can build once this is saved'
+       : kind === 'sector' ? 'What the sector study can build'
+       : 'What this payload can build') + '</div>';
     docReadiness(d).forEach(function(x){
       html += '<div class="rvsrow"><i class="' + (x.ok ? 'dot ok' : 'dot none') + '"></i>'
             + '<span>' + esc(x.name) + '</span><b class="' + (x.ok ? '' : 'mutb') + '">'
@@ -2855,7 +2904,16 @@ $('#btnDoImport').addEventListener('click', function(){
     }
 
     var res = parseImport(raw);
-    if(msg) msg.innerHTML = res.warn && res.warn.length ? '<b>Note.</b> ' + esc(res.warn.join(' ')) : '';
+    if(msg){
+      if(res.truncated || (res.warn || []).join(' ').indexOf('CUT OFF') >= 0){
+        msg.innerHTML = '<b style="color:var(--red)">The paste was cut off.</b> Only the part that '
+          + 'arrived complete could be read, so whole sections are missing and the checks below '
+          + 'will report them as absent even though they are in your reply. Copy the block again '
+          + '\u2014 use the copy button on the code block rather than selecting the text by hand.';
+      } else {
+        msg.innerHTML = res.warn && res.warn.length ? '<b>Note.</b> ' + esc(res.warn.join(' ')) : '';
+      }
+    }
     try{ applyDetectedTool(raw, res.data); }catch(e){}
     showReview(res, raw);
   }catch(err){
@@ -3646,7 +3704,11 @@ function fillSegmentSelect(){
 function fillSubSelect(){
   var el = $('#subSel'); if(!el) return;
   var seg = ($('#segSel') && $('#segSel').value) || '';
-  var subs = (seg && window.EQSegments) ? (EQSegments.subsOf(seg) || []) : [];
+  var subs = (seg && window.EQSegments) ? (EQSegments.subsOf(seg) || []).slice() : [];
+  /* Alphabetical, so a name can be found rather than hunted for. The taxonomy
+     stores them in the order they were written, which is no order at all to a
+     reader. */
+  subs.sort(function(a, b){ return String(a).localeCompare(String(b), 'en'); });
   var keep = el.value;
   el.innerHTML = '<option value="">' + (seg ? '— all of ' + esc(seg) + ' —' : '— choose a sector first —') + '</option>'
     + subs.map(function(x){ return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join('');
@@ -3966,6 +4028,7 @@ document.addEventListener('click', function(ev){
   function close(){
     var m = document.querySelector('.pickmask');
     if(m && m.parentNode) m.parentNode.removeChild(m);
+    document.body.classList.remove('pklock');
   }
   function open(sel){
     if(sel.disabled || !sel.options.length) return;
@@ -3982,8 +4045,13 @@ document.addEventListener('click', function(ev){
       + '<div class="pkfoot"><button type="button" class="btn sm" style="margin:0;width:100%" data-close="1">Close</button></div>'
       + '</div>';
     document.body.appendChild(mask);
+    /* The page behind must not move while the list is open. */
+    document.body.classList.add('pklock');
     var on = mask.querySelector('.pk.on');
     if(on && on.scrollIntoView){ try{ on.scrollIntoView({ block:'center' }); }catch(e){} }
+    mask.addEventListener('touchmove', function(ev){
+      if(!ev.target.closest || !ev.target.closest('.pklist')) ev.preventDefault();
+    }, { passive:false });
     mask.addEventListener('click', function(ev){
       if(ev.target === mask || ev.target.getAttribute('data-close')){ close(); return; }
       var row = ev.target.closest && ev.target.closest('.pk');

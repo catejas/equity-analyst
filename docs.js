@@ -34,7 +34,10 @@ function currentPayload(kind){
                   subsegment: (solo.data.run && solo.data.run.subsegment) || null,
                   company: solo.company,
                   analysis_datetime: new Date(solo.ts).toISOString() },
-          report: b.report, warnings: b.warnings || [], companyIndex: 0
+          report: b.report, warnings: b.warnings || [], companyIndex: 0,
+          /* Tells the renderer to state the safety verdict at the top: an
+             independent run has no Top 3 for the kill switch to act on. */
+          standalone: true
         };
       }catch(e){}
     }
