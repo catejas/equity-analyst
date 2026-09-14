@@ -394,7 +394,13 @@ export function validatePayload(payload, { repair = true } = {}) {
       }
       if (!isObj(ph)) e(`${at}: priceHistory must be an object.`);
       else {
-        if (!isArr(ph.closes)) e(`${at}: priceHistory.closes must be an array.`);
+        /* null means the series could not be obtained, which is exactly what
+           the prompt asks for rather than an approximated series. Rejecting it
+           punished the honest answer and cost a whole run. */
+        if (!given(ph.closes)) {
+          w(`${at}: no price series supplied, so the technical panel cannot be computed.`);
+          delete ph.closes;
+        } else if (!isArr(ph.closes)) e(`${at}: priceHistory.closes must be an array or null.`);
         else {
           if (ph.closes.some((x) => !isNum(x))) {
             /* One unreadable series costs a chart, not the run. */
@@ -405,7 +411,8 @@ export function validatePayload(payload, { repair = true } = {}) {
         }
         for (const k of ['volumes', 'benchmarkCloses', 'highs', 'lows']) {
           if (ph[k] === undefined) continue;
-          if (!isArr(ph[k])) { e(`${at}: priceHistory.${k} must be an array.`); continue; }
+          if (!given(ph[k])) { delete ph[k]; continue; }
+          if (!isArr(ph[k])) { e(`${at}: priceHistory.${k} must be an array or null.`); continue; }
           if (ph[k].some((x) => !isNum(x))) { delete ph[k]; w(`${at}: priceHistory.${k} was not numeric and was set aside.`); }
           if (isArr(ph.closes) && ph[k].length !== ph.closes.length) {
             e(`${at}: priceHistory.${k} must be the same length as closes.`);

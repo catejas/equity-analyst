@@ -44,6 +44,7 @@ export function normaliseSeverity(v) {
  */
 export function evaluateKillSwitch(company) {
   const reasons = [];
+  const unreadable = [];
 
   // Flags raised by the forensic engine and the register battery are treated
   // exactly like flags stated in the payload. A finding the app computed is not
@@ -55,11 +56,26 @@ export function evaluateKillSwitch(company) {
   ];
 
   for (const flag of flags) {
-    if (!FLAG_CATEGORIES.includes(flag.category)) {
-      throw new Error(`Unknown red-flag category: ${flag.category}`);
-    }
+    /* A flag that arrives with wording outside the taxonomy is still a flag.
+       Throwing here killed the whole report build over one descriptive phrase —
+       a litigation matter categorised as "credit rating / debt servicing" —
+       which is a far worse outcome than reading it conservatively.
+       An unrecognised category cannot trip the kill switch, because the switch
+       is defined over five specific categories and guessing which one was meant
+       would be inventing a finding. It is recorded so it is not lost. */
+    const known = FLAG_CATEGORIES.includes(flag.category);
     const severity = normaliseSeverity(flag.severity);
-    if (!severity) throw new Error(`Unknown severity: ${flag.severity}`);
+    if (!severity) {
+      unreadable.push(`a flag with severity "${flag.severity}" could not be read`);
+      continue;
+    }
+    if (!known) {
+      if (severity === 'severe') {
+        unreadable.push(`a severe "${flag.category}" concern is outside the standard categories, `
+          + 'so it is reported but does not bar the Top 3 on its own');
+      }
+      continue;
+    }
     if (severity === 'severe' && KILL_SWITCH_CATEGORIES.includes(flag.category)) {
       reasons.push(`Severe ${flag.category} concern: ${flag.detail}`);
     }
@@ -82,7 +98,8 @@ export function evaluateKillSwitch(company) {
   if (company.overall && company.overall.sufficient === false) {
     reasons.push(`Data coverage ${(company.overall.coverage * 100).toFixed(0)}% is below the 60% threshold.`);
   }
-  return { eligibleForTop3: reasons.length === 0, exclusionReasons: reasons };
+  return { eligibleForTop3: reasons.length === 0, exclusionReasons: reasons,
+           unreadableFlags: unreadable };
 }
 
 /**

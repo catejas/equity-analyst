@@ -819,6 +819,17 @@ honesty would be the worst outcome of all.
     with "schema" as the first key, as the last thing in the reply. The JSON
     above is spaced out so you can read the contract; what you send must not be.
 
+11b. IF YOU CAN WRITE FILES, ALSO ATTACH THE PAYLOAD AS A .json FILE.
+    Name it after the subject — anlon-healthcare.json, psu-banking.json. Give
+    the file as well as the fenced block, not instead of it.
+    This matters more than it sounds. A payload of this size is often cut off
+    when it is copied by hand, and the application then reads only the part that
+    arrived: whole sections go missing and it reports them as absent even though
+    they are in your reply. A file cannot be truncated by a copy. If your
+    interface has no way to attach a file, say so in one line after the block so
+    the reader knows to use the copy button on the block rather than selecting
+    the text.
+
 12. State in run.researchNotes how many searches you actually ran. If the answer
     is zero, do not send the payload at all — go back and search.
 

@@ -30,6 +30,26 @@ function absent(indicator, need, have) {
   };
 }
 
+/**
+ * The longest window a series can actually carry, for indicators whose label is
+ * a convention rather than a requirement.
+ *
+ * A company listed four months ago has ninety days of history and will never
+ * have two hundred. Refusing every long average leaves its report with the
+ * technical section blank, which tells the reader nothing about the company and
+ * everything about our arithmetic. So the window is shortened to what exists,
+ * the reading is computed, and it is labelled with the period actually used —
+ * "SMA 200 (90 points, the full history)" is honest and useful, where a blank
+ * row is neither. Nothing is extrapolated and no figure is invented; a shorter
+ * average is simply a shorter average, and the report says so.
+ */
+function fitWindow(want, have, { min = 5 } = {}) {
+  if (have >= want + 1) return { n: want, short: false };
+  const n = Math.max(min, have - 1);
+  if (n < min) return null;
+  return { n, short: true };
+}
+
 /* ---------------------------------------------------------------- Hull MA */
 
 /**
@@ -111,15 +131,18 @@ export function psar(highs, lows, { step = 0.02, max = 0.2 } = {}) {
 /** Rate of change over a window, as a percentage. */
 export function momentum(closes, period = 63) {
   const c = clean(closes);
-  if (c.length < period + 1) return absent(`Momentum ${period}`, period + 1, c.length);
+  const fit = fitWindow(period, c.length, { min: 5 });
+  if (!fit) return absent(`Momentum ${period}`, period + 1, c.length);
   const now = c[c.length - 1];
-  const then = c[c.length - 1 - period];
+  const then = c[c.length - 1 - fit.n];
   if (!then) return absent(`Momentum ${period}`, period + 1, c.length);
   return {
     available: true,
-    indicator: `Momentum ${period}`,
+    indicator: `Momentum ${period}` + (fit.short ? ` (${fit.n} points — the full history)` : ''),
     value: Math.round(((now - then) / then) * 1000) / 10,
     unit: '%',
+    shortened: fit.short,
+    windowUsed: fit.n,
     evidence: 'CALCULATION',
   };
 }
@@ -234,10 +257,15 @@ export function panel(series) {
 
   const out = {};
   W.mas.forEach(([label, n]) => {
-    const r = sma(closes, n);
-    out[`sma${label}`] = r.available
-      ? { ...r, indicator: `SMA ${label}${spacing === 'weekly' ? ' (≈' + n + ' weekly bars)' : ''}` }
-      : absent(`SMA ${label}`, n, closes.length);
+    const fit = fitWindow(n, closes.length);
+    if (!fit) { out[`sma${label}`] = absent(`SMA ${label}`, n, closes.length); return; }
+    const r = sma(closes, fit.n);
+    if (!r.available) { out[`sma${label}`] = absent(`SMA ${label}`, n, closes.length); return; }
+    const suffix = fit.short
+      ? ` (${fit.n} of ${n} points \u2014 the full history)`
+      : (spacing === 'weekly' ? ` (\u2248${n} weekly bars)` : '');
+    out[`sma${label}`] = { ...r, indicator: `SMA ${label}${suffix}`, shortened: fit.short,
+      windowUsed: fit.n, windowWanted: n };
   });
   out.rsi = rsi(closes, W.rsi);
   out.macd = macd(closes);
@@ -258,8 +286,20 @@ export function panel(series) {
   if (clean(s.highs).length && clean(s.lows).length) out.atr = atr(s.highs, s.lows, closes);
 
   const computed = Object.values(out).filter((x) => x && x.available).length;
+  const shortened = Object.values(out).filter((x) => x && x.shortened);
+  /* A newly listed company has a short history and always will. Saying so once,
+     plainly, is better than leaving half the panel blank or letting a reader
+     assume a 200-day average rests on 200 days. */
+  const shortNote = shortened.length
+    ? `This company has ${closes.length} ${spacing} points of price history. `
+      + `${shortened.length} reading${shortened.length > 1 ? 's were' : ' was'} computed over the `
+      + 'full history available rather than the usual window, and each says so. Treat the longer '
+      + 'averages as indicative until more history exists.'
+    : null;
   return {
     available: computed > 0,
+    shortHistory: shortened.length > 0,
+    shortNote,
     spacing,
     points: closes.length,
     asOf: s.asOf || null,
