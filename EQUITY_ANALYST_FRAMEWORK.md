@@ -1,6 +1,6 @@
-# Equity Analyst — Research Framework v3.0.0
+# Equity Analyst — Research Framework v4.0.0
 
-Methodology 2.0.0 · payload schema 3.0.0
+Methodology 4.0.0 · payload schema 4.0.0
 
 Generated from the application itself. The rubric anchors, the register battery,
 the source tiers and the payload contract below are the same constants the app
@@ -104,7 +104,7 @@ phone rather than about the data:
      box with a copy button sitting right there. That is the whole difference
      between a payload that is easy to copy and one that is not.
   2. Put "schema" first inside the object, so the collapsed line reads
-     {"schema":"equity-analyst/3", ... } and the reader can see what it is
+     {"schema":"equity-analyst/4", ... } and the reader can see what it is
      without opening it.
 
 Put nothing after the closing fence.
@@ -667,7 +667,7 @@ including pledged shares.
 
 {
   "run": {
-    "schemaVersion": "3.0.0",
+    "schemaVersion": "4.0.0",
     "segment": "[SECTOR]",
     "subsegment": "[SUB-SECTOR, or leave out]",
     "horizon": "3-5",
@@ -844,7 +844,17 @@ including pledged shares.
       "financials": { "annual": [ { "period": "FY25", "basis": "consolidated", "revenue": 0 } ],
         "quarterly": [ { "period": "Q1FY26", "basis": "consolidated" } ] },
 
-      "priceHistory": { "asOf": "", "adjusted": true, "closes": [], "volumes": [], "benchmarkCloses": [] },
+  "priceHistory": {
+    "spacing": "weekly",
+    "closes": [], "highs": [], "lows": [], "volumes": [],
+    "adjusted": true, "asOf": "DD-MM-YYYY",
+    "fiftyTwoWeekHigh": { "value": 0, "date": "DD-MM-YYYY" },
+    "fiftyTwoWeekLow":  { "value": 0, "date": "DD-MM-YYYY" },
+    "twentyDayHigh": 0,
+    "pctFrom200DayAverage": 0,
+    "averageDailyVolume": 0,
+    "latestVolumeVsAverage": 0
+  },
 
       "multibagger": { "plausibility": { "3x@3-5": "", "5x@3-5": "", "10x@3-5": "" },
         "chain": "TAM to share to revenue to margin to cash to reinvestment to returns to value" },
@@ -949,6 +959,42 @@ document, the exchange filing — and when a figure appears in two places with
 different values, record both in conflicts rather than silently picking one.
 
 ═══════════════════════════════════════════════════════════════════
+9c. THE PRICE SERIES
+═══════════════════════════════════════════════════════════════════
+
+The application computes the technical panel itself — moving averages, RSI,
+MACD, Bollinger bands, Hull average, PSAR, momentum, trend and the twenty-day
+breakout test. It needs a series to compute them from, not your reading of one.
+Do not send indicator values; send the prices and let the arithmetic happen
+where it can be checked.
+
+Send WEEKLY closes for two years — about 104 numbers — and set spacing to
+"weekly". Weekly is asked for deliberately: two hundred daily closes is a long
+transcription and a single mistyped figure moves an average that every other
+reading then rests on. A wrong weekly close moves it far less, and 104 numbers
+survive the trip in a way that 250 do not. If you can supply accurate DAILY
+closes for a year, send those instead and set spacing to "daily" — the
+application scales every window to match.
+
+Highs and lows are optional but unlock PSAR and ATR. Volumes unlock the OBV and,
+more usefully, confirm a breakout: a break on no volume is reported differently
+from a break on three times average volume.
+
+Then these six figures, which are quoted on any exchange or data page and do not
+need transcribing from a series:
+
+  fiftyTwoWeekHigh and fiftyTwoWeekLow, each with its date
+  twentyDayHigh
+  pctFrom200DayAverage
+  averageDailyVolume
+  latestVolumeVsAverage
+
+If you cannot get the series, send the six figures anyway. They carry the
+breakout and range work on their own. A missing series costs some charts; a
+guessed series corrupts every reading built on it, so send null rather than
+approximate one.
+
+═══════════════════════════════════════════════════════════════════
 10. CHECK BEFORE YOU SEND
 ═══════════════════════════════════════════════════════════════════
 
@@ -1045,7 +1091,7 @@ phone rather than about the data:
      box with a copy button sitting right there. That is the whole difference
      between a payload that is easy to copy and one that is not.
   2. Put "schema" first inside the object, so the collapsed line reads
-     {"schema":"equity-analyst/3", ... } and the reader can see what it is
+     {"schema":"equity-analyst/4", ... } and the reader can see what it is
      without opening it.
 
 Put nothing after the closing fence.
@@ -1568,7 +1614,7 @@ including pledged shares.
 
 {
   "run": {
-    "schemaVersion": "3.0.0",
+    "schemaVersion": "4.0.0",
     "segment": "[SECTOR]",
     "subsegment": null,
     "horizon": "3-5",
@@ -1745,7 +1791,17 @@ including pledged shares.
       "financials": { "annual": [ { "period": "FY25", "basis": "consolidated", "revenue": 0 } ],
         "quarterly": [ { "period": "Q1FY26", "basis": "consolidated" } ] },
 
-      "priceHistory": { "asOf": "", "adjusted": true, "closes": [], "volumes": [], "benchmarkCloses": [] },
+  "priceHistory": {
+    "spacing": "weekly",
+    "closes": [], "highs": [], "lows": [], "volumes": [],
+    "adjusted": true, "asOf": "DD-MM-YYYY",
+    "fiftyTwoWeekHigh": { "value": 0, "date": "DD-MM-YYYY" },
+    "fiftyTwoWeekLow":  { "value": 0, "date": "DD-MM-YYYY" },
+    "twentyDayHigh": 0,
+    "pctFrom200DayAverage": 0,
+    "averageDailyVolume": 0,
+    "latestVolumeVsAverage": 0
+  },
 
       "multibagger": { "plausibility": { "3x@3-5": "", "5x@3-5": "", "10x@3-5": "" },
         "chain": "TAM to share to revenue to margin to cash to reinvestment to returns to value" },
@@ -1847,6 +1903,42 @@ Two habits that fill these sections fastest: search the primary source directly
 rather than commentary about it — the ministry, the regulator, the budget
 document, the exchange filing — and when a figure appears in two places with
 different values, record both in conflicts rather than silently picking one.
+
+═══════════════════════════════════════════════════════════════════
+9c. THE PRICE SERIES
+═══════════════════════════════════════════════════════════════════
+
+The application computes the technical panel itself — moving averages, RSI,
+MACD, Bollinger bands, Hull average, PSAR, momentum, trend and the twenty-day
+breakout test. It needs a series to compute them from, not your reading of one.
+Do not send indicator values; send the prices and let the arithmetic happen
+where it can be checked.
+
+Send WEEKLY closes for two years — about 104 numbers — and set spacing to
+"weekly". Weekly is asked for deliberately: two hundred daily closes is a long
+transcription and a single mistyped figure moves an average that every other
+reading then rests on. A wrong weekly close moves it far less, and 104 numbers
+survive the trip in a way that 250 do not. If you can supply accurate DAILY
+closes for a year, send those instead and set spacing to "daily" — the
+application scales every window to match.
+
+Highs and lows are optional but unlock PSAR and ATR. Volumes unlock the OBV and,
+more usefully, confirm a breakout: a break on no volume is reported differently
+from a break on three times average volume.
+
+Then these six figures, which are quoted on any exchange or data page and do not
+need transcribing from a series:
+
+  fiftyTwoWeekHigh and fiftyTwoWeekLow, each with its date
+  twentyDayHigh
+  pctFrom200DayAverage
+  averageDailyVolume
+  latestVolumeVsAverage
+
+If you cannot get the series, send the six figures anyway. They carry the
+breakout and range work on their own. A missing series costs some charts; a
+guessed series corrupts every reading built on it, so send null rather than
+approximate one.
 
 ═══════════════════════════════════════════════════════════════════
 10. CHECK BEFORE YOU SEND

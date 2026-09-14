@@ -14,7 +14,7 @@ import { DISCLOSURE_CHECKS } from './forensic.js';
 import { repairPayload } from './repair.js';
 import { SCREEN_KEYS, MIN_RATED } from './screen.js';
 
-export const PAYLOAD_SCHEMA_VERSION = '3.0.0';
+export const PAYLOAD_SCHEMA_VERSION = '4.0.0';
 
 export const DIRECT_DIMENSIONS = Object.freeze([
   'financialQuality', 'managementGovernance', 'technicalEntry', 'catalysts',
@@ -74,8 +74,16 @@ export function validatePayload(payload, { repair = true } = {}) {
     }
     if (!isStr(run.schemaVersion)) e('run.schemaVersion is required.');
     else if (run.schemaVersion !== PAYLOAD_SCHEMA_VERSION) {
+      /* A v3 payload still imports: nothing in v4 removed a field, it only
+         added the shortlist, the screen and the richer price series. Refusing
+         one would throw away research the person already paid for. */
       const major = String(run.schemaVersion).split('.')[0];
-      if (major !== '3') e(`Payload schema ${run.schemaVersion} predates the current contract ${PAYLOAD_SCHEMA_VERSION}. Regenerate the prompt and run it again.`);
+      if (major !== '4' && major !== '3') {
+        e(`Payload schema ${run.schemaVersion} predates the current contract ${PAYLOAD_SCHEMA_VERSION}. Regenerate the prompt and run it again.`);
+      } else if (major === '3') {
+        w(`This payload was written for schema 3; it is read as ${PAYLOAD_SCHEMA_VERSION}. `
+          + 'Nothing was removed between the two, so everything in it is used.');
+      }
       else w(`Payload schema ${run.schemaVersion} differs from the app's ${PAYLOAD_SCHEMA_VERSION}.`);
     }
     if (!isStr(run.horizon)) w('run.horizon not stated; defaulting to 3-5 years.');
@@ -376,6 +384,14 @@ export function validatePayload(payload, { repair = true } = {}) {
     // --- price history
     if (given(c.priceHistory)) {
       const ph = c.priceHistory;
+      /* Spacing decides what every window means. A 200-point average on
+         weekly bars is four years, on daily bars ten months; computing one and
+         labelling it the other would be the kind of quiet wrongness this whole
+         contract exists to prevent. */
+      if (given(ph) && given(ph.spacing) && !['daily', 'weekly'].includes(ph.spacing)) {
+        w(`${at}: priceHistory.spacing "${ph.spacing}" is not daily or weekly; daily is assumed.`);
+        ph.spacing = 'daily';
+      }
       if (!isObj(ph)) e(`${at}: priceHistory must be an object.`);
       else {
         if (!isArr(ph.closes)) e(`${at}: priceHistory.closes must be an array.`);

@@ -440,7 +440,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="14-09-2026.2";</script>
+<script>window.APP_BUILD="14-09-2026.4";</script>
 </head>
 <body>
 
@@ -738,7 +738,7 @@ body.previewing{overflow:hidden;}
 
   
 <div class="footer">
-    Equity Analyst <span id="verApp">v1.0</span> &middot; Framework <span id="verFw">v3.0</span> &middot; Build <span id="verBuild">-</span><br>
+    Equity Analyst <span id="verApp">v4.0</span> &middot; Framework <span id="verFw">v4.0</span> &middot; Build <span id="verBuild">-</span><br>
     Research tool only. Not investment advice, not a recommendation, and not a substitute for a SEBI-registered adviser.
     AI output can be wrong or out of date &mdash; verify every figure against the RHP, SEBI filings and the exchanges before acting.
     Equity investment carries the risk of permanent capital loss.
@@ -1731,7 +1731,7 @@ function unwrapPayload(j){
    fell back to scraping the report prose. */
 function looksLikePayload(j){
   if(!j || typeof j !== 'object') return false;
-  if(j.schema && /equity-analyst/.test(String(j.schema))) return true;
+  if(j.schema && /equity-analyst/.test(String(j.schema))) return true;  /* any version */
   if(j.run && j.companies) return true;
   if(j.run && j.run.schemaVersion) return true;
   if(Array.isArray(j.companies) && j.companies.length) return true;
@@ -3624,7 +3624,26 @@ function composedPayload(){
 }
 function composedReport(){
   var p = composedPayload(); if(!p) return null;
-  try{ var b = EQ.buildReport(p); return b.ok ? b : null; }catch(e){ return null; }
+  try{
+    var b = EQ.buildReport(p);
+    if(!b.ok) return null;
+    /* Sector rotation can only be read across runs, and only the app holds
+       them. The engine is given the saved runs and returns the comparison with
+       its own staleness attached. */
+    if(EQ.models && EQ.models.sectorRotation){
+      try{
+        b.report.rotation = EQ.models.sectorRotation(sectorRecords().map(function(r){
+          var built = null;
+          try{ built = EQ.buildReport(EQ.compose.composePayload(r.data,
+            companyRecords().filter(function(x){ return x.parentId === r.id; })
+              .map(function(x){ return x.data; }))); }catch(e){}
+          return { segment: r.segment, subsegment: r.subsegment, ts: r.ts,
+                   companies: (built && built.ok && built.report.full) || [] };
+        }));
+      }catch(e){}
+    }
+    return b;
+  }catch(e){ return null; }
 }
 
 var IMPORT_TARGET = { kind:'segment', rank:0 };

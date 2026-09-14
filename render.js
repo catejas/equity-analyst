@@ -2000,6 +2000,10 @@ function buildCompany(p, lang){
   out += S3('What the market is missing') + figConsensus(c) + eqVariant(c, lang);
   var misC = eqMispricing(c, lang);
   if(misC) out += S3('Why the market has this wrong') + misC;
+  var techC = eqTechPanel(c, lang);
+  if(techC) out += S3('Technical panel') + techC;
+  var mbC = eqMultibagger(c, lang);
+  if(mbC) out += S3('Multibagger detection') + mbC;
   var peC = eqPeers(c, lang);
   if(peC) out += S3('Peers') + peC;
   var esgC = eqEsg(c, lang);
@@ -2872,6 +2876,108 @@ function figPerformance(c){
       { name:'Relative', values:['m3Relative','m6Relative','m12Relative'].map(function(k){
           return typeof pf[k]==='number'?pf[k]:null; }) }] });
 }
+
+/* The technical panel, as computed by the engine from the price series. Every
+   row says where its number came from; a row the series could not support says
+   what it needed instead of printing a figure that was never calculated. */
+
+/* The multibagger detection model. Five tests, scored on the ones that could
+   run — an unrun test is printed as unrun, never as a failure, because a
+   company is not worse for a gap it was honest about. */
+function eqMultibagger(c, lang){
+  var m = c && c.multibaggerModel;
+  if(!m || !m.available) return '';
+  var rows = (m.tests || []).map(function(t){
+    var verdict = !t.ran ? '<span class="mut">not run</span>'
+      : (t.passed ? 'Pass' : 'Fail');
+    var val = (t.value == null) ? '\u2014'
+      : (typeof t.value === 'number' ? t.value + (t.unit ? ' ' + t.unit : '') : String(t.value));
+    return { cells:[ e(S(MB_LABEL[t.key] || t.key)), e(String(val)), verdict,
+                     '<span class="mut">' + e(S(t.evidence)) + '</span>' ] };
+  });
+  return '<p><b>' + e(S(m.verdict)) + '.</b> '
+    + (m.score != null ? 'Scored ' + m.score + ' of 100 on the tests that ran. '
+       : (m.scoreWithheld ? 'No score is given: fewer than three tests could run, and a score from '
+            + 'two is not comparable with one from five. ' : ''))
+    + 'A test with no input is reported as unrun rather than failed.</p>'
+    + tbl(['Test','Reading','Verdict','Evidence'], rows, { chunk: 8 });
+}
+var MB_LABEL = { revenueGrowth:'Revenue growth', profitGrowth:'Profit growth',
+  returnOnEquity:'Return on equity', debt:'Debt', priceTrend:'Price trend' };
+
+/* Sector rotation, with its caveat printed as part of the reading rather than
+   as a footnote. */
+function eqRotation(p, lang){
+  /* The rotation reading is attached to the report, not to the document
+     payload — the app computes it across saved runs and hands it over there. */
+  var rep = eqRep(p) || {};
+  var r = rep.rotation || (p && p.rotation);
+  if(!r) return '';
+  if(!r.available) return '<p class="mut">' + e(S(r.caveat)) + '</p>';
+  var rows = (r.ranked || []).map(function(x, i){
+    return { cells:[ String(i + 1), e(S(x.segment + (x.subsegment ? ' \u2014 ' + x.subsegment : ''))),
+      (x.medianMomentum == null ? '\u2014' : x.medianMomentum + ' %'),
+      '<span class="mut">' + x.withMomentum + ' of ' + x.companies + ' companies priced</span>' ] };
+  });
+  return '<p>' + (r.reliable
+      ? 'These sectors were researched within a week of each other, so the order is a fair comparison.'
+      : '<b>Read this with care.</b> ' + e(S(r.caveat))) + '</p>'
+    + tbl(['#','Sector','Median momentum','Basis'], rows, { chunk: 10 });
+}
+
+function eqTechPanel(c, lang){
+  var p = c && c.technicalPanel;
+  if(!p) return '';
+  if(!p.available){
+    return '<p class="mut">' + e(S(p.reason || 'No price series was supplied, so nothing could be computed.')) + '</p>';
+  }
+
+  var order = ['trend','sma20','sma50','sma100','sma200','rsi','macd','bollinger','hull',
+               'psar','momentum','breakout','supportResistance','range','obv','atr'];
+  var rows = [];
+  order.forEach(function(k){
+    var x = p.indicators[k]; if(!x) return;
+    if(!x.available){
+      rows.push({ cells:[ e(S(x.indicator || k)),
+        '<span class="mut">' + e(S(x.reason || 'not available')) + '</span>', '\u2014' ] });
+      return;
+    }
+    /* Some readings are a band or a set of levels rather than one number, and
+       have no .value at all. Printing the missing field gave "undefined" in the
+       report, which reads as a fault rather than as a band. */
+    var val = x.value;
+    if(k === 'bollinger' && x.upper != null){
+      val = x.lower + ' \u2013 ' + x.upper;
+    } else if(k === 'supportResistance'){
+      var sup = (x.support || []).slice(0,2).join(', ');
+      var res = (x.resistance || []).slice(0,2).join(', ');
+      val = (sup ? 'support ' + sup : '') + (sup && res ? ' \u00b7 ' : '') + (res ? 'resistance ' + res : '');
+    } else if(typeof val === 'boolean') val = val ? 'Yes' : 'No';
+    else if(val && typeof val === 'object') val = '';
+    if(val == null || val === '') val = '\u2014';
+    var note = '';
+    if(k === 'breakout'){
+      note = x.confirmed ? ('confirmed on ' + x.volumeSpike + '\u00d7 average volume')
+           : (x.note || ('prior high ' + x.priorHigh));
+    } else if(k === 'psar' && x.trend) note = x.trend;
+    else if(k === 'hull' && x.turning) note = 'turning ' + x.turning;
+    else if(k === 'trend') note = 'above ' + x.aboveCount + ' of ' + x.of + ' averages';
+    else if(k === 'range' && x.high != null) note = 'high ' + x.high + ', low ' + x.low;
+    else if(k === 'bollinger' && x.middle != null) note = 'middle ' + x.middle;
+    rows.push({ cells:[ e(S(x.indicator || k)),
+      e(String(val)) + (x.unit ? ' ' + e(S(x.unit)) : ''),
+      '<span class="mut">' + e(S(note)) + '</span>' ] });
+  });
+  if(!rows.length) return '';
+
+  var prov = p.points + ' ' + p.spacing + ' points'
+    + (p.asOf ? ', as at ' + e(dmy(p.asOf)) : '')
+    + ' \u00b7 ' + p.computed + ' of ' + p.of + ' readings computed';
+  return '<p class="mut">Computed by the application from the price series, not supplied as '
+    + 'readings. ' + prov + '.</p>'
+    + tbl(['Reading','Value','Note'], rows, { chunk: 10 });
+}
+
 function eqSnapshot(c, lang){
   var s=c.snapshot;
   if(!s) return '';
@@ -4708,6 +4814,9 @@ function buildSector(p, lang){
   out += S2('Competition') + eqCompetition(p, lang);
   var sv = eqSectorValuation(p, lang);
   if(sv) out += S2('Where the sector trades') + sv;
+
+  var rotC = eqRotation(p, lang);
+  if(rotC) out += S2('Where capital has moved') + rotC;
 
   /* ---------------- the leading companies in full ---------------- */
   var coverage = eqCovered(rep);

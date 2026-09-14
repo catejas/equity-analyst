@@ -22,6 +22,8 @@ import * as schema from './core/payload-schema.js';
 import * as repair from './core/repair.js';
 import * as compose from './core/compose.js';
 import * as screen from './core/screen.js';
+import * as indicators from './core/indicators.js';
+import * as models from './core/models.js';
 import * as prompt from './core/prompt-builder.js';
 import * as report from './core/report.js';
 import * as compare from './core/compare.js';
@@ -34,7 +36,7 @@ const EQ = Object.freeze({
   },
   scoring, rubrics, ranking, model, valuation, metrics, technicals,
   forensic, litigation, multibagger, integrity, schema, prompt, report,
-  compare, store, repair, compose, screen,
+  compare, store, repair, compose, screen, indicators, models,
 
   // The three calls the shell actually makes.
   buildPrompt: prompt.buildResearchPrompt,

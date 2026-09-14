@@ -724,3 +724,89 @@ Changed:
   picker, which needs no custom list of ours to go wrong.
 
 Tests: 358 engine assertions and eleven browser suites.
+
+## v1.9.0 — 14-09-2026
+Tier 1 analytics: the technical panel, computed.
+
+Added:
+- **`src/core/indicators.js`.** Sixteen readings from a price series: SMA
+  20/50/100/200, RSI, MACD, Bollinger, Hull MA, PSAR, momentum, trend, the
+  n-period high breakout, support and resistance, 52-week range, OBV and ATR.
+  Everything is arithmetic — the same closes always give the same numbers, which
+  is the whole reason for computing them here rather than asking a model.
+- **Windows scale to the spacing of the series.** A 200-day average is about 40
+  weekly bars; the panel states which spacing it used and labels each average
+  accordingly, so a weekly reading is never presented as a daily one.
+- **Too little history refuses.** A window longer than the series returns "needs
+  200 points, has 30" rather than a number computed on a short window. What can
+  be computed still is.
+- **A breakout without volume is unconfirmed, not absent.** The break and its
+  confirmation are reported separately: "Yes · confirmed on 3.09× average
+  volume" reads differently from "Yes · no volume supplied".
+- **A Technical panel section** in the Company Research Report, with the
+  provenance line: how many points, what spacing, as at when, and how many of
+  the sixteen readings could be computed.
+
+Changed:
+- The prompt asks for the series, not for readings — weekly closes over two
+  years, about 104 numbers, plus six quoted figures (52-week high and low with
+  dates, 20-day high, distance from the 200-day average, average daily volume,
+  latest volume against average). Weekly is asked for deliberately: 250 daily
+  closes is a long transcription and one mistyped figure moves an average that
+  every other reading then rests on.
+- `priceHistory.spacing` is part of the contract; anything other than daily or
+  weekly is a warning and daily is assumed.
+- The panel is computed in `report.js`, not the renderer: the report carries
+  computed values and the documents display them. The raw series does not travel
+  with the report, which is why the renderer could never have done it.
+
+Verified on a 110-point weekly series: 16 of 16 readings computed, averages
+labelled in weekly bars, breakout confirmed on 3.09× volume, no `undefined` and
+no `NaN` anywhere in the rendered report. A company with no series still builds.
+
+Tests: 372 engine assertions and twelve browser suites.
+
+## v4.0.0 — 14-09-2026
+Framework, methodology and payload schema all move to 4.0.0 together, because
+the contract changed in a way that matters: the sector run now supplies a rated
+shortlist and a price series, and the application computes the Top 3 and the
+technical panel from them.
+
+A payload written for schema 3 still imports. Nothing was removed between the
+two — v4 only added — and refusing one would throw away research already paid
+for. It is read as v4 with a note saying so.
+
+Tier 2 — volume:
+- **Volume analysis**: latest bar against its own recent average, with a reading
+  of heavy, elevated, ordinary or thin, plus buying pressure — volume on up bars
+  against volume on down bars, which a raw average cannot show.
+- **Renko**: price reduced to bricks with time discarded. The brick is set from
+  ATR when highs and lows exist and from 2% of price otherwise, and which one
+  was used is printed, because a Renko reading means nothing without its brick
+  size.
+
+Tier 3 — the multibagger model, surfaced:
+- Five named tests — revenue growth, profit growth, return on equity, debt,
+  price trend — each with the figure it used and the evidence behind it. It was
+  always in the 52 components; a reader could see the score it contributed but
+  not the reasoning.
+- **An unrun test is not a failed test.** A test with no input reports as unrun,
+  and the score is computed only on the tests that ran.
+- **Below three tests no score is given at all**, and the report says why: a
+  score from two tests is not comparable with one from five.
+
+Tier 4 — sector rotation, with its weakness printed on it:
+- Median momentum across the companies of each saved sector run, ranked.
+- The caveat is part of the result, not a footnote: sectors are researched days
+  or weeks apart, so this compares snapshots taken at different moments. The
+  model reports the span in days and marks itself unreliable beyond a week.
+- I argued against building this and still would. It is included because a rough
+  reading with its staleness stated beats nothing, but it is never presented as
+  a live picture of the market.
+
+Verified end to end on a 110-point weekly series: 18 of 18 readings computed,
+the multibagger model rendering with its evidence, rotation in the sector report
+with its caveat, and companies without a series saying so plainly rather than
+showing an empty section.
+
+Tests: 381 engine assertions and thirteen browser suites.

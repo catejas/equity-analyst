@@ -8,6 +8,8 @@ import { confidence } from './integrity.js';
 import { validatePayload, DIRECT_DIMENSIONS } from './payload-schema.js';
 import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
+import { panel as technicalPanel } from './indicators.js';
+import { multibaggerModel } from './models.js';
 import { dcf, sensitivityGrid, impliedGrowth } from './valuation.js';
 import { buildModel, driverSensitivity, STANDARD_FLEXES } from './model.js';
 import { assessLitigation } from './litigation.js';
@@ -360,6 +362,37 @@ function scoreCompany(c, horizonKey) {
           asOf: c.priceHistory.asOf ?? null, adjusted: c.priceHistory.adjusted === true,
           summary: c.technicals?.summary ?? null }
       : (c.technicals ?? null),
+    /* The full technical panel, computed here rather than in the renderer: the
+       report carries computed values and the documents display them. The raw
+       series does not travel with the report, which is why the renderer could
+       never have done this itself. */
+    /* The named model. The existing `multibagger` field is the required-CAGR
+       grid and keeps its name; this is the five-test detection model and is a
+       different thing. */
+    multibaggerModel: multibaggerModel(c, {
+      technicalPanel: c.priceHistory?.closes
+        ? technicalPanel({
+            closes: c.priceHistory.closes,
+            highs: c.priceHistory.highs ?? null,
+            lows: c.priceHistory.lows ?? null,
+            volumes: c.priceHistory.volumes ?? null,
+            spacing: c.priceHistory.spacing ?? 'daily',
+            asOf: c.priceHistory.asOf ?? null,
+            source: 'payload',
+          })
+        : null,
+    }),
+    technicalPanel: c.priceHistory?.closes
+      ? technicalPanel({
+          closes: c.priceHistory.closes,
+          highs: c.priceHistory.highs ?? null,
+          lows: c.priceHistory.lows ?? null,
+          volumes: c.priceHistory.volumes ?? null,
+          spacing: c.priceHistory.spacing ?? 'daily',
+          asOf: c.priceHistory.asOf ?? null,
+          source: 'payload',
+        })
+      : null,
     catalysts: c.catalysts || [],
     risks: c.risks || [],
     thesisBreakers: c.thesisBreakers || [],

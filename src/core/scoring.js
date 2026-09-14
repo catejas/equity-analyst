@@ -2,7 +2,7 @@
 // Every component input is a 0-100 sub-score, or null when the underlying data
 // is not available. Nulls are never treated as zero.
 
-export const METHODOLOGY_VERSION = '2.0.0';
+export const METHODOLOGY_VERSION = '4.0.0';
 
 // Two overall scores closer than this are reported as tied. Ratings are
 // judgements on a 0-100 scale with no better resolution than a few points, and
