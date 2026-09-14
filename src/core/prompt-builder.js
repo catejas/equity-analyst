@@ -43,6 +43,27 @@ function registerSection() {
     .join('\n');
 }
 
+
+/* The vocabulary the reader sees is sector and sub-sector. The payload keys stay
+   "segment" and "subsegment", because renaming them would invalidate every
+   payload already imported and every run already saved. So the rename happens
+   once, here, on the finished text — where there are no identifiers to damage.
+   Renaming the source was tried and it rewrote ${subsegment.trim()} into
+   something that did not parse. */
+function sectorVocabulary(text) {
+  const KEYS = /"(segment|subsegment)"/g;
+  const held = [];
+  let t = String(text).replace(KEYS, (m) => { held.push(m); return `\u0000${held.length - 1}\u0000`; });
+  t = t
+    .replace(/\bSUB-?SEGMENTS\b/g, 'SUB-SECTORS').replace(/\bSUB-?SEGMENT\b/g, 'SUB-SECTOR')
+    .replace(/\bSEGMENTS\b/g, 'SECTORS').replace(/\bSEGMENT\b/g, 'SECTOR')
+    .replace(/\bSub-?segments\b/g, 'Sub-sectors').replace(/\bsub-?segments\b/g, 'sub-sectors')
+    .replace(/\bSub-?segment\b/g, 'Sub-sector').replace(/\bsub-?segment\b/g, 'sub-sector')
+    .replace(/\bSegments\b/g, 'Sectors').replace(/\bsegments\b/g, 'sectors')
+    .replace(/\bSegment\b/g, 'Sector').replace(/\bsegment\b/g, 'sector');
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => held[Number(i)]);
+}
+
 export function buildResearchPrompt({ segment, subsegment = '', company = '', mode = null,
   horizon = '3-5', shortlistSize = 12 } = {}) {
   const single = (mode === 'company') || Boolean(company && company.trim());
@@ -59,7 +80,7 @@ export function buildResearchPrompt({ segment, subsegment = '', company = '', mo
 
   const componentKeys = (k) => Object.keys(PILLARS[k].weights).map((c) => `"${c}"`).join(', ');
 
-  return `BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
+  return sectorVocabulary(`BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
 now, as your first action, before writing a single line of the payload.
 
 You have a search tool. If you find yourself about to say that search is
@@ -757,7 +778,7 @@ honesty would be the worst outcome of all.
 
 13. Put your own name in run.tool — Claude, ChatGPT, Gemini, Perplexity, or
     whatever you are. The application records which tool produced each run and
-    reads it from there, so it never has to ask.`;
+    reads it from there, so it never has to ask.`);
 }
 
 export const PROMPT_USAGE = [
