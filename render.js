@@ -239,7 +239,7 @@ var T = {
   unofficial: 'unofficial',
   exchanges: 'Exchanges',
   ir_products: 'Products and services',
-  ir_segments: 'Revenue by segment',
+  ir_segments: 'Revenue by sector',
   irg_recommendation: 'Final Recommendation',
   irg_ipo: 'The IPO',
   irg_valuation: 'Valuation',
@@ -387,7 +387,7 @@ var T = {
   how_earns: 'How it earns',
   why_stay: 'Why customers stay',
   rev_mix: 'Revenue mix',
-  segment: 'Segment',
+  segment: 'Sector',
   share_pc: 'Share',
   growth: 'Growth',
   note: 'Note',
@@ -1891,7 +1891,7 @@ function buildCompany(p, lang){
   /* A two-page backdrop, not a sector study: a company cannot be judged
      without its industry, its policy regime and its peers, but the sector
      report is where that work belongs in full. */
-  out += S3('Segment backdrop')
+  out += S3('Sector backdrop')
     + tbl(['','Reading'], (function(){
         var rows=[], ind=rep.industry, tam=rep.tam, mac=rep.macro;
         if(ind && S(ind.structure)) rows.push({ cells:['Industry structure', e(S(ind.structure))] });
@@ -1902,7 +1902,7 @@ function buildCompany(p, lang){
           n(mac.gdpGrowth.value,2)+'% ('+e(S(mac.gdpGrowth.period))+')'] });
         if(arr(rep.policy).length) rows.push({ cells:['Policy',
           e(arr(rep.policy).map(function(x){ return S(x.name); }).join(', '))] });
-        if(!rows.length) rows.push({ cells:['Segment research','<span class="mut">None was supplied with this run.</span>'] });
+        if(!rows.length) rows.push({ cells:['Sector research','<span class="mut">None was supplied with this run.</span>'] });
         return rows;
       })())
     + (arr(rep.programs).length
@@ -2128,7 +2128,7 @@ function eqSignedPct(x){
 }
 function eqTitle(p){
   var m = eqMeta(p), r = eqRep(p).run || {};
-  return S(r.segment || m.segment || 'Segment') + (r.subsegment ? ' — ' + S(r.subsegment) : '');
+  return S(r.segment || m.segment || 'Sector') + (r.subsegment ? ' — ' + S(r.subsegment) : '');
 }
 
 /* The masthead. A run has no single company, so the headline is the segment and
@@ -2170,7 +2170,7 @@ function eqCover(p, lang, docLabel, titleFontPt){
 function eqFunnel(p, lang){
   var rep = eqRep(p), u = rep.universe || {}, c = rep.counts || {};
   var rows = [
-    { cells:['Identified in the segment', u.identified == null ? '&mdash;' : n(u.identified,0)] },
+    { cells:['Identified in the sector', u.identified == null ? '&mdash;' : n(u.identified,0)] },
     { cells:['Shortlisted for analysis', n(c.universe || 0, 0)] },
     { cells:['Scored', n(c.scored || 0, 0)] },
     { cells:['Eligible for the Top 3', n(c.top3Eligible || 0, 0)] },
@@ -2390,7 +2390,7 @@ function figFunnel(p){
   var rep=eqRep(p), u=rep.universe||{}, c=rep.counts||{};
   return K.funnel({ title:'Screening funnel', source:'This run',
     steps:[
-      { label:'Identified in the segment', value:u.identified },
+      { label:'Identified in the sector', value:u.identified },
       { label:'Taken to analysis', value:c.universe },
       { label:'Scored', value:c.scored },
       { label:'Cleared the kill switch', value:c.top3Eligible }
@@ -2594,7 +2594,7 @@ function figGlobalGrowth(rep){
 }
 function eqWorld(p, lang){
   var rep=eqRep(p), g=rep.global;
-  if(!g) return gapNote('No global context was supplied, so this segment is presented without the market it sits inside.');
+  if(!g) return gapNote('No global context was supplied, so this sector is presented without the market it sits inside.');
   var out='';
   if(S(g.indiaPosition)) out += '<div class="lead"><p>' + e(S(g.indiaPosition)) + '</p></div>';
   out += tbl(['Measure','Value'], [
@@ -2647,7 +2647,7 @@ function eqBudget(p, lang){
   if(!b) return gapNote('No Union Budget work was supplied. Doc 01 makes the Budget mandatory coverage.');
   var out=figBudget(eqRep(p));
   if(arr(b.allocations).length){
-    out += tbl(['Head','Year','Announced','Spent','Shortfall','How it reaches the segment'],
+    out += tbl(['Head','Year','Announced','Spent','Shortfall','How it reaches the sector'],
       arr(b.allocations).map(function(x){
         var gap=(typeof x.spent==='number'&&typeof x.announced==='number')
           ? ((x.spent-x.announced)/Math.abs(x.announced))*100 : null;
@@ -2667,7 +2667,7 @@ function eqBudget(p, lang){
 /* ---------- policy ---------- */
 function eqPolicy(p, lang){
   var rep=eqRep(p), pol=arr(rep.policy);
-  if(!pol.length) return gapNote('No policy schemes were supplied. A segment thesis that never mentions policy is not an Indian equity thesis.');
+  if(!pol.length) return gapNote('No policy schemes were supplied. A sector thesis that never mentions policy is not an Indian equity thesis.');
   var out=pol.map(function(s){
     return '<div class="ir-box"><h4>' + e(S(s.name))
       + (S(s.ministry)?' <span class="mut">' + e(S(s.ministry)) + '</span>':'') + '</h4>'
@@ -2676,7 +2676,7 @@ function eqPolicy(p, lang){
           { cells:['Funding and scope', e(S(s.funding))] },
           { cells:['Outcomes to date', e(S(s.outcomes))] },
           { cells:['Challenges', e(S(s.challenges))] },
-          { cells:['How it reaches this segment', e(S(s.reachesSegment))] }
+          { cells:['How it reaches this sector', e(S(s.reachesSegment))] }
         ]) + '</div>';
   }).join('');
   var ev=arr(rep.policyEvolution);
@@ -2771,7 +2771,7 @@ function eqTam(p, lang){
 /* ---------- programmes: how a segment thesis becomes a forecast ---------- */
 function eqPrograms(p, lang){
   var pr=arr(eqRep(p).programs);
-  if(!pr.length) return gapNote('No programmes or contracts were supplied. This is the section that turns a segment view into a company forecast.');
+  if(!pr.length) return gapNote('No programmes or contracts were supplied. This is the section that turns a sector view into a company forecast.');
   return pr.map(function(x){
     return '<div class="ir-box"><h4>' + e(S(x.name)) + '</h4>'
       + tbl(['','Reading'], [
@@ -2839,7 +2839,7 @@ function eqSectorValuation(p, lang){
 function eqMonitorables(p, lang){
   var m=arr(eqRep(p).monitorables);
   if(!m.length) return gapNote('No key monitorables were supplied, so there is no sector-level equivalent of a thesis breaker.');
-  return eqList(m) + '<div class="mut">These are what would confirm or break the segment view.</div>';
+  return eqList(m) + '<div class="mut">These are what would confirm or break the sector view.</div>';
 }
 
 function eqGlossary(p, lang){
@@ -3041,7 +3041,7 @@ function buildExec(p, lang){
   out += sec('02', 'The backdrop') + eqMacro(p, lang);
   var polE = arr(rep.policy);
   if(polE.length){
-    out += tbl(['Scheme','Ministry','How it reaches the segment'], polE.map(function(x){
+    out += tbl(['Scheme','Ministry','How it reaches the sector'], polE.map(function(x){
       return { cells:[ '<b>'+e(S(x.name))+'</b>', e(S(x.ministry)),
         '<span class="mut">'+e(S(x.reachesSegment))+'</span>' ]}; }));
   }
@@ -4674,7 +4674,7 @@ function buildSector(p, lang){
   /* ---------------- the mandate ---------------- */
   out += S2('The mandate')
     + '<div class="lead"><p>' + e(eqTitle(p)) + ', over a holding horizon of '
-      + e(S(run.horizon)) + '. The Indian listed universe was screened for this segment; '
+      + e(S(run.horizon)) + '. The Indian listed universe was screened for this sector; '
       + (cts.universe || 0) + ' companies were taken to full analysis and '
       + (cts.top3Eligible || 0) + ' cleared the kill switch.</p></div>'
     + (S(run.researchNotes) ? '<div class="note">' + e(S(run.researchNotes)) + '</div>' : '')

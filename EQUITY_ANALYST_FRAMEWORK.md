@@ -53,13 +53,13 @@ it looks like research and is not.
 You are producing an institutional-grade equity research payload on the Indian listed universe.
 
 SCOPE
-Segment: [SEGMENT]
-Subsegment: [SUBSEGMENT, or leave out]
+Sector: [SECTOR]
+Sub-sector: [SUB-SECTOR, or leave out]
 Holding horizon: 3 to 5 years
-Work on [SEGMENT], specifically the [SUBSEGMENT, or leave out] subsegment. Screen the Indian listed universe for this segment and
+Work on [SECTOR], specifically the [SUB-SECTOR, or leave out] sub-sector. Screen the Indian listed universe for this sector and
 shortlist roughly 12 companies.
 
-THIS RUN IS THE SEGMENT ONLY. Do the whole segment study — the world, macro, the
+THIS RUN IS THE SECTOR ONLY. Do the whole sector study — the world, macro, the
 Budget, policy, regulation, geopolitics, industry, value chain, market sizing,
 programmes, competition — and then rate every company on your shortlist.
 
@@ -77,7 +77,7 @@ quality control — each with one sentence of evidence carrying a figure. Rate a
 four. A company rated on fewer than three ranks below every fully rated one,
 however good it looks, because it cannot be compared.
 
-Rate honestly and comparably: 50 is average for the segment, not a polite
+Rate honestly and comparably: 50 is average for the sector, not a polite
 default. If two companies genuinely deserve the same number, give them the same
 number — the application reports a tie rather than inventing an order.
 
@@ -122,7 +122,7 @@ A full run on three companies comes to roughly 150,000 characters, which is
 past what most chat interfaces will emit in one reply. So plan the split rather
 than being cut off mid-object:
 
-  Block 1   the run, and everything about the segment
+  Block 1   the run, and everything about the sector
   Block 2   the first company
   Block 3   the second company
   Block 4   the third company
@@ -501,7 +501,7 @@ Include the model block only if you can source its drivers. A partial block is
 rejected outright. An omitted block costs a section of the report; an invented
 one corrupts everything downstream of it.
 
-Every segment needs volume, realisation and a gross margin, each with evidence.
+Every sector needs volume, realisation and a gross margin, each with evidence.
 Share count must be fully diluted: state ESOPs outstanding, warrants and
 convertibles, and state zero if there genuinely are none. Omitting the overhang
 is the commonest error on Indian small caps and it moves per-share value.
@@ -572,11 +572,11 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT
+7. THE SECTOR
 ═══════════════════════════════════════════════════════════════════
 The reference standard for this document is a sector thematic that spends fifty
 pages establishing why an industry will compound before it names a company. The
-segment is the argument; the companies are how it is expressed. Work in that
+sector is the argument; the companies are how it is expressed. Work in that
 order.
 
 **The world.** Global market size and its compound growth over fifteen, ten,
@@ -589,13 +589,13 @@ Then where India sits, and the trade flowing each way.
 capacity utilisation, each with its period and source. An undated macro figure
 is not usable.
 
-**The Union Budget.** The allocations that touch this segment, over five years,
+**The Union Budget.** The allocations that touch this sector, over five years,
 each with what was announced and what was actually spent. The gap between the
-two is usually the story. Add the Economic Survey's own reading of the segment.
+two is usually the story. Add the Economic Survey's own reading of the sector.
 
 **Policy.** Each scheme to the same template: name, ministry, objective,
 funding and scope, outcomes to date, challenges, and how it reaches this
-segment. Then the evolution of the regime by era, with dates. A segment thesis
+sector. Then the evolution of the regime by era, with dates. A sector thesis
 that never mentions policy is not an Indian equity thesis.
 
 **Regulation.** The regulator, the rules, what is under review, and what a
@@ -623,7 +623,7 @@ that is not traced to a listed supplier is background, not research.
 value share are different numbers. Concentration, entry barriers, substitution
 and pricing behaviour.
 
-**Key monitorables.** What would confirm or break the segment thesis. This is
+**Key monitorables.** What would confirm or break the sector thesis. This is
 the sector-level equivalent of a thesis breaker.
 
 **Glossary.** Every sector has its own vocabulary. A reader who does not know
@@ -668,8 +668,8 @@ including pledged shares.
 {
   "run": {
     "schemaVersion": "3.0.0",
-    "segment": "[SEGMENT]",
-    "subsegment": "[SUBSEGMENT, or leave out]",
+    "segment": "[SECTOR]",
+    "subsegment": "[SUB-SECTOR, or leave out]",
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
     "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
@@ -709,7 +709,7 @@ including pledged shares.
     "creditGrowth":       { "value": 0, "period": "", "source": "" },
     "capacityUtilisation":{ "value": 0, "period": "", "source": "" } },
 
-  "budget": { "economicSurvey": "the Survey's own reading of this segment",
+  "budget": { "economicSurvey": "the Survey's own reading of this sector",
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
       "ministry": "", "reachesSegment": "" } ] },
 
@@ -746,7 +746,7 @@ including pledged shares.
   "sectorValuation": { "currentMultiple": 0, "metric": "", "tenYearMedian": 0,
     "tenYearHigh": 0, "tenYearLow": 0, "source": "" },
 
-  "monitorables": ["what would confirm or break the segment thesis"],
+  "monitorables": ["what would confirm or break the sector thesis"],
   "glossary": [ { "term": "", "meaning": "" } ],
   "companies": [
     {
@@ -809,7 +809,7 @@ including pledged shares.
 
       "model": {
         "years": 5,
-        "segments": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
+        "sectors": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
           "realisationCagr": 0.0, "grossMargin": 0.0, "evidence": "" } ],
         "opex": { "fixedBase": 0, "fixedGrowth": 0.0, "variablePctOfRevenue": 0.0 },
         "depreciation": { "openingNetBlock": 0, "rate": 0.0 },
@@ -894,7 +894,7 @@ including pledged shares.
 8. Shortlist roughly 12 companies for full treatment, and list what
    you screened out and why.
 
-9. The segment blocks are not optional decoration. A report with scores and no
+9. The sector blocks are not optional decoration. A report with scores and no
    macro, no Budget, no policy and no programmes is a scoring appendix, not
    research. Where something genuinely cannot be established, omit the block and
    say so in run.researchNotes — the application prints the gap.
@@ -923,9 +923,9 @@ extras; each one is a named section of the finished report:
   the world        global market size, its growth over 15/10/5/3 years, and a
                    handful of global peers with what each of them makes
   macro            six readings, each with its period and its source
-  budget           the allocations touching this segment over five years, with
+  budget           the allocations touching this sector over five years, with
                    what was announced AND what was actually spent
-  economic survey  the Survey's own words on this segment
+  economic survey  the Survey's own words on this sector
   policy           every scheme that touches it, each to the full template
   regulation       the regulator, the rules, what is under review
   geopolitics      import dependence and export exposure WITH the trade data
@@ -1019,12 +1019,12 @@ it looks like research and is not.
 You are producing an institutional-grade equity research payload on the Indian listed universe.
 
 SCOPE
-Segment: [SEGMENT]
-Subsegment: not specified
+Sector: [SECTOR]
+Sub-sector: not specified
 Holding horizon: 3 to 5 years
 Company: [COMPANY]
 Research this one company in full. Do not screen a universe and do not rank
-anything: there is nothing to rank. Still cover the segment, because a company
+anything: there is nothing to rank. Still cover the sector, because a company
 cannot be judged without its industry, its policy regime and its peers — but
 cover it at the depth of a two-page backdrop rather than a sector study.
 
@@ -1063,7 +1063,7 @@ A full run on three companies comes to roughly 150,000 characters, which is
 past what most chat interfaces will emit in one reply. So plan the split rather
 than being cut off mid-object:
 
-  Block 1   the run, and everything about the segment
+  Block 1   the run, and everything about the sector
   Block 2   the first company
   Block 3   the second company
   Block 4   the third company
@@ -1442,7 +1442,7 @@ Include the model block only if you can source its drivers. A partial block is
 rejected outright. An omitted block costs a section of the report; an invented
 one corrupts everything downstream of it.
 
-Every segment needs volume, realisation and a gross margin, each with evidence.
+Every sector needs volume, realisation and a gross margin, each with evidence.
 Share count must be fully diluted: state ESOPs outstanding, warrants and
 convertibles, and state zero if there genuinely are none. Omitting the overhang
 is the commonest error on Indian small caps and it moves per-share value.
@@ -1513,9 +1513,9 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT
+7. THE SECTOR
 ═══════════════════════════════════════════════════════════════════
-This is a company run, so the segment work is a BACKDROP, not a study.
+This is a company run, so the sector work is a BACKDROP, not a study.
 Two pages at most, and only what is needed to judge this one company:
 
   where the industry sits in its cycle, and the two or three demand drivers
@@ -1525,10 +1525,10 @@ Two pages at most, and only what is needed to judge this one company:
   anything in the macro picture that changes its earnings — the policy rate for
   a lender, the currency for an exporter, input costs for a manufacturer
 
-Do NOT research the whole segment. No global market sizing, no Budget history,
+Do NOT research the whole sector. No global market sizing, no Budget history,
 no value chain, no programme-by-programme treatment, no TAM. Those belong to a
-segment run and the application already has them if one was done. Every search
-you spend on segment breadth here is a search not spent on the company, and the
+sector run and the application already has them if one was done. Every search
+you spend on sector breadth here is a search not spent on the company, and the
 company is what this run is for.
 
 ═══════════════════════════════════════════════════════════════════
@@ -1569,7 +1569,7 @@ including pledged shares.
 {
   "run": {
     "schemaVersion": "3.0.0",
-    "segment": "[SEGMENT]",
+    "segment": "[SECTOR]",
     "subsegment": null,
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
@@ -1610,7 +1610,7 @@ including pledged shares.
     "creditGrowth":       { "value": 0, "period": "", "source": "" },
     "capacityUtilisation":{ "value": 0, "period": "", "source": "" } },
 
-  "budget": { "economicSurvey": "the Survey's own reading of this segment",
+  "budget": { "economicSurvey": "the Survey's own reading of this sector",
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
       "ministry": "", "reachesSegment": "" } ] },
 
@@ -1647,7 +1647,7 @@ including pledged shares.
   "sectorValuation": { "currentMultiple": 0, "metric": "", "tenYearMedian": 0,
     "tenYearHigh": 0, "tenYearLow": 0, "source": "" },
 
-  "monitorables": ["what would confirm or break the segment thesis"],
+  "monitorables": ["what would confirm or break the sector thesis"],
   "glossary": [ { "term": "", "meaning": "" } ],
   "companies": [
     {
@@ -1710,7 +1710,7 @@ including pledged shares.
 
       "model": {
         "years": 5,
-        "segments": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
+        "sectors": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
           "realisationCagr": 0.0, "grossMargin": 0.0, "evidence": "" } ],
         "opex": { "fixedBase": 0, "fixedGrowth": 0.0, "variablePctOfRevenue": 0.0 },
         "depreciation": { "openingNetBlock": 0, "rate": 0.0 },
@@ -1795,7 +1795,7 @@ including pledged shares.
 8. Shortlist roughly 12 companies for full treatment, and list what
    you screened out and why.
 
-9. The segment blocks are not optional decoration. A report with scores and no
+9. The sector blocks are not optional decoration. A report with scores and no
    macro, no Budget, no policy and no programmes is a scoring appendix, not
    research. Where something genuinely cannot be established, omit the block and
    say so in run.researchNotes — the application prints the gap.
@@ -1830,13 +1830,13 @@ something in it:
   forensic         two consecutive years of line items, and ten years of
                    profit against operating cash
   litigation       every register, with the clean ones recorded as clean
-  model            segment drivers, costs, capex, working capital, debt, shares
+  model            sector drivers, costs, capex, working capital, debt, shares
   valuation        price with its date, discount rate, and three scenarios
   market           consensus, shareholding by quarter, liquidity, price history
   peers            the sector's own metrics
   narrative        catalysts, risks with sizes, thesis breakers, questions
 
-Roughly twenty-five searches. The segment backdrop should take two or three of
+Roughly twenty-five searches. The sector backdrop should take two or three of
 them, no more.
 
 If a block is still empty after searching for it properly, write null and say so

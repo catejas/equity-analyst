@@ -2,7 +2,7 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '10-09-2026.2';
+var BUILD = '11-09-2026.1';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
@@ -28,7 +28,7 @@ var ASSETS = [
   './src/core/valuation.js'
 ];
 self.addEventListener('install', function(e){
-  self.skipWaiting();
+  self.skipWaiting();  /* take over on the first launch, not the second */
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS).catch(function(){}); }));
 });
 self.addEventListener('activate', function(e){

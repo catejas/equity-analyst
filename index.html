@@ -422,7 +422,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="10-09-2026.2";</script>
+<script>window.APP_BUILD="11-09-2026.1";</script>
 </head>
 <body>
 
@@ -432,11 +432,11 @@ body.previewing{overflow:hidden;}
     <div class="logo"><img src="icons/icon-192.png" alt="Equity Analyst"></div>
     <div>
       <h1>Equity Analyst</h1>
-      <div class="sub">Indian listed equity &middot; segment and company research</div>
+      <div class="sub">Indian listed equity &middot; sector and company research</div>
     </div>
   </div>
   <nav>
-    <button class="on" data-tab="segment">Segment</button>
+    <button class="on" data-tab="segment">Sector</button>
     <button data-tab="company">Company</button>
     <button data-tab="score">Score Card</button>
     <button data-tab="setup">Setup</button>
@@ -445,19 +445,20 @@ body.previewing{overflow:hidden;}
 </header>
 
 <div class="wrap">
+<div id="engineWarn" class="note hidden" style="margin-bottom:10px;"></div>
 
 
 <!-- ============ SEGMENT ============ -->
 <section id="tab-segment">
   <div class="card runbox" id="segBox">
-    <h2><span id="segBoxName">Segment / Subsegment Research</span>
+    <h2><span id="segBoxName">Sector / Sub-sector Research</span>
         <span class="tag" id="segBoxTag">empty</span></h2>
 
-    <label for="segSel">Segment</label>
-    <select id="segSel"><option value="">— choose a segment —</option></select>
+    <label for="segSel">Sector</label>
+    <select id="segSel"><option value="">— choose a sector —</option></select>
 
-    <label for="subSel" style="margin-top:10px;">Subsegment <span class="mut">optional</span></label>
-    <select id="subSel"><option value="">— all of the segment —</option></select>
+    <label for="subSel" style="margin-top:10px;">Sub-sector <span class="mut">optional</span></label>
+    <select id="subSel"><option value="">— all of the sector —</option></select>
 
     <label for="horizon" style="margin-top:10px;">Holding horizon</label>
     <select id="horizon">
@@ -467,7 +468,7 @@ body.previewing{overflow:hidden;}
       <option value="10+">10 years or more</option>
     </select>
 
-    <label for="segPick" style="margin-top:10px;">Saved Segment / Subsegment Research</label>
+    <label for="segPick" style="margin-top:10px;">Saved Sector / Sub-sector Research</label>
     <select id="segPick"><option value="">— none imported —</option></select>
 
     <div class="grid3" style="margin-top:11px;">
@@ -489,12 +490,12 @@ body.previewing{overflow:hidden;}
 
     <div id="docTools" class="hidden" style="margin-top:14px;"><div id="segDocs">
       <div class="doc-row">
-        <span class="doc-name">Sector Research Report<small>the segment &middot; A4 PDF</small></span>
+        <span class="doc-name">Sector Research Report<small>the sector &middot; A4 PDF</small></span>
         <button class="ico ico-pdf" data-doc="sector" data-act="make" aria-label="Generate Sector Research Report">PDF</button>
         <button class="ico ico-sh" data-doc="sector" data-act="share" aria-label="Share Sector Research Report">&#8682;</button>
       </div>
       <div class="doc-row">
-        <span class="doc-name">Executive Summary<small>segment and companies, high level</small></span>
+        <span class="doc-name">Executive Summary<small>sector and companies, high level</small></span>
         <button class="ico ico-pdf" data-doc="exec" data-act="make" aria-label="Generate Executive Summary">PDF</button>
         <button class="ico ico-sh" data-doc="exec" data-act="share" aria-label="Share Executive Summary">&#8682;</button>
       </div>
@@ -524,7 +525,7 @@ body.previewing{overflow:hidden;}
 
   <div class="card runbox">
     <h2>Independent Company Research</h2>
-    <p class="hint">No segment needed. Name any listed company and research it; its report
+    <p class="hint">No sector needed. Name any listed company and research it; its report
     stands alone.</p>
     <label for="soloCo">Company name</label>
     <input type="text" id="soloCo" placeholder="e.g. Punjab National Bank"
@@ -596,7 +597,7 @@ body.previewing{overflow:hidden;}
   <div class="card">
     <h2>Score Card</h2>
 
-    <label for="scSector">Segment / Subsegment Research</label>
+    <label for="scSector">Sector / Sub-sector Research</label>
     <select id="scSector"><option value="">— none imported —</option></select>
 
     <label for="scCompany" style="margin-top:10px;">Company research</label>
@@ -830,10 +831,28 @@ if($('#horizon')) $('#horizon').addEventListener('change', refresh);
    it has to be drawn again: on a cold start the Top 3 boxes were built before
    EQ.compose existed, came back empty, and looked like lost data. */
 window.addEventListener('eq:ready', function(){
+  ENGINE_READY = true;
+  var b = $('#engineWarn'); if(b) b.classList.add('hidden');
   refresh();
   try{ renderReportPage(); }catch(e){}
   try{ renderScoreTab(); }catch(e){}
 });
+
+/* The engine is a module and can fail to arrive: a half-updated cache, a file
+   that 404s, a browser that refuses the import. When that happened the app
+   simply showed empty pages and a Read It button that did nothing, which looks
+   like the app is broken rather than like something did not load. */
+var ENGINE_READY = false;
+setTimeout(function(){
+  if(ENGINE_READY) return;
+  var b = $('#engineWarn');
+  if(b){
+    b.classList.remove('hidden');
+    b.innerHTML = '<b>The research engine did not load.</b> Close the app completely and '
+      + 'open it again \u2014 a new version is fetched on one launch and runs on the next. '
+      + 'If this keeps happening, use Erase all local data on the Setup page, then reopen.';
+  }
+}, 4000);
 $$('.seg input').forEach(function(i){ i.addEventListener('change', refresh); });
 
 /* restore form */
@@ -2400,7 +2419,7 @@ var pendingImport = null;
    of them carry it — a section four companies have and eight do not is a gap,
    not a section. */
 var AUDIT_SPEC = [
-  ['run','Segment and horizon','run.segment','v'],
+  ['run','Sector and horizon','run.segment','v'],
   ['run','Number of searches recorded','run.searchesRun','v'],
   ['run','Screening funnel','universe.identified','v'],
   ['run','What was screened out, and why','universe.exclusions','n'],
@@ -2452,7 +2471,7 @@ var AUDIT_SPEC = [
 
   ['lit','Registers searched','companies[].litigation.searched','n'],
 
-  ['mod','Segment drivers','companies[].model.segments','n'],
+  ['mod','Sector drivers','companies[].model.segments','n'],
   ['mod','Cost structure','companies[].model.opex','k'],
   ['mod','Capex and depreciation','companies[].model.capex','k'],
   ['mod','Working-capital days','companies[].model.workingCapital','k'],
@@ -2557,7 +2576,7 @@ function auditPayload(d){
   });
   var total = order.reduce(function(a, g){ return a + g.total; }, 0);
   return { groups:order, filled:filled, total:total,
-           scope: isCompanyRun ? 'this company' : (isSegmentRun ? 'this segment' : 'the whole run') };
+           scope: isCompanyRun ? 'this company' : (isSegmentRun ? 'this sector' : 'the whole run') };
 }
 /* What the app could build if this payload were saved, judged against the whole
    run rather than the block sitting in the paste box. Reading only the incoming
@@ -2597,7 +2616,7 @@ function docReadiness(d){
       ok: ready,
       why: ready ? 'ready'
          : (top3.length >= rank ? 'research and import ' + (nm || 'this company')
-                                : 'not yet named by the segment study')
+                                : 'not yet named by the sector study')
     };
   }
 
@@ -2605,11 +2624,11 @@ function docReadiness(d){
     { name:'Sector Research Report',
       ok: !!segData,
       why: segmentDone ? 'macro, policy and industry present'
-                       : 'import the segment research first' },
+                       : 'import the sector research first' },
     coRow(1), coRow(2), coRow(3),
     { name:'Executive Summary',
       ok: !!segData && have.length > 0,
-      why: !segData ? 'needs the segment research first'
+      why: !segData ? 'needs the sector research first'
                     : (have.length + ' of 3 companies imported') },
     { name:'Score Card',
       ok: have.length > 0,
@@ -2639,7 +2658,7 @@ function showReview(res, raw){
     html += '<div class="rvh">Imported ' + au.filled + ' of ' + au.total
       + ' data sections for ' + esc(au.scope)
           + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
-    var runSeg = (d.run && d.run.segment) || '(segment not detected)';
+    var runSeg = (d.run && d.run.segment) || '(sector not detected)';
     var nCo = (d.companies && d.companies.length) || 0;
     html += '<div class="rvm">' + esc(runSeg)
           + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
@@ -2684,7 +2703,7 @@ function showReview(res, raw){
           + 'the reply — the fenced json block — using its copy button. '
           + 'If that block shows as an empty box in your chat app, reply <b>SPLIT</b> to the model and '
           + 'paste the smaller blocks one after another.</div>';
-    var runSeg = (d.run && d.run.segment) || '(segment not detected)';
+    var runSeg = (d.run && d.run.segment) || '(sector not detected)';
     var nCo = (d.companies && d.companies.length) || 0;
     html += '<div class="rvm">' + esc(runSeg)
           + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
@@ -2821,7 +2840,7 @@ $('#btnSaveImport').addEventListener('click', function(){
     pendingImport = null;
     renderScoreTab();
     var named = (d.run && Array.isArray(d.run.top3)) ? d.run.top3.length : 0;
-    alert('Segment / Subsegment research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
+    alert('Sector / Sub-sector research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
       + 'Each has its own box below \u2014 research and import them one at a time.') : ''));
     return;
   }
@@ -3531,7 +3550,7 @@ function fillSegmentSelect(){
   });
   names.sort();
   var keep = el.value;
-  el.innerHTML = '<option value="">— choose a segment —</option>'
+  el.innerHTML = '<option value="">— choose a sector —</option>'
     + names.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
   if(keep) el.value = keep;
 }
@@ -3542,7 +3561,7 @@ function fillSubSelect(){
   var seg = ($('#segSel') && $('#segSel').value) || '';
   var subs = (seg && window.EQSegments) ? (EQSegments.subsOf(seg) || []) : [];
   var keep = el.value;
-  el.innerHTML = '<option value="">' + (seg ? '— all of ' + esc(seg) + ' —' : '— choose a segment first —') + '</option>'
+  el.innerHTML = '<option value="">' + (seg ? '— all of ' + esc(seg) + ' —' : '— choose a sector first —') + '</option>'
     + subs.map(function(x){ return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join('');
   el.disabled = !seg;
   if(keep && subs.indexOf(keep) >= 0) el.value = keep;
@@ -3618,7 +3637,7 @@ function researchNow(opts, what){
     return;
   }
   if(!text){
-    alert('Nothing to research yet. Choose a segment, or name a company.');
+    alert('Nothing to research yet. Choose a sector, or name a company.');
     return;
   }
   LAST_PROMPT = text;
@@ -3628,7 +3647,7 @@ function researchNow(opts, what){
        below. On the Company page it is past three company boxes, which is why
        pressing Research there felt like nothing happened. */
     var row = document.querySelector('#tab-company:not(.hidden) #toolRowCo')
-           || document.querySelector('#tab-segment:not(.hidden) #toolRow')
+           || document.querySelector('#tab-sector:not(.hidden) #toolRow')
            || $('#toolRowCo') || $('#toolRow');
     if(row){
       row.classList.add('armed');
@@ -3653,13 +3672,13 @@ function renderSegmentPage(){
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
     ? ((seg.segment || 'Segment') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
-    : 'Segment / Subsegment Research';
+    : 'Sector / Sub-sector Research';
   var tag = $('#segBoxTag');
   if(tag){ tag.textContent = seg ? 'imported' : 'empty'; tag.className = 'tag' + (seg ? ' ok' : ''); }
   if($('#segBoxMeta')) $('#segBoxMeta').textContent = seg
     ? ('Imported ' + dmyTime(seg.ts)
        + (seg.source && seg.source !== 'unknown' ? ' \u00b7 via ' + seg.source : ''))
-    : 'Choose a segment above, press Research, then pick a tool.';
+    : 'Choose a sector above, press Research, then pick a tool.';
 
   if($('#docTools')) $('#docTools').classList.toggle('hidden', !seg);
   if($('#btnDelRep')) $('#btnDelRep').disabled = !seg;
@@ -3715,7 +3734,7 @@ function renderCompanyPage(){
   var seg = segRecord();
   if(!seg){ slots.innerHTML = ''; return; }
   slots.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 from '
-      + esc(seg.segment || 'the segment study') + '</h2>'
+      + esc(seg.segment || 'the sector study') + '</h2>'
     + runSlots().map(function(s){
       var named = !!s.name, done = s.state === 'imported';
       return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
@@ -3775,9 +3794,9 @@ document.addEventListener('click', function(ev){
     var rec = segRecord();
     var segName = v.segment || (rec && rec.segment) || '';
     var subName = v.segment ? v.subsegment : ((rec && rec.subsegment) || '');
-    if(!segName){ alert('Choose a segment first.'); return; }
+    if(!segName){ alert('Choose a sector first.'); return; }
     researchNow({ segment: segName, subsegment: subName },
-      'the ' + segName + (subName ? ' \u2014 ' + subName : '') + ' segment study');
+      'the ' + segName + (subName ? ' \u2014 ' + subName : '') + ' sector study');
     return;
   }
   if(ev.target.closest('#btnImport')){ openImport({ kind:'segment', rank:0 }); return; }
@@ -3821,7 +3840,7 @@ document.addEventListener('click', function(ev){
   if(b.classList.contains('co-del')){
     if(!sl || !sl.record) return;
     if(!confirm('Delete the research for ' + (sl.name || 'this company')
-      + '?\n\nThe segment run and the other companies are untouched.')) return;
+      + '?\n\nThe sector run and the other companies are untouched.')) return;
     libWrite(libRead().filter(function(r){ return r.id !== sl.record.id; }));
     renderCompanyPage(); renderScoreTab();
   }
