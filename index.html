@@ -422,7 +422,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="11-09-2026.1";</script>
+<script>window.APP_BUILD="14-09-2026.1";</script>
 </head>
 <body>
 
@@ -578,12 +578,12 @@ body.previewing{overflow:hidden;}
     <!-- The tool is stated in the payload and recognised from the reply, so this
          is no longer a question. It stays in the markup, hidden, as the fallback
          for a reply that identifies itself in neither way. -->
-    <div id="srcWrap" hidden>
-      <!-- The tool is stated in the payload under run.tool, so there is
-           nothing to ask. The select is kept hidden because older code
-           reads its value. -->
+    <div id="srcWrap">
+      <!-- The tool is stated in the payload under run.tool, so there is nothing
+           to ask. Only the select is hidden; this wrapper carries READ IT and
+           everything after it, and hiding the wrapper hid the button too. -->
       <select id="importSrc" hidden><option value=""></option></select>
-    <div class="hint" id="srcAuto"></div>
+    <div class="hint" id="srcAuto" hidden></div>
     <div class="grid2" style="margin-top:10px;">
       <button class="btn sm pri" id="btnDoImport" style="margin:0;">READ IT</button>
       <button class="btn sm" id="btnCancelImport" style="margin:0;">Cancel</button>
@@ -750,6 +750,10 @@ $$('nav button').forEach(function(b){
     ['segment','company','score','setup'].forEach(function(t){
       var el = $('#tab-'+t); if(!el) return;
       el.classList.toggle('hidden', t !== b.dataset.tab);
+      /* The import card is shared by every page, so it is put away on a tab
+         change. Leaving it open made it appear on Score Card and Setup, still
+         holding the last payload pasted. */
+      if($('#importCard')) $('#importCard').classList.add('hidden');
     });
     window.scrollTo(0,0);
   });
