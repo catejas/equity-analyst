@@ -272,6 +272,24 @@ details .in{padding:0 14px 14px;}
 .pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
 .runbox{margin-bottom:12px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+select{
+  -webkit-appearance:none; appearance:none;
+  background-image:
+    linear-gradient(var(--grad-gold)),
+    none;
+  background-repeat:no-repeat;
+  background-position:right 6px center;
+  background-size:38px 34px;
+  padding-right:52px;
+}
+.selwrap{position:relative;}
+.selwrap::after{
+  content:'\25BE';
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  width:38px; height:34px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--goldink); font-size:.7rem; pointer-events:none;
+}
 .grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
 .btn.xs{font-size:.72rem;padding:11px 2px;min-height:44px;letter-spacing:.01em;}
 .ico{position:relative;z-index:2;min-width:52px;min-height:44px;}
@@ -422,7 +440,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="14-09-2026.1";</script>
+<script>window.APP_BUILD="14-09-2026.2";</script>
 </head>
 <body>
 
@@ -455,21 +473,21 @@ body.previewing{overflow:hidden;}
         <span class="tag" id="segBoxTag">empty</span></h2>
 
     <label for="segSel">Sector</label>
-    <select id="segSel"><option value="">— choose a sector —</option></select>
+    <div class="selwrap"><select id="segSel"><option value="">— choose a sector —</option></select></div>
 
     <label for="subSel" style="margin-top:10px;">Sub-sector <span class="mut">optional</span></label>
-    <select id="subSel"><option value="">— all of the sector —</option></select>
+    <div class="selwrap"><select id="subSel"><option value="">— all of the sector —</option></select></div>
 
     <label for="horizon" style="margin-top:10px;">Holding horizon</label>
-    <select id="horizon">
+    <div class="selwrap"><select id="horizon">
       <option value="1-3">1 to 3 years</option>
       <option value="3-5" selected>3 to 5 years</option>
       <option value="5-10">5 to 10 years</option>
       <option value="10+">10 years or more</option>
-    </select>
+    </select></div>
 
     <label for="segPick" style="margin-top:10px;">Saved Sector / Sub-sector Research</label>
-    <select id="segPick"><option value="">— none imported —</option></select>
+    <div class="selwrap"><select id="segPick"><option value="">— none imported —</option></select></div>
 
     <div class="grid3" style="margin-top:11px;">
       <button class="btn sm pri" id="btnSegSearch" style="margin:0;">Research</button>
@@ -532,7 +550,7 @@ body.previewing{overflow:hidden;}
            autocomplete="off" autocapitalize="words" enterkeyhint="done">
 
     <label for="soloPick" style="margin-top:10px;">Imported independently</label>
-    <select id="soloPick"><option value="">— none imported —</option></select>
+    <div class="selwrap"><select id="soloPick"><option value="">— none imported —</option></select></div>
     <div class="grid5" style="margin-top:11px;">
       <button class="btn xs pri" id="btnSoloSearch" style="margin:0;">Research</button>
       <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
@@ -548,7 +566,7 @@ body.previewing{overflow:hidden;}
   <div class="card runbox">
     <h2>Saved company research</h2>
     <label for="coPick">Every company imported into this app</label>
-    <select id="coPick"><option value="">— none imported —</option></select>
+    <div class="selwrap"><select id="coPick"><option value="">— none imported —</option></select></div>
     <div id="coMsg" class="note" style="margin-top:8px;"></div>
 
     <label style="margin-top:16px;">Open AI tool</label>
@@ -593,15 +611,20 @@ body.previewing{overflow:hidden;}
     <button class="btn sm pri hidden" id="btnSaveImport">SAVE TO REPORT &amp; SCORING</button>
   </div>
 
+<!-- closes #importCard. It was restored from an earlier build one tag short,
+     so every section after it became its child — which is why hiding the
+     card took the Score Card and Setup pages with it. -->
+</div>
+
 <section id="tab-score" class="hidden">
   <div class="card">
     <h2>Score Card</h2>
 
     <label for="scSector">Sector / Sub-sector Research</label>
-    <select id="scSector"><option value="">— none imported —</option></select>
+    <div class="selwrap"><select id="scSector"><option value="">— none imported —</option></select></div>
 
     <label for="scCompany" style="margin-top:10px;">Company research</label>
-    <select id="scCompany"><option value="">— none imported —</option></select>
+    <div class="selwrap"><select id="scCompany"><option value="">— none imported —</option></select></div>
 
     <p class="note" id="scNameNote">Each of the 52 components is scored against a written
     anchor. Tap a section to see every line, the points it earned against the points it
