@@ -839,3 +839,24 @@ Added:
   and the styling is simply absent.
 
 Tests: 381 engine assertions and fourteen browser suites.
+
+## v4.0.2 — 14-09-2026
+- **READ IT did nothing and then vanished.** applyDetectedTool hides #srcWrap
+  once it knows which tool produced the reply — and READ IT, Cancel, the
+  message line, the review panel and SAVE were all still inside that wrapper.
+  Detection now always succeeds, because the tool comes from run.tool, so the
+  whole import panel disappeared on the first press.
+  That is the fourth bug of exactly this shape: a container held more than the
+  thing being hidden. The wrapper now holds only the select and its note, and
+  everything else sits outside it where nothing can hide it by accident.
+  `tests/importlive.mjs` presses READ IT twice and asserts the controls are
+  still standing, which is what none of the earlier tests did.
+- **The dropdown list now uses the width it has.** A native select hands the
+  phone its own wheel, which truncated a run label to a few words. Tapping a
+  picker opens a panel: full width, up to 82% of the screen, scrollable, with
+  the current choice ticked and scrolled into view; centred and 70% tall on a
+  desktop. The select underneath remains the source of truth — choosing a row
+  sets its value and fires the same change event, so if this code were removed
+  the app would still work with the native control.
+
+Tests: 381 engine assertions and sixteen browser suites.

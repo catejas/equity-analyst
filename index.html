@@ -272,6 +272,41 @@ details .in{padding:0 14px 14px;}
 .pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
 .runbox{margin-bottom:12px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+/* The picker panel. A native select hands the phone its own wheel, which is
+   reliable but tiny and truncates a run label to a few words. This lists the
+   options at full width with room to read them, on a phone and on a desktop
+   alike. The select underneath stays the source of truth, so every existing
+   change handler keeps working and nothing depends on this to function. */
+.pickmask{
+  position:fixed; inset:0; z-index:900; background:rgba(8,14,28,.55);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.pickpanel{
+  width:100%; max-width:720px; max-height:82vh;
+  background:var(--surf); color:var(--ink);
+  border-radius:16px 16px 0 0; box-shadow:0 -8px 40px rgba(0,0,0,.35);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.pickpanel .pkhead{
+  padding:14px 18px 10px; font-weight:700; font-size:.95rem;
+  border-bottom:1px solid var(--line); flex:0 0 auto;
+}
+.pickpanel .pklist{ overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; }
+.pickpanel .pk{
+  display:block; width:100%; text-align:left; background:none; border:0;
+  padding:15px 18px; font-size:.95rem; line-height:1.4; color:var(--ink);
+  border-bottom:1px solid var(--line); cursor:pointer;
+}
+.pickpanel .pk:active{ background:var(--surf2); }
+.pickpanel .pk.on{ font-weight:700; }
+.pickpanel .pk.on::after{ content:'  \2713'; color:var(--gold); }
+.pickpanel .pkfoot{ padding:12px 18px calc(12px + env(safe-area-inset-bottom)); flex:0 0 auto; }
+@media (min-width:700px){
+  .pickmask{ align-items:center; }
+  .pickpanel{ border-radius:16px; max-height:70vh; }
+}
+
 /* The picker, as IPO Analyst shows it: a gold chevron button sitting in the
    field. The control underneath is a native select on purpose — iOS gives it a
    wheel picker, which is reliable and needs no custom list of ours to break.
@@ -443,7 +478,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="14-09-2026.5";</script>
+<script>window.APP_BUILD="14-09-2026.6";</script>
 </head>
 <body>
 
@@ -599,12 +634,16 @@ body.previewing{overflow:hidden;}
     <!-- The tool is stated in the payload and recognised from the reply, so this
          is no longer a question. It stays in the markup, hidden, as the fallback
          for a reply that identifies itself in neither way. -->
-    <div id="srcWrap">
-      <!-- The tool is stated in the payload under run.tool, so there is nothing
-           to ask. Only the select is hidden; this wrapper carries READ IT and
-           everything after it, and hiding the wrapper hid the button too. -->
-      <select id="importSrc" hidden><option value=""></option></select>
-    <div class="hint" id="srcAuto" hidden></div>
+    <!-- The tool is stated in the payload under run.tool, so there is nothing to
+         ask. This wrapper now holds ONLY the select and its note, because
+         applyDetectedTool hides it on a successful detection — and while the
+         buttons lived in here, that hid the whole import panel on the first
+         press of READ IT. A container must hold only the thing being hidden. -->
+    <div id="srcWrap" hidden>
+      <select id="importSrc"><option value=""></option></select>
+      <div class="hint" id="srcAuto"></div>
+    </div>
+
     <div class="grid2" style="margin-top:10px;">
       <button class="btn sm pri" id="btnDoImport" style="margin:0;">READ IT</button>
       <button class="btn sm" id="btnCancelImport" style="margin:0;">Cancel</button>
@@ -612,7 +651,6 @@ body.previewing{overflow:hidden;}
     <div id="importMsg" class="note"></div>
     <div id="reviewBox" class="hidden"></div>
     <button class="btn sm pri hidden" id="btnSaveImport">SAVE TO REPORT &amp; SCORING</button>
-  </div>
 
 <!-- closes #importCard. It was restored from an earlier build one tag short,
      so every section after it became its child — which is why hiding the
@@ -3913,6 +3951,58 @@ document.addEventListener('click', function(ev){
     renderCompanyPage(); renderScoreTab();
   }
 });
+
+
+/* ---- the picker panel ------------------------------------------------
+   Every visible select opens this instead of the system wheel. The select
+   remains the source of truth: choosing a row sets its value and fires the
+   same change event the app already listens for, so if this code is ever
+   removed the app still works with the native control. */
+(function(){
+  function labelFor(sel){
+    var l = document.querySelector('label[for="' + sel.id + '"]');
+    return l ? l.textContent.replace(/\s+/g, ' ').trim() : 'Choose';
+  }
+  function close(){
+    var m = document.querySelector('.pickmask');
+    if(m && m.parentNode) m.parentNode.removeChild(m);
+  }
+  function open(sel){
+    if(sel.disabled || !sel.options.length) return;
+    close();
+    var mask = document.createElement('div');
+    mask.className = 'pickmask';
+    var rows = Array.prototype.map.call(sel.options, function(o, i){
+      return '<button type="button" class="pk' + (i === sel.selectedIndex ? ' on' : '')
+        + '" data-i="' + i + '">' + esc(o.textContent) + '</button>';
+    }).join('');
+    mask.innerHTML = '<div class="pickpanel" role="dialog" aria-modal="true">'
+      + '<div class="pkhead">' + esc(labelFor(sel)) + '</div>'
+      + '<div class="pklist">' + rows + '</div>'
+      + '<div class="pkfoot"><button type="button" class="btn sm" style="margin:0;width:100%" data-close="1">Close</button></div>'
+      + '</div>';
+    document.body.appendChild(mask);
+    var on = mask.querySelector('.pk.on');
+    if(on && on.scrollIntoView){ try{ on.scrollIntoView({ block:'center' }); }catch(e){} }
+    mask.addEventListener('click', function(ev){
+      if(ev.target === mask || ev.target.getAttribute('data-close')){ close(); return; }
+      var row = ev.target.closest && ev.target.closest('.pk');
+      if(!row) return;
+      var i = Number(row.getAttribute('data-i'));
+      if(sel.selectedIndex !== i){
+        sel.selectedIndex = i;
+        sel.dispatchEvent(new Event('change', { bubbles:true }));
+      }
+      close();
+    });
+  }
+  document.addEventListener('mousedown', function(ev){
+    var sel = ev.target.closest && ev.target.closest('.selwrap select');
+    if(!sel) return;
+    ev.preventDefault(); sel.blur(); open(sel);
+  });
+  document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') close(); });
+})();
 </script>
 <!-- The engine loads first as a module and hangs itself on window.EQ.
      The classic scripts below wait for the eq:ready event. -->
