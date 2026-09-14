@@ -684,3 +684,19 @@ were exercised in a browser at this build and all work — tabs render, the
 importer reads a 165 KB payload and saves it. The three faults share one cause,
 which is the engine failing to load, so the banner above is the fix that will
 tell us if it happens again rather than leaving a blank screen.
+
+## v1.8.1 — 14-09-2026
+Fixed:
+- **READ IT was invisible.** Removing the tool picker meant marking its wrapper
+  hidden — and READ IT, Cancel, the message line, the review panel and SAVE were
+  all inside that wrapper. The select alone is hidden now; the wrapper carries
+  the controls and stays visible. This is the third time a removal has taken a
+  neighbour with it, and the reason is always the same: the thing removed was
+  not the only thing in its container.
+- **The import card appeared on every page.** It is shared by all of them and
+  was left open on a tab change, so it turned up on Score Card and Setup still
+  holding the last payload pasted. It is put away when the tab changes.
+
+Tests: 358 engine assertions and nine browser suites, including one that asserts
+READ IT is visible and works on both pages and that the import card does not
+follow the reader between tabs.
