@@ -1056,15 +1056,29 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '  for(var r0 = 0; r0 < blocks.length; r0++) first.appendChild(blocks[r0]);\n'
 + '  return;\n'
 + '}\n'
-+ 'for(var m = 0; m < blocks.length; m++) first.appendChild(blocks[m]);\n'
-+ 'var heights = [];\n'
+/* Measure in a ruler of the same width, not inside the page box.
+   Measuring inside the body meant every block was measured while forty others
+   sat in a box with overflow hidden and a constrained height, and the numbers
+   that came back were a fraction of the truth — which is how forty-one blocks
+   were dealt onto three pages. The ruler is the page body's width, free to
+   grow, off-screen, and nothing else is in it. */
++ 'var ruler = document.createElement("div");\n'
++ 'ruler.style.cssText = "position:absolute;left:-10000px;top:0;visibility:hidden;"\n'
++ '  + "width:" + (first.clientWidth || first.offsetWidth || 520) + "px;";\n'
++ 'first.parentNode.appendChild(ruler);\n'
++ 'var heights = [], totalH = 0, maxH = 0;\n'
 + 'for(var q = 0; q < blocks.length; q++){\n'
-+ '  var h = blocks[q].offsetHeight;\n'
-+ '  var cs = window.getComputedStyle(blocks[q]);\n'
-+ '  h += parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);\n'
-+ '  heights.push(h || 1);\n'
++ '  ruler.appendChild(blocks[q]);\n'
++ '  var h = blocks[q].getBoundingClientRect\n'
++ '    ? blocks[q].getBoundingClientRect().height : blocks[q].offsetHeight;\n'
++ '  if(!h) h = blocks[q].offsetHeight || 0;\n'
++ '  var cs = window.getComputedStyle ? window.getComputedStyle(blocks[q]) : null;\n'
++ '  if(cs) h += parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);\n'
++ '  h = Math.max(1, Math.round(h));\n'
++ '  heights.push(h); totalH += h; if(h > maxH) maxH = h;\n'
++ '  ruler.removeChild(blocks[q]);\n'
 + '}\n'
-+ 'while(first.firstChild) first.removeChild(first.firstChild);\n'
++ 'ruler.parentNode.removeChild(ruler);\n'
 
 /* Deal the blocks onto pages, adding shells when the seeded ones run out. */
 + 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
@@ -1123,8 +1137,15 @@ var FILL_AND_TOC = '<script>(function(){\n'
    many pages resulted. A short report with "blk 0" is a different fault from
    one with "bud 0", and neither needs another round of guessing. */
 + 'window.__EQ_PAGINATION = { blocks: blocks.length, budget: budget,\n'
-+ '  pages: pages.length, seeded: seeded, grew: pages.length - seeded };\n'
++ '  pages: pages.length, seeded: seeded, grew: pages.length - seeded,\n'
++ '  totalHeight: totalH, tallest: maxH,\n'
++ '  expectedPages: Math.ceil(totalH / Math.max(1, budget)) };\n'
+/* The measured height total is the number that was wrong, so it is printed.
+   If the pages produced do not match the total divided by the budget, the
+   dealing is at fault; if the total itself is implausibly small, the
+   measurement is. The two are no longer indistinguishable from a PDF. */
 + 'var auditTxt = " \\u00b7 blk" + blocks.length + "/bud" + Math.round(budget)\n'
++ '  + "/h" + Math.round(totalH) + "/exp" + Math.ceil(totalH / Math.max(1, budget))\n'
 + '  + "/pg" + pages.length;\n'
 + 'var stamps = document.querySelectorAll(".bstamp");\n'
 + 'for(var s0 = 0; s0 < stamps.length; s0++) stamps[s0].textContent += auditTxt;\n'
