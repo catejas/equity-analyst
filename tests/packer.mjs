@@ -81,6 +81,33 @@ for (const c of cases) {
   if (after.length >= before && c.blocks.length > 3) { console.log('   FAIL: nothing was packed'); fail = 1; }
   if (stranded) { console.log('   FAIL: a heading was left alone on a page'); fail = 1; }
 }
+/* The real shape of the fault: every block in page one's box, thirty empty
+   shells after it. Nothing distributed it, so the content was clipped and the
+   empty shells were deleted — a forty-page report came out as two pages. */
+{
+  const blocks = Array.from({ length: 20 }, () => ({ cls: 'para', h: HEIGHTS.medium }));
+  let html = '<!doctype html><html><body><div class="page"><div class="body">';
+  blocks.forEach((b) => { html += `<div class="${b.cls}" data-h="${b.h}">${b.cls}</div>`; });
+  html += '</div></div>';
+  for (let i = 0; i < 30; i++) html += '<div class="page"><div class="body"></div></div>';
+  html += '</body></html>';
+  const dom = new JSDOM(html, { runScripts: 'outside-only' });
+  measure(dom);
+  try { dom.window.eval('(function(){' + body + '})()'); } catch (e) { console.log('THREW:', e.message); fail = 1; }
+  const after = [...dom.window.document.querySelectorAll('.page')];
+  const kept = dom.window.document.querySelectorAll('.para').length;
+  const fills = after.map((p) => {
+    const b = p.querySelector('.body');
+    let t = 0; for (const ch of b.children) t += Number(ch.getAttribute('data-h') || 0);
+    return Math.round(t / PAGE_H * 100);
+  });
+  console.log('everything dumped in page one, thirty empty shells after');
+  console.log(`   pages 31 -> ${after.length} | blocks kept ${kept} of 20 | fill ${fills.join('%, ')}%`);
+  if (kept !== 20) { console.log('   FAIL: content was lost'); fail = 1; }
+  if (after.length < 3) { console.log('   FAIL: 20 blocks of 140pt cannot fit two 700pt pages'); fail = 1; }
+  if (fills.some((f) => f > 100)) { console.log('   FAIL: a page is overfull, so its content is clipped'); fail = 1; }
+}
+
 /* The regression that produced a one-page report: in the staging iframe the
    script runs before layout, every box reports zero height, and a box with no
    height looks like a box with infinite room. */

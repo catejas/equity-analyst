@@ -651,6 +651,17 @@ body.gu .lead{ line-height:1.75; }
 body.gu .mut{ line-height:1.65; }
 .eyebrow{ font-size:11.7pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
 body.gu .eyebrow{ letter-spacing:.06em; }
+/* Contents. A rule under the heading, the section number in gold, leader dots,
+   the page number right-aligned. Without these the rows rendered as bare blue
+   links with the number running straight into the next title. */
+.ir-toc{ margin:0; }
+.toc-h{ font-size:16pt; font-weight:700; color:var(--navy); margin:0 0 1.5mm; letter-spacing:.01em; }
+.toc-sub{ font-size:9.2pt; color:var(--ink3); margin:0 0 5mm; padding-bottom:2.5mm; border-bottom:1pt solid var(--navy); }
+.toc-row{ display:flex; align-items:baseline; gap:2.5mm; padding:2.4mm 0; border-bottom:.4pt solid var(--rule); text-decoration:none; color:var(--ink); }
+.toc-n{ font-size:9pt; font-weight:700; color:var(--ink4); min-width:8mm; font-variant-numeric:tabular-nums; }
+.toc-t{ font-size:11pt; }
+.toc-d{ flex:1; border-bottom:.4pt dotted var(--rule); transform:translateY(-1mm); }
+.toc-p{ font-size:10.5pt; font-weight:600; color:var(--ink2); font-variant-numeric:tabular-nums; min-width:8mm; text-align:right; }
 table{ width:100%; border-collapse:collapse; font-size:13.2pt; }
 th{ text-align:left; font-size:9.3pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
     color:var(--ink3); padding:2mm; border-bottom:.9pt solid var(--navy); white-space:nowrap; }
@@ -1004,6 +1015,26 @@ var FILL_AND_TOC = '<script>(function(){\n'
    hole it made — the reports were running at about eight per cent ink with a
    fifth of each page blank. This pulls the next page back up while it fits. */
 + 'var pages = [].slice.call(document.querySelectorAll(".page"));\n'
+
+/* SPILL FIRST. Everything the builders emit lands in the first page's box, and
+   the only routine that ever distributed it was gated behind a data-spill
+   attribute these documents do not set. So the content sat in page one,
+   clipped by overflow:hidden, while every seeded page after it stayed empty —
+   and the delete pass then removed them, which is how a forty-page report came
+   out as two. Push the overflow forward until each page fits. */
++ 'for(var sp = 0; sp < pages.length - 1; sp++){\n'
++ '  var from = boxOf(pages[sp]), to = boxOf(pages[sp + 1]);\n'
++ '  if(!from || !to) continue;\n'
++ '  var g = 0;\n'
++ '  while(full(from) && g++ < 400){\n'
++ '    var kidsF = from.children, lastF = kidsF[kidsF.length - 1];\n'
++ '    if(!lastF) break;\n'
++ '    if(lastF.className === "grow"){ from.removeChild(lastF); continue; }\n'
++ '    if(kidsF.length <= 1) break;\n'
++ '    to.insertBefore(lastF, to.firstChild);\n'
++ '  }\n'
++ '}\n'
+
 + 'for(var i = 0; i < pages.length - 1; i++){\n'
 + '  var here = boxOf(pages[i]);\n'
 + '  if(!here) continue;\n'

@@ -1031,3 +1031,29 @@ page shells; the summary is 66,443 over 12 — 44% of the size — with no
 `undefined` and no `NaN` anywhere in it.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.1 — 15-09-2026
+The reason every report came out as two pages.
+
+**Nothing was ever distributing the content across pages.** The builders emit
+everything into the first page's box, and the only routine that spilled the
+overflow forward was gated behind a `data-spill` attribute that the company,
+sector and summary documents do not set. So the whole report sat in page one,
+clipped by overflow:hidden, while every seeded shell after it stayed empty —
+and the delete pass then removed them as empty. A forty-page report became two.
+
+This also explains the 8% ink coverage measured earlier: the only thing acting
+on those pages was the autofit shrink.
+
+The fill pass now spills first and pulls back second, for every document
+regardless of any attribute. `tests/packer.mjs` covers the real shape of the
+fault — twenty blocks in page one with thirty empty shells after it — and
+requires that nothing is lost and no page is left overfull: 31 shells in, 4
+pages out, all 20 blocks kept, every page at 100%.
+
+Also fixed:
+- **The contents rendered as bare blue links**, the section number running into
+  the next title, because its stylesheet had been lost in an earlier edit and no
+  test looked at it. Restored, and `tests/cssaudit.mjs` now sees it.
+
+Tests: 387 engine assertions and twenty-three browser suites.
