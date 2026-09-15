@@ -987,7 +987,17 @@ var AUTOFIT = '<script>(function(){'
    made to it put a brace in the wrong place. This is plain source. */
 var FILL_AND_TOC = '<script>(function(){\n'
 + 'function boxOf(p){ return p.querySelector(".body"); }\n'
-+ 'function full(b){ return b.scrollHeight > b.clientHeight + 1; }\n'
+/* Nothing here may run before the document has been laid out. In the staging
+   iframe the script executes while clientHeight and scrollHeight are still 0,
+   and a box that reports no height looks like a box with infinite room: the
+   fill pulled every block onto page one and the delete pass then removed every
+   other page, so a twenty-three page report came out as a single clipped page.
+   A box with no measurable height is a box we know nothing about, so we leave
+   the document exactly as the packer left it. */
++ 'var probe = document.querySelector(".page > .body");\n'
++ 'var measurable = !!(probe && probe.clientHeight >= 50);\n'
++ 'if(measurable){\n'
++ 'function full(b){ return !b.clientHeight || b.scrollHeight > b.clientHeight + 1; }\n'
 + 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
 
 /* The paginator above only spills forward, so every page it touched kept the
@@ -1051,6 +1061,11 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '}\n'
 
 /* the contents, with page numbers that are true because the packing is done */
++ '}\n'
+/* The contents is built whether or not the pages could be measured. If they
+   could not, the packer left the document alone and the seeded page numbers are
+   still the right ones to print. */
++ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
 + 'var map = [];\n'
 + 'for(var p = 0; p < pages.length; p++){\n'
 + '  var secs = pages[p].querySelectorAll(".sec");\n'
@@ -1066,7 +1081,8 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + 'window.__EQ_TOC = map;\n'
 + 'var host = document.querySelector("[data-toc]");\n'
 + 'if(host && map.length){\n'
-+ '  var out = "<div class=@toc-h@>Contents</div>";\n'
++ '  var out = "<div class=@toc-h@>Contents</div>"\n'
++ '          + "<div class=@toc-sub@>" + map.length + " sections \\u00b7 page numbers are those of this document</div>";\n'
 + '  for(var m = 0; m < map.length; m++){\n'
 + '    out += "<a class=@toc-row@ href=@#" + map[m].id + "@>"\n'
 + '         + "<span class=@toc-n@>" + map[m].num + "</span>"\n'
@@ -4421,7 +4437,6 @@ function packDoc(p, lang, cfg){
   if(lead){
     shells = page(p, 1, 25, cfg.runHead,
       '<div class="ir-lead">' + cfg.leadIn + '</div>'
-      + '<div class="ir-toc" data-toc></div>'
       + '<div class="ir-box">' + B.join('') + '</div><div class="grow"></div>',
       lang, cfg.docName);
     first = 2;
@@ -4432,6 +4447,14 @@ function packDoc(p, lang, cfg){
       lang, cfg.docName);
     first = 2;
   }
+  /* Contents on its own page, straight after the cover. It used to sit under
+     the cover block where it competed with the lead-in for room and was the
+     first thing squeezed when the page filled. */
+  shells += page(p, first, 25, cfg.runHead,
+    '<div class="ir-toc" data-toc></div><div class="grow"></div>',
+    lang, cfg.docName);
+  first += 1;
+
   for(var i = first; i <= cfg.seedPages; i++){
     shells += page(p, i, 25, cfg.runHead,
       '<div class="ir-box">' + (!lead && i === 2 ? B.join('') : '') + '</div><div class="grow"></div>',

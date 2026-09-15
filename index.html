@@ -485,7 +485,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="14-09-2026.8";</script>
+<script>window.APP_BUILD="15-09-2026.1";</script>
 </head>
 <body>
 
@@ -2666,7 +2666,24 @@ function auditPayload(d){
    payload is what made rank 2 and rank 3 say they had too few companies while
    all three were already imported, and what made a segment-only block report
    every company section as missing. */
-function docReadiness(d){
+function docReadiness(d, kind){
+  /* An independent company has no sector study and no Top 3, so offering it a
+     Sector Research Report and three ranked company slots was listing four
+     things it can never build and one it can. It gets its own short list. */
+  if(kind === 'solo'){
+    var co = (d && d.companies && d.companies[0]) || null;
+    var nm = co ? (co.name || co.symbol) : 'this company';
+    return [
+      { name:'Independent Company Research Report' + (co ? ' \u2014 ' + nm : ''),
+        ok: !!co, why: co ? 'ready' : 'no company in this payload' },
+      { name:'Executive Summary' + (co ? ' \u2014 ' + nm : ''),
+        ok: !!co, why: co ? 'ready' : 'no company in this payload' },
+      { name:'Score Card', ok: !!co, why: co ? 'every rating with its anchor' : 'no company in this payload' }
+    ];
+  }
+  return docReadinessRun(d);
+}
+function docReadinessRun(d){
   var incoming = (d && Array.isArray(d.companies)) ? d.companies : [];
   var isSegmentBlock = !!(d && d.run && !incoming.length);
 
@@ -2799,7 +2816,7 @@ function showReview(res, raw){
        : kind === 'top3' ? 'What the run can build once this is saved'
        : kind === 'sector' ? 'What the sector study can build'
        : 'What this payload can build') + '</div>';
-    docReadiness(d).forEach(function(x){
+    docReadiness(d, kind).forEach(function(x){
       html += '<div class="rvsrow"><i class="' + (x.ok ? 'dot ok' : 'dot none') + '"></i>'
             + '<span>' + esc(x.name) + '</span><b class="' + (x.ok ? '' : 'mutb') + '">'
             + esc(x.ok ? 'ready' : x.why) + '</b></div>';

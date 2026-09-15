@@ -711,7 +711,25 @@ something in it:
   narrative        catalysts, risks with sizes, thesis breakers, questions
 
 Roughly twenty-five searches. The segment backdrop should take two or three of
-them, no more.` : `Search until each block below has something in it. These are not optional
+them, no more.
+
+THE FINANCIAL MODEL IS NOT OPTIONAL. A run that returns zero of the six model
+blocks is not a research payload, it is a summary. Segment drivers, cost
+structure, capex and depreciation, working-capital days, the debt schedule and
+the fully diluted share count are all in the annual report and the latest
+quarterly filing, and every one of them is what a valuation is built from.
+If a figure genuinely is not disclosed, write null for that one figure and say
+where you looked — but do not return the block empty because it was quicker.
+The same goes for the price series and the ten-year history: search the
+exchange, the annual report, the screener sites and the company's own investor
+page before concluding that a number does not exist.
+
+A COMPANY RUN STILL NEEDS ITS BACKDROP. Two pages of it: where the industry
+sits in its cycle, the policy and regulation that touch this company with the
+money attached, who it competes with and roughly what share each holds, and the
+macro readings that move its earnings. That is not a segment study and must not
+become one — but returning it empty leaves every number in the report with no
+context to be read against.` : `Search until each block below has something in it. These are not optional
 extras; each one is a named section of the finished report:
 
   the world        global market size, its growth over 15/10/5/3 years, and a

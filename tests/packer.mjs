@@ -64,7 +64,7 @@ for (const c of cases) {
   const dom = new JSDOM(build(c.blocks), { runScripts: 'outside-only' });
   measure(dom);
   const before = dom.window.document.querySelectorAll('.page').length;
-  try { dom.window.eval(body); } catch (e) { console.log('  THREW:', e.message); fail = 1; }
+  try { dom.window.eval('(function(){' + body + '})()'); } catch (e) { console.log('  THREW:', e.message); fail = 1; }
   const after = [...dom.window.document.querySelectorAll('.page')];
   const fills = after.map((p) => {
     const b = p.querySelector('.body');
@@ -81,5 +81,24 @@ for (const c of cases) {
   if (after.length >= before && c.blocks.length > 3) { console.log('   FAIL: nothing was packed'); fail = 1; }
   if (stranded) { console.log('   FAIL: a heading was left alone on a page'); fail = 1; }
 }
-console.log(fail ? 'PACKER TEST FAILED' : 'packer fills pages and strands no headings');
+/* The regression that produced a one-page report: in the staging iframe the
+   script runs before layout, every box reports zero height, and a box with no
+   height looks like a box with infinite room. */
+{
+  const dom = new JSDOM(build(Array.from({ length: 8 }, () => ({ cls: 'para', h: HEIGHTS.medium }))),
+    { runScripts: 'outside-only' });
+  // deliberately NOT measured: clientHeight stays 0, as before layout
+  const before = dom.window.document.querySelectorAll('.page').length;
+  try { dom.window.eval('(function(){' + body + '})()'); } catch (e) { console.log('THREW:', e.message); fail = 1; }
+  const after = dom.window.document.querySelectorAll('.page').length;
+  const blocks = dom.window.document.querySelectorAll('.para').length;
+  console.log('an unlaid-out document is left alone');
+  console.log(`   pages ${before} -> ${after} | blocks kept ${blocks} of 8`);
+  if (after !== before || blocks !== 8) {
+    console.log('   FAIL: the packer touched a document it could not measure');
+    fail = 1;
+  }
+}
+
+console.log(fail ? 'PACKER TEST FAILED' : 'packer fills pages, strands no headings, and leaves an unmeasured document alone');
 process.exit(fail);

@@ -940,3 +940,33 @@ Charts a non-specialist can read:
   what the bars are, how the four models combine, and what a low score means.
 
 Tests: 384 engine assertions and nineteen browser suites.
+
+## v4.0.5 — 15-09-2026
+Fixed — a regression I caused in the previous build:
+- **Both reports came out as a single page.** The fill pass runs in the staging
+  iframe before the document is laid out, where clientHeight and scrollHeight
+  are both zero — and a box reporting no height looks like a box with infinite
+  room. So it pulled every block onto page one and the delete pass removed the
+  rest. A twenty-three page report became one clipped page.
+  The packing now refuses to run on a document it cannot measure, and leaves it
+  exactly as the paginator left it. `tests/packer.mjs` covers this case
+  directly: eight pages in, eight pages out, all eight blocks kept.
+  The contents still builds when the pages cannot be measured, because the
+  seeded numbers are the right ones to print in that case.
+
+Changed:
+- **Contents is its own page, straight after the cover**, set the way IPO
+  Analyst sets it: a rule under the heading, leader dots, section numbers in
+  gold, page numbers right-aligned, and a line saying how many sections there
+  are.
+- **An independent company gets its own build list.** It was being offered a
+  Sector Research Report and three ranked company slots — four things it can
+  never build and one it can. It now lists exactly three: its own research
+  report, its executive summary and its score card.
+- **The prompt refuses an empty financial model.** A company run returning zero
+  of the six model blocks is a summary, not research; the six are named, with
+  where to find them, and null is only acceptable per figure with a note on
+  where you looked. A company run must also return its two-page backdrop rather
+  than leaving every number without context.
+
+Tests: 384 engine assertions and twenty browser suites.
