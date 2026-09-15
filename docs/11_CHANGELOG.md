@@ -1088,3 +1088,32 @@ Also:
   The language suffix is gone.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.3 — 15-09-2026
+Pagination rewritten to measure blocks, not containers.
+
+Five attempts asked the page box whether it was full. In the print and preview
+contexts that box grows to fit its content, so it never was — pinning it to a
+pixel height in the last build got three pages instead of two, which was the
+same fault wearing a hat.
+
+A block always has a real height: it is in the flow and has been laid out.
+The paginator now collects every block, measures each one once, and deals them
+onto pages by accumulating those heights. Nothing asks a container to report
+overflow. When the seeded shells run out it clones another rather than dropping
+what is left — the previous code silently truncated once it reached the last
+shell, which is the other half of why reports came out short.
+
+Measured against real numbers in `tests/packer.mjs`, which now defines a height
+for every block because jsdom has none:
+- twenty blocks in page one with thirty empty shells after → 4 pages, all kept,
+  every page at 100%
+- forty blocks with only three shells seeded → 8 pages, all kept, none lost
+- headings never left alone, a block taller than the page still gets its own
+- nothing measurable → everything stays on page one untouched
+
+Changed:
+- **Contents is page one, ahead of the cover, without exception**, for the
+  research report and the executive summary alike.
+
+Tests: 387 engine assertions and twenty-three browser suites.
