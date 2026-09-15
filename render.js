@@ -996,129 +996,25 @@ var AUTOFIT = '<script>(function(){'
    Written as its own script rather than appended to the concatenated one above:
    that string is built by hand out of hundreds of fragments, and every edit I
    made to it put a brace in the wrong place. This is plain source. */
+/* Contents and audit only — the pagination belongs to the document's own
+   packer, which works on .ir-box and knows how to divide a table across a page
+   break. I wrote a second paginator over the top of it, moved the blocks out of
+   the boxes it was holding, and added pages that had no box at all; it then
+   read scrollHeight off a null and threw, which aborted everything after it.
+   That is why reports that used to run to twenty-three and forty pages came
+   back as four. One document, one packer. This script only reads the finished
+   layout and writes the contents. */
 var FILL_AND_TOC = '<script>(function(){\n'
-/* Pagination by block height, not by container overflow.
-   Every previous attempt asked the page box whether it was full. In the print
-   and preview contexts that box grows to fit its content, so it was never full,
-   nothing was ever spilled, and the whole report sat clipped on page one.
-   A block, by contrast, always has a real height: it is in the flow and has
-   been laid out. So the budget is computed once, each block is measured once,
-   and blocks are dealt onto pages by accumulating those heights. Nothing here
-   asks a container to report overflow. */
 + 'var pages = [].slice.call(document.querySelectorAll(".page"));\n'
-+ 'var seeded = pages.length;\n'
-+ 'if(pages.length < 2) return;\n'
-+ 'var host = pages[0].parentNode;\n'
++ 'if(!pages.length) return;\n'
 
-/* Collect every block in document order, out of whichever shell it landed in. */
-+ 'var blocks = [], b0;\n'
-/* The contents page is furniture: it is never a destination for content, and
-   nothing is ever collected out of it. Content starts on the page after it. */
-+ 'var tocPageEl = null;\n'
-+ 'for(var t0 = 0; t0 < pages.length; t0++){\n'
-+ '  if(pages[t0].querySelector("[data-toc]")){ tocPageEl = pages[t0]; break; }\n'
-+ '}\n'
-+ 'var deal = [];\n'
-+ 'for(var i = 0; i < pages.length; i++){\n'
-+ '  if(pages[i] === tocPageEl) continue;\n'
-+ '  deal.push(pages[i]);\n'
-+ '  var bd = pages[i].querySelector(".body");\n'
-+ '  if(!bd) continue;\n'
-+ '  while(bd.firstElementChild){\n'
-+ '    b0 = bd.firstElementChild;\n'
-+ '    bd.removeChild(b0);\n'
-+ '    if(b0.className !== "grow") blocks.push(b0);\n'
-+ '  }\n'
-+ '}\n'
-+ 'if(!blocks.length) return;\n'
-
-/* Measure each block once, in a box the width of a page body. */
-+ 'if(!deal.length) return;\n'
-+ 'var first = deal[0].querySelector(".body");\n'
-/* The budget is the page geometry, never the box's own clientHeight. That box
-   is unconstrained in print and preview, so its clientHeight equals the height
-   of everything inside it — ask it for a budget and it answers "all of it",
-   which is how thirty-two sections ended up on one page five builds running.
-   getBoundingClientRect on the page honours the 297mm CSS height; the constant
-   is the same figure in pixels and is only reached if layout is unavailable. */
-+ 'function pxOf(el){\n'
-+ '  if(!el) return 0;\n'
-+ '  var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;\n'
-+ '  return (r && r.height) ? r.height : (el.offsetHeight || 0);\n'
-+ '}\n'
-+ 'var pgH = pxOf(pages[0]) || 1122.5;\n'
-+ 'var hdH = pxOf(pages[0].querySelector(".rh"));\n'
-+ 'var ftH = pxOf(pages[0].querySelector(".rfw")) || pxOf(pages[0].querySelector(".rf"));\n'
-+ 'var budget = Math.round(pgH - hdH - ftH - 12);\n'
-+ 'if(!(budget > 120)) budget = 0;\n'
-+ 'if(!budget){\n'
-/* no layout to measure: put everything back on page one and leave it be */
-+ '  for(var r0 = 0; r0 < blocks.length; r0++) first.appendChild(blocks[r0]);\n'
-+ '  return;\n'
-+ '}\n'
-/* Measure in a ruler of the same width, not inside the page box.
-   Measuring inside the body meant every block was measured while forty others
-   sat in a box with overflow hidden and a constrained height, and the numbers
-   that came back were a fraction of the truth — which is how forty-one blocks
-   were dealt onto three pages. The ruler is the page body's width, free to
-   grow, off-screen, and nothing else is in it. */
-+ 'var ruler = document.createElement("div");\n'
-+ 'ruler.style.cssText = "position:absolute;left:-10000px;top:0;visibility:hidden;"\n'
-+ '  + "width:" + (first.clientWidth || first.offsetWidth || 520) + "px;";\n'
-+ 'first.parentNode.appendChild(ruler);\n'
-+ 'var heights = [], totalH = 0, maxH = 0;\n'
-+ 'for(var q = 0; q < blocks.length; q++){\n'
-+ '  ruler.appendChild(blocks[q]);\n'
-+ '  var h = blocks[q].getBoundingClientRect\n'
-+ '    ? blocks[q].getBoundingClientRect().height : blocks[q].offsetHeight;\n'
-+ '  if(!h) h = blocks[q].offsetHeight || 0;\n'
-+ '  var cs = window.getComputedStyle ? window.getComputedStyle(blocks[q]) : null;\n'
-+ '  if(cs) h += parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);\n'
-+ '  h = Math.max(1, Math.round(h));\n'
-+ '  heights.push(h); totalH += h; if(h > maxH) maxH = h;\n'
-+ '  ruler.removeChild(blocks[q]);\n'
-+ '}\n'
-+ 'ruler.parentNode.removeChild(ruler);\n'
-
-/* Deal the blocks onto pages, adding shells when the seeded ones run out. */
-+ 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
-+ 'var pi = 0, box = first, used = 0;\n'
-+ 'function nextBox(){\n'
-+ '  pi += 1;\n'
-+ '  if(pi < deal.length) return deal[pi].querySelector(".body");\n'
-+ '  var clone = deal[deal.length - 1].cloneNode(true);\n'
-+ '  var cb = clone.querySelector(".body");\n'
-+ '  while(cb.firstChild) cb.removeChild(cb.firstChild);\n'
-+ '  host.appendChild(clone);\n'
-+ '  deal.push(clone); pages.push(clone);\n'
-+ '  return cb;\n'
-+ '}\n'
-+ 'for(var k = 0; k < blocks.length; k++){\n'
-+ '  var bh = heights[k];\n'
-/* a heading takes its first block with it, or it starts the next page alone */
-+ '  var pair = isHeading(blocks[k]) && k + 1 < blocks.length ? heights[k + 1] : 0;\n'
-+ '  if(used > 0 && used + bh + pair > budget){\n'
-+ '    box = nextBox(); used = 0;\n'
-+ '  }\n'
-+ '  box.appendChild(blocks[k]);\n'
-+ '  used += bh;\n'
-+ '}\n'
-
-/* drop shells nothing was dealt to */
-+ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
-+ 'for(var d = pages.length - 1; d >= 1; d--){\n'
-+ '  var db = pages[d].querySelector(".body");\n'
-+ '  if(db && !db.firstElementChild) pages[d].parentNode.removeChild(pages[d]);\n'
-+ '}\n'
-
-/* renumber */
-+ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
+/* renumber, in case the packer added or dropped pages */
 + 'for(var r = 0; r < pages.length; r++){\n'
 + '  var t = pages[r].querySelector(".pgtot"); if(t) t.textContent = pages.length;\n'
 + '  var n = pages[r].querySelector(".pgnum"); if(n) n.textContent = (r + 1);\n'
 + '}\n'
 
-/* contents, with page numbers read off the finished layout */
+/* the contents, with page numbers read off the finished layout */
 + 'var map = [];\n'
 + 'for(var p = 0; p < pages.length; p++){\n'
 + '  var secs = pages[p].querySelectorAll(".sec");\n'
@@ -1131,24 +1027,6 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '  }\n'
 + '}\n'
 + 'window.__EQ_TOC = map;\n'
-/* The pagination audit. Five builds were spent guessing what this code did
-   from the shape of a finished PDF. It now says so itself, in the footer of
-   every document: how many blocks it dealt, the budget it measured, and how
-   many pages resulted. A short report with "blk 0" is a different fault from
-   one with "bud 0", and neither needs another round of guessing. */
-+ 'window.__EQ_PAGINATION = { blocks: blocks.length, budget: budget,\n'
-+ '  pages: pages.length, seeded: seeded, grew: pages.length - seeded,\n'
-+ '  totalHeight: totalH, tallest: maxH,\n'
-+ '  expectedPages: Math.ceil(totalH / Math.max(1, budget)) };\n'
-/* The measured height total is the number that was wrong, so it is printed.
-   If the pages produced do not match the total divided by the budget, the
-   dealing is at fault; if the total itself is implausibly small, the
-   measurement is. The two are no longer indistinguishable from a PDF. */
-+ 'var auditTxt = " \\u00b7 blk" + blocks.length + "/bud" + Math.round(budget)\n'
-+ '  + "/h" + Math.round(totalH) + "/exp" + Math.ceil(totalH / Math.max(1, budget))\n'
-+ '  + "/pg" + pages.length;\n'
-+ 'var stamps = document.querySelectorAll(".bstamp");\n'
-+ 'for(var s0 = 0; s0 < stamps.length; s0++) stamps[s0].textContent += auditTxt;\n'
 + 'var tocHost = document.querySelector("[data-toc]");\n'
 + 'if(tocHost && map.length){\n'
 + '  var out = "<div style=@font-size:16pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
@@ -1161,6 +1039,13 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '         + "<span style=@font-size:10.5pt;font-weight:600;min-width:8mm;text-align:right@>" + map[tm].page + "</span></a>";\n'
 + '  }\n'
 + '  tocHost.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
++ '}\n'
+
+/* the audit: what the document's own packer produced */
++ 'window.__EQ_PAGINATION = { pages: pages.length, sections: map.length };\n'
++ 'var stamps = document.querySelectorAll(".bstamp");\n'
++ 'for(var s0 = 0; s0 < stamps.length; s0++){\n'
++ '  stamps[s0].textContent += " \\u00b7 pg" + pages.length + "/sec" + map.length;\n'
 + '}\n'
 + '})();<\/script>';
 
@@ -3966,19 +3851,118 @@ function buildScorecard(p, lang){
      the anchor band it was placed in and the evidence sentence behind it. A
      score with no anchor beside it is the thing this whole card exists to
      prevent. */
+  /* The forensic score, shown the way the four pillars are shown: each test
+     that ran, what it found, and what it cost. A single number in a tile tells
+     a reader that something is wrong but not what, and the forensic score is
+     the one figure on this card that can bar a company outright. */
+  function forensicBlock(){
+    var f = co.forensic || {};
+    if(!f || f.score == null) return '';
+    var flags = arr(f.flags);
+    var rows = flags.map(function(fl){
+      var sev = S(fl.severity) || 'noted';
+      var mark = sev === 'severe' ? '<b class="neg">Severe</b>'
+               : sev === 'moderate' ? '<b>Moderate</b>'
+               : '<span class="mut">' + e(titleCase(sev)) + '</span>';
+      return { cells:[
+        '<span class="ti">' + e(titleCase(S(fl.source))) + '</span>',
+        mark,
+        (fl.value == null ? '<span class="mut">&mdash;</span>'
+          : '<span class="en">' + e(String(fl.value)) + '</span>'),
+        e(S(fl.detail))
+      ]};
+    });
+    if(arr(f.notComputed).length){
+      rows.push({ cells:[
+        '<span class="mut">Not Computed</span>', '<span class="mut">&mdash;</span>',
+        '<span class="mut">&mdash;</span>',
+        '<span class="mut">' + e(arr(f.notComputed).join('; ')) + '</span>' ]});
+    }
+    if(!rows.length) return '';
+    var band = f.score >= 85 ? 'Excellent' : f.score >= 70 ? 'Good'
+             : f.score >= 55 ? 'Acceptable' : f.score >= 40 ? 'Concerning' : 'High Risk';
+    return '<div class="sc-blk">'
+      + sec('', 'Forensic Quality — ' + f.score + ' (' + band + ')')
+      + '<p class="mut">Every test the accounts could support was run; '
+      + (f.testsAttempted || rows.length) + ' were attempted and '
+      + (f.tested != null ? f.tested : rows.length) + ' returned a finding. '
+      + 'The score starts at 100 and each finding takes points from it, so a low '
+      + 'score means findings were made, not that data was missing.</p>'
+      + tbl(['Test','Severity','Reading','What It Means'], rows,
+            { num:[2], cls:'sctab', chunk:false })
+      + '</div>';
+  }
+
+  /* How the overall score was arrived at. Eight weighted dimensions, each with
+     the points it contributed. A reader who cannot reproduce the total from
+     the parts has been given a verdict, not a calculation. */
+  function overallBlock(){
+    var ov = co.overall || {};
+    if(ov.score == null || !ov.weights) return '';
+    var dims = co.dimensions || {};
+    var PILL = (window.EQ && window.EQ.scoring && window.EQ.scoring.PILLARS) || {};
+    var total = 0;
+    var rows = Object.keys(ov.weights).map(function(k){
+      var wt = ov.weights[k] * 100;
+      var d = dims[k] || (co.pillars && co.pillars[k]) || {};
+      var sc = (d.score == null) ? null : d.score;
+      var earned = (sc == null) ? null : (sc / 100) * wt;
+      if(earned != null) total += earned;
+      var label = (PILL[k] && PILL[k].label) ||
+        titleCase(k.replace(/([A-Z])/g,' $1'));
+      return { cells:[
+        '<span class="ti">' + e(label) + '</span>',
+        sc == null ? '<span class="mut">&mdash;</span>' : '<span class="en">' + sc.toFixed(1) + '</span>',
+        '<span class="en">' + wt.toFixed(0) + '%</span>',
+        earned == null ? '<span class="mut">&mdash;</span>'
+          : '<b class="en">' + earned.toFixed(2) + '</b>'
+      ]};
+    });
+    rows.push({ __cls:'tot', cells:[
+      '<b>Overall</b>', '', '<b class="en">100%</b>',
+      '<b class="en">' + total.toFixed(2) + '</b>' ]});
+    return '<div class="sc-blk">'
+      + sec('', 'How The Overall Score Is Built — ' + ov.score.toFixed(1))
+      + '<p class="mut">Each dimension is scored out of 100, multiplied by the '
+      + 'weight it carries, and the results are added. The weights are the '
+      + 'methodology\u2019s, not this company\u2019s'
+      + (ov.weightsOverridden ? ', and have been adjusted for this sector' : '')
+      + '. Anything not scored is left out and the remaining weights carry the '
+      + 'total, which is why the parts can sum slightly below the figure shown.</p>'
+      + tbl(['Dimension','Score','Weight','Points'], rows,
+            { num:[1,2,3], cls:'sctab', chunk:false })
+      + '</div>';
+  }
+
+  function titleCase(t){
+    return String(t || '').replace(/([a-z])([A-Z])/g,'$1 $2')
+      .replace(/\s+/g,' ').trim()
+      .replace(/\b\w/g, function(ch){ return ch.toUpperCase(); });
+  }
+
   function pillarBlock(key){
     var def = PIL[key] || { label:key, weights:{} };
     var got = (co.ratings && co.ratings[key]) || {};
     var rows = Object.keys(def.weights).map(function(ck){
       var r = got[ck] || {};
       var sc = (r.score == null) ? null : r.score;
-      var label = ck.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
+      /* Title Case, so "marginOfSafety" reads as "Margin Of Safety" rather
+         than "Margin of safety" halfway between two conventions. */
+      var label = ck.replace(/([A-Z])/g,' $1').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+      /* The points this component actually contributed, out of the points it
+         could contribute. A component rated 65 carrying a weight of 15 earned
+         9.75 of those 15 — which is the number that adds up to the pillar
+         score. Printing "65 / 15" put a percentage next to a point total and
+         invited the reader to compare two different things. */
+      var wt = def.weights[ck];
+      var earned = (sc == null) ? null : (sc / 100) * wt;
       return { cells:[
         '<span class="ti">' + e(label) + '</span>',
         '<span class="scbar"><i style="width:' + pct(sc).toFixed(0) + '%;background:'
           + ragBarHex(pct(sc)) + '"></i></span>',
-        sc == null ? '<span class="mut">&mdash;</span>' : '<b class="en">' + sc.toFixed(0) + '</b>',
-        '<span class="en">' + def.weights[ck] + '</span>',
+        earned == null ? '<span class="mut">&mdash;</span>'
+          : '<b class="en">' + earned.toFixed(2) + '</b>',
+        '<span class="en">' + wt + '</span>',
         sc == null
           ? '<span class="mut">' + e(S(r.reason) || 'Not assessed.') + '</span>'
           : '<b>' + e(S(r.band) || '') + '.</b> ' + e(S(r.evidence) || '')
@@ -3986,12 +3970,17 @@ function buildScorecard(p, lang){
     });
     var sco = (co.pillars && co.pillars[key] && co.pillars[key].score);
     return '<div class="sc-blk">'
-      + sec('', def.label + (sco == null ? '' : ' — ' + sco.toFixed(1)))
-      + tbl(['Component','','Score','Wt','Anchor and evidence'], rows, { num:[2,3], cls:'sctab' })
+      + sec('', titleCase(def.label) + (sco == null ? '' : ' \u2014 ' + sco.toFixed(1)))
+      + tbl(['Basis','','Points','Of','Anchor And Evidence'], rows,
+             { num:[2,3], cls:'sctab', chunk:false })
       + '</div>';
   }
 
-  var body = Object.keys(PIL).map(pillarBlock).join('');
+  /* The four pillars, then the forensic tests shown the same way, then the
+     arithmetic that turns all of it into the overall figure on the front. */
+  var body = Object.keys(PIL).map(pillarBlock).join('')
+    + forensicBlock()
+    + overallBlock();
 
   /* The four dimensions that have no pillar of their own. */
   var dimRows = ['financialQuality','managementGovernance','technicalEntry','catalysts'].map(function(k){
@@ -4770,10 +4759,20 @@ function packDoc(p, lang, cfg){
     /* Which page the blocks start on: page one for a short document that puts
        its masthead above them, page two for one that gives page one to the
        contents. */
-    + 'var PACKFROM=' + (lead ? 0 : 1) + ';'
+    /* Where the blocks start. This used to be a constant computed from whether
+       the document has a masthead — and then a contents page was put in front
+       of everything, every index shifted by one, and the packer began reading
+       a page that has no .ir-box at all: boxes[i].scrollHeight on null, thrown
+       from drain, aborting the pack and leaving the whole report in one box.
+       Finding the first page that actually has a box cannot go stale. */
+    + 'var PACKFROM=(function(){'
+      + 'var all=document.querySelectorAll(".page");'
+      + 'for(var i=0;i<all.length;i++){ if(all[i].querySelector(".ir-box")) return i; }'
+      + 'return 0; })();'
     /* This document packs itself; the generic guard must not scale it again. */
     + 'document.body.setAttribute("data-fitted","1");'
     + 'var ps=[].slice.call(document.querySelectorAll(".page")).slice(PACKFROM);'
+    + 'ps=ps.filter(function(el){ return !!el.querySelector(".ir-box"); });'
     + 'var boxes=ps.map(function(el){ return el.querySelector(".ir-box"); });'
     /* On a page that carries a masthead above the blocks, the space the blocks
        may use is what is left under it — not the whole page. Measuring the
