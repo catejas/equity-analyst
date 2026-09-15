@@ -1168,3 +1168,74 @@ relation on every case, which is the check that would have caught this at the
 first attempt rather than the sixth.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.6 — 15-09-2026
+A browser was on this machine the whole time, and I broke a working packer.
+
+Chromium 141 sits at /opt/pw-browsers. Every pagination fix until now was
+tested in jsdom, which has no layout — which is exactly why six rewrites all
+passed their tests and all failed on the phone. `tests/realall.mjs` now renders
+every document in that browser and checks the things that actually went wrong:
+a script that throws, a box that overflows its page, content on the contents
+page, and the page count.
+
+What it found in one run:
+- **packDoc has its own paginator**, working on .ir-box, which knows how to
+  divide a table across a page break. I wrote a second paginator over the top of
+  it, moved the blocks out of the boxes it was holding, and added pages with no
+  box at all. It read scrollHeight off a null, threw from drain, and aborted —
+  which is why reports that ran to twenty-three and forty pages came back as
+  four. My paginator is gone. One document, one packer.
+- **Its starting page was a constant** computed from whether the document has a
+  masthead. Putting a contents page in front shifted every index by one, so it
+  began on a page with no box. It now finds the first page that has one, and
+  pages without a box are never passed to it.
+
+Measured in the real browser: company 16 pages, sector 60, executive summary 21,
+no script errors, no overflowing box, contents first and carrying no content.
+
+Score Card:
+- **Points earned against points available**: a component scored 65 carrying a
+  weight of 15 now reads 9.75 / 15, which is the number that adds up to the
+  pillar score. "65 / 15" put a percentage beside a point total.
+- The component tables no longer split, so the "continued" header is gone.
+- Column headings are Basis, Points, Of, Anchor And Evidence; component names
+  are Title Case throughout.
+
+Known and not yet fixed: the executive summary runs to 21 pages against a stated
+ceiling of 12.
+
+Tests: 387 engine assertions, twenty-two browser suites, and three documents
+rendered in Chromium.
+
+## v4.2.0 — 16-09-2026
+Every document rendered in Chromium before shipping.
+
+`tests/realall.mjs` now loads all five documents in the real browser and fails
+on a script error, a box overflowing its page, a scaled page, or content on the
+contents page. Measured at this build:
+
+  company    16 pages   sector 60   executive summary 8   sector summary 21
+  score card  2 pages
+  no script errors, nothing clipped, no page scaled, contents first and empty
+
+The executive summary is 8 pages, not the 21 I reported last time — that figure
+was the sector summary, which is a different document. It is inside the ceiling.
+
+Score Card:
+- **The forensic score is broken out like the four pillars**: every test that
+  ran, its severity, the reading, and what it means. It is the one figure on the
+  card that can bar a company outright, and a number in a tile said something
+  was wrong without saying what.
+- **How the overall score is built** is now shown: eight dimensions, each with
+  its score, its weight and the points it contributed, and the total. A reader
+  who cannot reproduce the figure from the parts has a verdict, not a
+  calculation.
+- **The font difference between pages** was the packer's last resort: when
+  content would not fit it scaled the page with transform, so page two's type no
+  longer matched page one's. Nothing overflows now, so nothing is scaled, and
+  the real-browser test fails if any page ever is again.
+- Section headings and component names are Title Case throughout.
+
+Tests: 387 engine assertions, twenty-two browser suites, five documents rendered
+in Chromium.
