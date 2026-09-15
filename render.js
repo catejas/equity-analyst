@@ -2242,6 +2242,154 @@ function buildCompany(p, lang){
   });
 }
 
+
+/* ============ EXECUTIVE SUMMARY — one company ============================
+   The company research report runs to forty pages. This is the read for
+   someone who will not read forty: the verdict first, then only what supports
+   or threatens it. Twelve pages is the ceiling, and it is enforced rather than
+   hoped for — the section list is fixed, each section is bounded, and the last
+   thing the builder does is check the count.
+
+   Every figure and table here is the same builder the full report uses. A
+   summary that recomputed anything would be a second opinion, not a summary. */
+function buildCompanyExec(p, lang){
+  lang = lang || 'en';
+  var rep = eqRep(p), run = rep.run || {};
+  var c = eqCo(p, (p && p.companyIndex) || 0);
+  var out = '', no = 0;
+  function S3(t){ no += 1; return sec(no < 10 ? '0' + no : String(no), t); }
+
+  var verdictWord = (c.overall && isNum_(c.overall.score))
+    ? (c.overall.score >= 70 ? 'Strong' : c.overall.score >= 55 ? 'Adequate'
+       : c.overall.score >= 40 ? 'Weak' : 'Poor')
+    : 'Not scored';
+
+  var leadIn = '<div style="height:3mm"></div>'
+    + '<div class="eyebrow en">' + EN(e('Executive Summary')) + ' &nbsp;·&nbsp; '
+      + e(eqTitle(p)) + '</div>'
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:20pt">'
+      + EN(e(S(c.name) || S(c.symbol))) + '</h1>'
+    + '<div class="mut" style="margin-top:1mm;font-size:9.8pt">' + e(S(c.symbol))
+      + (c.exchange ? ' · ' + e(S(c.exchange)) : '')
+      + (c.sector ? ' · ' + e(S(c.sector)) : '')
+      + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt)) + '</div>'
+    + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
+    + '<div class="vb"><div class="h">Verdict</div><div class="c">'
+      + '<div class="v">' + eqNum(c.overall && c.overall.score) + ' / 100 &nbsp;·&nbsp; '
+        + e(verdictWord)
+        + (c.rank ? ' · rank ' + c.rank : '')
+        + (c.eligibleForTop3 ? '' : ' · <span class="neg">does not clear the safety screen</span>')
+      + '</div>'
+      + '<div class="lead" style="margin-top:2mm">'
+        + (arr(c.thesis).length ? e(S(arr(c.thesis)[0])) : e(S(c.business))) + '</div>'
+      + '</div></div>'
+    + '<div class="tiles" style="margin-top:4mm">'
+      + ['businessQuality','growthMultibagger','valuationOpportunity','riskQuality'].map(function(k){
+          var pil = (window.EQ && window.EQ.scoring && window.EQ.scoring.PILLARS) || {};
+          var v = c.pillars && c.pillars[k];
+          return '<div class="tile"><div class="k">' + e((pil[k] && pil[k].label) || k) + '</div>'
+            + '<div class="v">' + eqNum(v && v.score) + '</div>'
+            + '<div class="s">of 100</div></div>';
+        }).join('')
+    + '</div>';
+
+  if(window.EQCharts) window.EQCharts.resetFigures();
+
+  /* 01 — the safety verdict, when there is one. It goes first because nothing
+     below it matters if the company does not clear the screen. */
+  var sv = eqStandaloneVerdict(c, lang);
+  if(sv) out += S3('The safety screen') + sv;
+
+  /* 02 — the case, in the author's own three lines */
+  if(arr(c.thesis).length){
+    out += S3('The case in three lines') + eqList(arr(c.thesis).slice(0, 3));
+  }
+
+  /* 03 — what the business is, one paragraph */
+  if(S(c.business)) out += S3('The business') + '<div class="lead"><p>' + e(S(c.business)) + '</p></div>';
+
+  /* 04 — the scoring, with the chart that explains itself */
+  out += S3('Scoring') + figScoreBullets(c);
+
+  /* 05 — valuation, the range and where the price sits in it */
+  if(c.valuation){
+    out += S3('Valuation') + figFootball(c) + eqScenarios(c, lang);
+  }
+
+  /* 06 — the technical panel, the headline readings only */
+  var tp = c.technicalPanel;
+  if(tp && tp.available){
+    var want = ['trend','rsi','macd','momentum','breakout','range'];
+    var rows = want.map(function(k){
+      var x = tp.indicators[k]; if(!x || !x.available) return null;
+      var v = x.value;
+      if(typeof v === 'boolean') v = v ? 'Yes' : 'No';
+      else if(v && typeof v === 'object') v = '';
+      return { cells:[ e(S(x.indicator)), e(String(v)) + (x.unit ? ' ' + e(S(x.unit)) : '') ] };
+    }).filter(Boolean);
+    if(rows.length){
+      out += S3('Where the price sits')
+        + '<p class="mut">Computed from the price series: ' + tp.points + ' ' + tp.spacing
+          + ' points' + (tp.asOf ? ', as at ' + e(dmy(tp.asOf)) : '') + '.</p>'
+        + (tp.shortNote ? '<p class="mut">' + e(S(tp.shortNote)) + '</p>' : '')
+        + tbl(['Reading','Value'], rows, { chunk: 8 });
+    }
+  }
+
+  /* 07 — the multibagger model's verdict, not its full working */
+  var mb = c.multibaggerModel;
+  if(mb && mb.available){
+    out += S3('Multibagger test')
+      + '<p><b>' + e(S(mb.verdict)) + '.</b></p>'
+      + tbl(['Test','Verdict'], (mb.tests || []).map(function(t){
+          return { cells:[ e(S(MB_LABEL[t.key] || t.key)),
+            !t.ran ? '<span class="mut">not run</span>' : (t.passed ? 'Pass' : 'Fail') ] };
+        }), { chunk: 6 });
+  }
+
+  /* 08 — what would break it */
+  var sev = arr(c.redFlags).filter(function(f){ return f.severity === 'severe'; });
+  if(sev.length){
+    out += S3('Severe findings')
+      + tbl(['Category','Finding'], sev.map(function(f){
+          return { cells:[ e(S(f.category)), e(S(f.detail)) ] };
+        }), { chunk: 6 });
+  }
+
+  /* 09 — dated things that will move it */
+  if(arr(c.catalysts).length){
+    out += S3('What to watch')
+      + tbl(['Event','When','Why it matters'], arr(c.catalysts).slice(0, 6).map(function(x){
+          return { cells:[ e(S(x.event)), e(dmy(S(x.expectedWindow))),
+            '<span class="mut">' + e(S(x.impact)) + '</span>' ] };
+        }), { chunk: 6 });
+  }
+
+  /* 10 — the conditions that would end the thesis */
+  if(arr(c.thesisBreakers).length){
+    out += S3('What would break the thesis') + eqList(arr(c.thesisBreakers).slice(0, 6));
+  }
+
+  out += S3('How to read this')
+    + '<div class="lead"><p>This is a summary of the Company Research Report and '
+    + 'carries no figure that document does not. Every score here is computed by '
+    + 'the application from rated evidence; nothing on this page is a recommendation, '
+    + 'and none of it is advice. Check each figure against the annual report and the '
+    + 'exchange filings before acting on any of it.</p></div>';
+
+  var built = blocksFromBody(out);
+  return packDoc(p, lang, {
+    B: built.B, TITLES: built.TITLES, leadIn: leadIn,
+    runHead: 'Executive Summary', docName: 'Executive Summary',
+    shellTitle: (S(c.name) || S(c.symbol)) + ' — Executive Summary',
+    /* Twelve pages is the ceiling. Seeding to it means the packer can never
+       grow a thirteenth: anything that will not fit is dropped by the shell
+       rather than silently extending a document sold as a short read. */
+    toc: true, seedPages: 12, maxPages: 12
+  });
+}
+function isNum_(v){ return typeof v === 'number' && isFinite(v); }
+
 /* ======================= EXECUTIVE SUMMARY ======================= */
 /* ===================== equity run helpers ==========================
    Shared by every document. The report model these read is produced by the
@@ -5173,6 +5321,7 @@ function buildSector(p, lang){
 }
 
 global.EQDocs = { buildCompany:buildCompany, buildExec:buildExec,
+                   buildCompanyExec:buildCompanyExec,
                    buildSector:buildSector,
                    charts:{ financials:chartFinancials, radar:chartRadar, gauge:chartGauge,
                             peers:chartPeers, donut:chartDonut, ladder:chartLadder,

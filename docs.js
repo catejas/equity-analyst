@@ -43,13 +43,8 @@ function currentPayload(kind){
   if(!window.composedReport) return null;
   /* Accept the row form too — "solo:exec" — so a caller that has not been
      through doAction still resolves to the right record. */
-  if(kind && kind.indexOf(':') > 0){
-    var bits = kind.split(':');
-    DOC_SUBJECT = bits[0];
-    kind = (bits[1] === 'report') ? bits[0]
-         : (bits[1] === 'exec') ? 'exec'
-         : (bits[1] === 'score') ? 'score' : bits[0];
-  }
+  var spc = splitKind(kind);
+  if(spc.who){ DOC_SUBJECT = spc.who; kind = spc.kind; }
   /* An independent company is its own run. Its documents are built from its own
      payload, addressed by the picker in its own box — not through the Saved
      Company Research list, which is what made its PDF button hand over whichever
@@ -109,7 +104,10 @@ function fileBase(p, kind, lang){
   /* Per-company documents are named for the company; run-level ones for the
      segment, since naming three companies' report after one of them is how a
      file ends up filed in the wrong place. */
-  var perCompany = kind === 'solo' || /^co[123]$/.test(kind) || kind === 'score' || kind === 'scorepng';
+  /* An executive summary for a company is named after that company, not after
+     the sector run; the sector's own summary keeps the sector name. */
+  var perCompany = kind === 'solo' || /^co[123]$/.test(kind) || kind === 'score'
+    || kind === 'scorepng' || (kind === 'exec' && DOC_SUBJECT && DOC_SUBJECT !== 'sector');
   var co = null;
   if(perCompany && p.report && p.report.full){
     co = p.report.full[companyIndexFor(p, kind)];
@@ -142,15 +140,35 @@ function withLocalGmp(p){
   }catch(e){}
   return p;
 }
+/* "solo:exec" means the executive summary of the selected independent company.
+   Resolving the row form in one place — here, and in currentPayload — keeps
+   every caller working whether or not it went through doAction. */
+function splitKind(kind){
+  if(!kind || kind.indexOf(':') < 1) return { who: null, kind: kind };
+  var bits = kind.split(':');
+  return { who: bits[0],
+    kind: bits[1] === 'report' ? bits[0]
+        : bits[1] === 'exec' ? 'exec'
+        : bits[1] === 'score' ? 'score' : bits[0] };
+}
 function buildHTML(p, kind, lang){
   p = withLocalGmp(p);
+  var sp = splitKind(kind);
+  if(sp.who){ DOC_SUBJECT = sp.who; kind = sp.kind; }
   /* The three company reports are the same builder pointed at a different
      rank. Nothing else distinguishes them. */
   if(kind === 'solo' || /^co[123]$/.test(kind)){
     return EQDocs.buildCompany(Object.assign({}, p, { companyIndex: companyIndexFor(p, kind) }), lang);
   }
   if(kind === 'sector') return EQDocs.buildSector(p, lang);
-  if(kind === 'exec')   return EQDocs.buildExec(p, lang);
+  if(kind === 'exec'){
+    /* A company's executive summary is a summary of that company, not of the
+       sector. The sector summary is still what the Sector page produces. */
+    if(DOC_SUBJECT && DOC_SUBJECT !== 'sector' && EQDocs.buildCompanyExec){
+      return EQDocs.buildCompanyExec(p, lang);
+    }
+    return EQDocs.buildExec(p, lang);
+  }
   return EQDocs.buildScorecard(p, lang);
 }
 function selFor(kind){ return kind==='visual' ? '.vpage' : '.page'; }
@@ -607,17 +625,9 @@ function doAction(kind, act, msgTarget){
      executive summary of the selected independent company, "co2:score" the
      score card of rank 2. Splitting here keeps every existing kind working
      while the rows can name both halves. */
-  var who = kind, what = null;
-  if(kind.indexOf(':') > 0){
-    var bits = kind.split(':');
-    who = bits[0]; what = bits[1];
-    kind = (what === 'report') ? who
-         : (what === 'exec')   ? 'exec'
-         : (what === 'score')  ? 'score' : who;
-    DOC_SUBJECT = who;
-  } else {
-    DOC_SUBJECT = null;
-  }
+  var sp0 = splitKind(kind);
+  DOC_SUBJECT = sp0.who;
+  kind = sp0.kind;
   MSG_EL = msgTarget || '#docMsg';
   var p = needPayload(kind); if(!p) return;
   var langs = langsWanted();

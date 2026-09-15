@@ -998,3 +998,36 @@ Changed:
   its two buttons on the right. "Executive Summary" was wrapping to two lines.
 
 Tests: 387 engine assertions and twenty-one browser suites.
+
+## v4.1.0 — 15-09-2026
+The per-company Executive Summary.
+
+The company research report runs to forty pages. This is the read for someone
+who will not read forty: the verdict first, then only what supports or threatens
+it. Ten sections, in this order — the safety screen, the case in three lines,
+the business, scoring, valuation, where the price sits, the multibagger test,
+severe findings, what to watch, what would break the thesis, and a closing note
+on how to read it.
+
+- **The safety screen goes first**, because nothing below it matters if the
+  company does not clear it.
+- **Twelve pages is a ceiling, not a hope.** The section list is fixed, each
+  section is bounded, and the shell is seeded to twelve so the packer cannot
+  grow a thirteenth.
+- **Every figure and table is the builder the full report uses.** A summary that
+  recomputed anything would be a second opinion, not a summary.
+- Sections with nothing behind them are omitted rather than printed empty — on
+  Anlon, which has no price series, "Where the price sits" does not appear.
+
+Fixed while wiring it:
+- buildHTML did not understand the row form, so every row on a record produced
+  the same document. The form is now resolved in one shared place that
+  buildHTML, currentPayload and doAction all use, rather than three copies of
+  the same parsing.
+- A company's executive summary is named after the company, not the sector run.
+
+Measured on the Anlon payload: the full report is 150,269 characters over 40
+page shells; the summary is 66,443 over 12 — 44% of the size — with no
+`undefined` and no `NaN` anywhere in it.
+
+Tests: 387 engine assertions and twenty-three browser suites.
