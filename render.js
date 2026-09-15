@@ -997,124 +997,88 @@ var AUTOFIT = '<script>(function(){'
    that string is built by hand out of hundreds of fragments, and every edit I
    made to it put a brace in the wrong place. This is plain source. */
 var FILL_AND_TOC = '<script>(function(){\n'
-+ 'function boxOf(p){ return p.querySelector(".body"); }\n'
-/* Nothing here may run before the document has been laid out. In the staging
-   iframe the script executes while clientHeight and scrollHeight are still 0,
-   and a box that reports no height looks like a box with infinite room: the
-   fill pulled every block onto page one and the delete pass then removed every
-   other page, so a twenty-three page report came out as a single clipped page.
-   A box with no measurable height is a box we know nothing about, so we leave
-   the document exactly as the packer left it. */
-/* Pin every page box to a real pixel height before measuring anything.
-   This is the fault behind every "only two pages" report. A .body whose height
-   comes from a flex rule inside a page sized in millimetres grows to fit its
-   content in the print and preview contexts, so scrollHeight always equalled
-   clientHeight, the box never looked full, and nothing was ever spilled onto
-   the next page. Every section stayed in page one — which is why the contents
-   printed every page number as 1 — and the empty shells were then deleted.
-   Measuring against a fixed pixel height makes overflow real. */
-+ 'var A4H = 1122.5, allPages = document.querySelectorAll(".page");\n'
-+ 'for(var fp0 = 0; fp0 < allPages.length; fp0++){\n'
-+ '  var pg = allPages[fp0], bx0 = pg.querySelector(".body");\n'
-+ '  if(!bx0) continue;\n'
-+ '  var hd = pg.querySelector(".rh"), ft = pg.querySelector(".rfw") || pg.querySelector(".rf");\n'
-+ '  var used = (hd ? hd.offsetHeight : 0) + (ft ? ft.offsetHeight : 0);\n'
-+ '  var avail = Math.max(200, (pg.offsetHeight || A4H) - used - 8);\n'
-+ '  bx0.style.height = avail + "px";\n'
-+ '  bx0.style.overflow = "hidden";\n'
-+ '}\n'
-+ 'var probe = document.querySelector(".page > .body");\n'
-+ 'var measurable = !!(probe && probe.clientHeight >= 50);\n'
-+ 'if(measurable){\n'
-+ 'function full(b){ return !b.clientHeight || b.scrollHeight > b.clientHeight + 1; }\n'
-+ 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
-
-/* The paginator above only spills forward, so every page it touched kept the
-   hole it made — the reports were running at about eight per cent ink with a
-   fifth of each page blank. This pulls the next page back up while it fits. */
+/* Pagination by block height, not by container overflow.
+   Every previous attempt asked the page box whether it was full. In the print
+   and preview contexts that box grows to fit its content, so it was never full,
+   nothing was ever spilled, and the whole report sat clipped on page one.
+   A block, by contrast, always has a real height: it is in the flow and has
+   been laid out. So the budget is computed once, each block is measured once,
+   and blocks are dealt onto pages by accumulating those heights. Nothing here
+   asks a container to report overflow. */
 + 'var pages = [].slice.call(document.querySelectorAll(".page"));\n'
++ 'if(pages.length < 2) return;\n'
++ 'var host = pages[0].parentNode;\n'
 
-/* SPILL FIRST. Everything the builders emit lands in the first page's box, and
-   the only routine that ever distributed it was gated behind a data-spill
-   attribute these documents do not set. So the content sat in page one,
-   clipped by overflow:hidden, while every seeded page after it stayed empty —
-   and the delete pass then removed them, which is how a forty-page report came
-   out as two. Push the overflow forward until each page fits. */
-+ 'for(var sp = 0; sp < pages.length - 1; sp++){\n'
-+ '  var from = boxOf(pages[sp]), to = boxOf(pages[sp + 1]);\n'
-+ '  if(!from || !to) continue;\n'
-+ '  var g = 0;\n'
-+ '  while(full(from) && g++ < 400){\n'
-+ '    var kidsF = from.children, lastF = kidsF[kidsF.length - 1];\n'
-+ '    if(!lastF) break;\n'
-+ '    if(lastF.className === "grow"){ from.removeChild(lastF); continue; }\n'
-+ '    if(kidsF.length <= 1) break;\n'
-+ '    to.insertBefore(lastF, to.firstChild);\n'
+/* Collect every block in document order, out of whichever shell it landed in. */
++ 'var blocks = [], b0;\n'
++ 'for(var i = 0; i < pages.length; i++){\n'
++ '  var bd = pages[i].querySelector(".body");\n'
++ '  if(!bd) continue;\n'
++ '  while(bd.firstElementChild){\n'
++ '    b0 = bd.firstElementChild;\n'
++ '    bd.removeChild(b0);\n'
++ '    if(b0.className !== "grow") blocks.push(b0);\n'
 + '  }\n'
 + '}\n'
++ 'if(!blocks.length) return;\n'
 
-+ 'for(var i = 0; i < pages.length - 1; i++){\n'
-+ '  var here = boxOf(pages[i]);\n'
-+ '  if(!here) continue;\n'
-+ '  var grow = here.querySelector(".grow"); if(grow) grow.parentNode.removeChild(grow);\n'
-+ '  var moved = 0, src = i + 1;\n'
-+ '  while(moved++ < 200 && src < pages.length){\n'
-+ '    var next = boxOf(pages[src]);\n'
-/* a page emptied by the pulling is not the end of the work: keep taking from
-   the page after it, or the fill stops one page short every time */
-+ '    if(!next || !next.children.length){ src++; continue; }\n'
-+ '    var cand = next.children[0];\n'
-+ '    if(cand.className === "grow"){ next.removeChild(cand); continue; }\n'
-+ '    here.appendChild(cand);\n'
-+ '    if(full(here)){ next.insertBefore(cand, next.firstChild); break; }\n'
-/* a heading must never be left alone at the foot of a page */
+/* Measure each block once, in a box the width of a page body. */
++ 'var first = pages[0].querySelector(".body");\n'
++ 'var budget = first.clientHeight;\n'
++ 'if(!budget || budget < 80){\n'
+/* no layout to measure: put everything back on page one and leave it be */
++ '  for(var r0 = 0; r0 < blocks.length; r0++) first.appendChild(blocks[r0]);\n'
++ '  return;\n'
++ '}\n'
++ 'for(var m = 0; m < blocks.length; m++) first.appendChild(blocks[m]);\n'
++ 'var heights = [];\n'
++ 'for(var q = 0; q < blocks.length; q++){\n'
++ '  var h = blocks[q].offsetHeight;\n'
++ '  var cs = window.getComputedStyle(blocks[q]);\n'
++ '  h += parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);\n'
++ '  heights.push(h || 1);\n'
++ '}\n'
++ 'while(first.firstChild) first.removeChild(first.firstChild);\n'
+
+/* Deal the blocks onto pages, adding shells when the seeded ones run out. */
++ 'function isHeading(el){ return el && el.className && /(^| )sec( |$)/.test(el.className); }\n'
++ 'var pi = 0, box = first, used = 0;\n'
++ 'function nextBox(){\n'
++ '  pi += 1;\n'
++ '  if(pi < pages.length) return pages[pi].querySelector(".body");\n'
++ '  var clone = pages[pages.length - 1].cloneNode(true);\n'
++ '  var cb = clone.querySelector(".body");\n'
++ '  while(cb.firstChild) cb.removeChild(cb.firstChild);\n'
++ '  host.appendChild(clone);\n'
++ '  pages.push(clone);\n'
++ '  return cb;\n'
++ '}\n'
++ 'for(var k = 0; k < blocks.length; k++){\n'
++ '  var bh = heights[k];\n'
+/* a heading takes its first block with it, or it starts the next page alone */
++ '  var pair = isHeading(blocks[k]) && k + 1 < blocks.length ? heights[k + 1] : 0;\n'
++ '  if(used > 0 && used + bh + pair > budget){\n'
++ '    box = nextBox(); used = 0;\n'
 + '  }\n'
-/* A heading left as the last thing on a page is an orphan: its section starts
-   overleaf. Checked after the pulling rather than during it, because the block
-   that belongs to it is often on the page after next, and looking only at the
-   immediately following page sent the heading back and stopped the fill. */
-+ '  var kids = here.children, lastEl = kids[kids.length - 1];\n'
-+ '  if(isHeading(lastEl)){\n'
-+ '    var dest = null;\n'
-+ '    for(var q = i + 1; q < pages.length; q++){\n'
-+ '      var bx = boxOf(pages[q]);\n'
-+ '      if(bx){ dest = bx; break; }\n'
-+ '    }\n'
-+ '    if(dest) dest.insertBefore(lastEl, dest.firstChild);\n'
-+ '  }\n'
-+ '  if(!here.querySelector(".grow")){\n'
-+ '    var sp = document.createElement("div"); sp.className = "grow"; here.appendChild(sp);\n'
-+ '  }\n'
++ '  box.appendChild(blocks[k]);\n'
++ '  used += bh;\n'
 + '}\n'
 
-/* drop any page the pull-back emptied */
+/* drop shells nothing was dealt to */
 + 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
 + 'for(var d = pages.length - 1; d >= 1; d--){\n'
-+ '  var b = boxOf(pages[d]);\n'
-/* Empty means no element left but the spacer. The old test looked for a table
-   or a paragraph, so a page holding only a chart wrapper or a plain div counted
-   as empty and was deleted with its content inside it. */
-+ '  if(!b) continue;\n'
-+ '  var real = 0;\n'
-+ '  for(var k = 0; k < b.children.length; k++){\n'
-+ '    if(b.children[k].className !== "grow") real++;\n'
-+ '  }\n'
-+ '  if(!real) pages[d].parentNode.removeChild(pages[d]);\n'
++ '  var db = pages[d].querySelector(".body");\n'
++ '  if(db && !db.firstElementChild) pages[d].parentNode.removeChild(pages[d]);\n'
 + '}\n'
 
-/* renumber, because pages may have gone */
+/* renumber */
 + 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
 + 'for(var r = 0; r < pages.length; r++){\n'
 + '  var t = pages[r].querySelector(".pgtot"); if(t) t.textContent = pages.length;\n'
 + '  var n = pages[r].querySelector(".pgnum"); if(n) n.textContent = (r + 1);\n'
 + '}\n'
 
-/* the contents, with page numbers that are true because the packing is done */
-+ '}\n'
-/* The contents is built whether or not the pages could be measured. If they
-   could not, the packer left the document alone and the seeded page numbers are
-   still the right ones to print. */
-+ 'pages = [].slice.call(document.querySelectorAll(".page"));\n'
+/* contents, with page numbers read off the finished layout */
 + 'var map = [];\n'
 + 'for(var p = 0; p < pages.length; p++){\n'
 + '  var secs = pages[p].querySelectorAll(".sec");\n'
@@ -1123,23 +1087,22 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '    var title = tEl ? tEl.textContent.trim() : "";\n'
 + '    if(!title) continue;\n'
 + '    secs[x].id = "sec-" + (map.length + 1);\n'
-+ '    map.push({ num: nEl ? nEl.textContent.trim() : "", title: title,\n'
-+ '               page: p + 1, id: secs[x].id });\n'
++ '    map.push({ num: nEl ? nEl.textContent.trim() : "", title: title, page: p + 1, id: secs[x].id });\n'
 + '  }\n'
 + '}\n'
 + 'window.__EQ_TOC = map;\n'
-+ 'var host = document.querySelector("[data-toc]");\n'
-+ 'if(host && map.length){\n'
++ 'var tocHost = document.querySelector("[data-toc]");\n'
++ 'if(tocHost && map.length){\n'
 + '  var out = "<div style=@font-size:16pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
 + '          + "<div style=@font-size:9.2pt;opacity:.6;margin:0 0 5mm;padding-bottom:2.5mm;border-bottom:1pt solid currentColor@>" + map.length + " sections</div>";\n'
-+ '  for(var m = 0; m < map.length; m++){\n'
-+ '    out += "<a class=@toc-row@ href=@#" + map[m].id + "@ style=@display:flex;align-items:baseline;gap:2.5mm;padding:2.4mm 0;border-bottom:0.4pt solid rgba(0,0,0,.14);text-decoration:none;color:inherit@>"\n'
-+ '         + "<span style=@font-size:9pt;font-weight:700;opacity:.55;min-width:8mm@>" + map[m].num + "</span>"\n'
-+ '         + "<span style=@font-size:11pt;flex:0 1 auto@>" + map[m].title + "</span>"\n'
++ '  for(var tm = 0; tm < map.length; tm++){\n'
++ '    out += "<a href=@#" + map[tm].id + "@ style=@display:flex;align-items:baseline;gap:2.5mm;padding:2.2mm 0;border-bottom:0.4pt solid rgba(0,0,0,.14);text-decoration:none;color:inherit@>"\n'
++ '         + "<span style=@font-size:9pt;font-weight:700;opacity:.55;min-width:8mm@>" + map[tm].num + "</span>"\n'
++ '         + "<span style=@font-size:11pt@>" + map[tm].title + "</span>"\n'
 + '         + "<span style=@flex:1 1 auto;border-bottom:0.4pt dotted rgba(0,0,0,.28);transform:translateY(-1mm);min-width:6mm@></span>"\n'
-+ '         + "<span style=@font-size:10.5pt;font-weight:600;min-width:8mm;text-align:right@>" + map[m].page + "</span></a>";\n'
++ '         + "<span style=@font-size:10.5pt;font-weight:600;min-width:8mm;text-align:right@>" + map[tm].page + "</span></a>";\n'
 + '  }\n'
-+ '  host.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
++ '  tocHost.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
 + '}\n'
 + '})();<\/script>';
 
@@ -4647,13 +4610,13 @@ function packDoc(p, lang, cfg){
       lang, cfg.docName);
     first = 2;
   }
-  /* Contents on its own page, straight after the cover. It used to sit under
-     the cover block where it competed with the lead-in for room and was the
-     first thing squeezed when the page filled. */
-  shells += page(p, first, 25, cfg.runHead,
-    '<div class="ir-toc" data-toc></div><div class="grow"></div>',
-    lang, cfg.docName);
-  first += 1;
+  /* Contents is page one, ahead of the cover, without exception. A reader
+     opening a forty-page research document should see what is in it before
+     anything else. */
+  shells = page(p, 1, 25, cfg.runHead,
+      '<div class="ir-toc" data-toc></div><div class="grow"></div>',
+      lang, cfg.docName)
+    + shells;
 
   for(var i = first; i <= cfg.seedPages; i++){
     shells += page(p, i, 25, cfg.runHead,
