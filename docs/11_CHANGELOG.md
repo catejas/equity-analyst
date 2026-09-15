@@ -1117,3 +1117,32 @@ Changed:
   research report and the executive summary alike.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.4 — 15-09-2026
+The budget was the fault, and there is now an audit so this cannot recur.
+
+Your PNB contents listed section 16 on page 2, with section 01 on the page after
+— thirty-two sections in two pages. That said the dealing ran but the budget was
+wrong, and it was: the budget came from `first.clientHeight`, and that box is
+unconstrained in print and preview. Asked how tall it is, it answers "as tall as
+everything inside me". So every block fitted the first page, five builds running.
+
+The budget now comes from the page geometry — getBoundingClientRect on the
+`.page`, which honours the 297mm CSS height, less the header and footer. If no
+geometry is available it falls back to A4 in pixels rather than giving up, so a
+document still paginates instead of arriving clipped.
+
+**A pagination audit, printed in every document footer.** Five builds were spent
+inferring what this code did from the shape of a finished PDF. It now reports
+itself: `b15-09-2026.7 · blk32/bud998/pg27` — blocks dealt, budget measured,
+pages produced. A short report reading `blk0` is a different fault from one
+reading `bud0`, and neither needs another round of guessing.
+
+Also:
+- **The contents page holds only the contents.** It is furniture: never a
+  destination for content and never collected from. Content starts on page two.
+- `tests/packer.mjs` asserts the contents page is clean and prints the audit for
+  every case, including one with forty blocks and three seeded shells, where the
+  paginator must grow its own pages rather than truncate.
+
+Tests: 387 engine assertions and twenty-three browser suites.
