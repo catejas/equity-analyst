@@ -1057,3 +1057,34 @@ Also fixed:
   test looked at it. Restored, and `tests/cssaudit.mjs` now sees it.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.2 — 15-09-2026
+The real reason nothing paginated.
+
+Your contents page printed every section as page 1. That was the evidence that
+mattered: the page numbers are read off the finished layout, so all 32 sections
+were still in page one's box when they were read.
+
+**A .body whose height comes from a flex rule inside a page sized in
+millimetres grows to fit its content.** In the preview and print contexts
+scrollHeight therefore always equalled clientHeight, the box never looked full,
+and the spill had nothing to do. Every section stayed on page one, was clipped
+by overflow:hidden, and the empty shells were deleted — two pages out of forty.
+Every packer fix before this one was correct code measuring a box that could not
+overflow.
+
+Each page box is now pinned to a real pixel height — the page height less its
+header and footer — before anything is measured.
+
+Also:
+- **The contents styling is inline.** The stylesheet rule went missing between
+  builds and printed the rows as bare blue links with the number running into
+  the title. An inline style cannot be lost or overridden.
+- **Every document footer carries the build that produced it.** Two separate
+  faults have now been diagnosed from PDFs without knowing which code made them.
+- **Filenames are short and title case**: Anlon_Company_Research,
+  PNB_Executive_Summary, Spice_Jet_Scorecard. Legal suffixes are dropped, three
+  or more words become initials, and a run-together name splits at its capitals.
+  The language suffix is gone.
+
+Tests: 387 engine assertions and twenty-three browser suites.

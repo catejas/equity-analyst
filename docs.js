@@ -115,12 +115,32 @@ function fileBase(p, kind, lang){
   var raw = (window.EQDocs && EQDocs.S)
     ? EQDocs.S(co ? (co.name || co.symbol) : (p.meta && (p.meta.segment || p.meta.company)))
     : '';
-  var nm = (raw || 'Equity').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-  var k = kind==='sector' ? 'Sector_Research_Report'
-        : (kind==='solo' || /^co[123]$/.test(kind)) ? 'Company_Research_Report'
+  /* Short name, title case. "Anlon Healthcare Limited" files as "Anlon";
+     "Punjab National Bank" as "PNB"; "SpiceJet Limited" as "Spice_Jet". The
+     legal suffixes carry no information in a filename and push the report name
+     off the end of a phone's file list. */
+  var SUFFIX = /^(limited|ltd|private|pvt|company|co|corporation|corp|inc|plc|and|of|the|india|indian)$/i;
+  var words = String(raw || 'Equity').replace(/[^A-Za-z0-9 ]+/g,' ').split(/\s+/)
+    .filter(function(x){ return x && !SUFFIX.test(x); });
+  var nm;
+  if(!words.length) nm = 'Equity';
+  else if(words.length >= 3){
+    /* Three or more meaningful words read better as initials: Punjab National
+       Bank is PNB, not a thirty-character run. */
+    nm = words.map(function(x){ return x.charAt(0).toUpperCase(); }).join('');
+  } else {
+    /* One or two: the first word carries the identity — Anlon Healthcare is
+       Anlon. A run-together name is split at its capitals, so SpiceJet files
+       as Spice_Jet. */
+    nm = words[0].replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/\s+/)
+      .map(function(x){ return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase(); })
+      .join('_');
+  }
+  var k = kind==='sector' ? 'Sector_Research'
+        : (kind==='solo' || /^co[123]$/.test(kind)) ? 'Company_Research'
         : kind==='exec' ? 'Executive_Summary'
-        : 'Score_Card';
-  return nm + '_' + k + '_' + lang.toUpperCase();
+        : 'Scorecard';
+  return nm + '_' + k;
 }
 /* A1 — the app knows the earliest premium it ever recorded for this issue; the
    payload usually does not. Fold it in just before rendering, so the report can

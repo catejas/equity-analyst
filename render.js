@@ -1005,6 +1005,24 @@ var FILL_AND_TOC = '<script>(function(){\n'
    other page, so a twenty-three page report came out as a single clipped page.
    A box with no measurable height is a box we know nothing about, so we leave
    the document exactly as the packer left it. */
+/* Pin every page box to a real pixel height before measuring anything.
+   This is the fault behind every "only two pages" report. A .body whose height
+   comes from a flex rule inside a page sized in millimetres grows to fit its
+   content in the print and preview contexts, so scrollHeight always equalled
+   clientHeight, the box never looked full, and nothing was ever spilled onto
+   the next page. Every section stayed in page one — which is why the contents
+   printed every page number as 1 — and the empty shells were then deleted.
+   Measuring against a fixed pixel height makes overflow real. */
++ 'var A4H = 1122.5, allPages = document.querySelectorAll(".page");\n'
++ 'for(var fp0 = 0; fp0 < allPages.length; fp0++){\n'
++ '  var pg = allPages[fp0], bx0 = pg.querySelector(".body");\n'
++ '  if(!bx0) continue;\n'
++ '  var hd = pg.querySelector(".rh"), ft = pg.querySelector(".rfw") || pg.querySelector(".rf");\n'
++ '  var used = (hd ? hd.offsetHeight : 0) + (ft ? ft.offsetHeight : 0);\n'
++ '  var avail = Math.max(200, (pg.offsetHeight || A4H) - used - 8);\n'
++ '  bx0.style.height = avail + "px";\n'
++ '  bx0.style.overflow = "hidden";\n'
++ '}\n'
 + 'var probe = document.querySelector(".page > .body");\n'
 + 'var measurable = !!(probe && probe.clientHeight >= 50);\n'
 + 'if(measurable){\n'
@@ -1112,14 +1130,14 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + 'window.__EQ_TOC = map;\n'
 + 'var host = document.querySelector("[data-toc]");\n'
 + 'if(host && map.length){\n'
-+ '  var out = "<div class=@toc-h@>Contents</div>"\n'
-+ '          + "<div class=@toc-sub@>" + map.length + " sections \\u00b7 page numbers are those of this document</div>";\n'
++ '  var out = "<div style=@font-size:16pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
++ '          + "<div style=@font-size:9.2pt;opacity:.6;margin:0 0 5mm;padding-bottom:2.5mm;border-bottom:1pt solid currentColor@>" + map.length + " sections</div>";\n'
 + '  for(var m = 0; m < map.length; m++){\n'
-+ '    out += "<a class=@toc-row@ href=@#" + map[m].id + "@>"\n'
-+ '         + "<span class=@toc-n@>" + map[m].num + "</span>"\n'
-+ '         + "<span class=@toc-t@>" + map[m].title + "</span>"\n'
-+ '         + "<span class=@toc-d@></span>"\n'
-+ '         + "<span class=@toc-p@>" + map[m].page + "</span></a>";\n'
++ '    out += "<a class=@toc-row@ href=@#" + map[m].id + "@ style=@display:flex;align-items:baseline;gap:2.5mm;padding:2.4mm 0;border-bottom:0.4pt solid rgba(0,0,0,.14);text-decoration:none;color:inherit@>"\n'
++ '         + "<span style=@font-size:9pt;font-weight:700;opacity:.55;min-width:8mm@>" + map[m].num + "</span>"\n'
++ '         + "<span style=@font-size:11pt;flex:0 1 auto@>" + map[m].title + "</span>"\n'
++ '         + "<span style=@flex:1 1 auto;border-bottom:0.4pt dotted rgba(0,0,0,.28);transform:translateY(-1mm);min-width:6mm@></span>"\n'
++ '         + "<span style=@font-size:10.5pt;font-weight:600;min-width:8mm;text-align:right@>" + map[m].page + "</span></a>";\n'
 + '  }\n'
 + '  host.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
 + '}\n'
@@ -1140,6 +1158,9 @@ function foot(p, i, total, lang, docName){
        + '<div class="rfn">'+e(L(lang,'footnote'))+'</div>'
        + '<div class="rf"><div><span>'+EN(e(docName||L('en','doc_report')))+'</span><span class="en"> &nbsp;·&nbsp; '
        + e(dmy((p && p.meta && p.meta.analysis_datetime) || (p && p.report && p.report.run && p.report.run.reportBuiltAt))) + '</span> &nbsp;·&nbsp; ' + e(L(lang,'research_only'))
+       /* The build that produced this file. Two separate faults were
+          diagnosed from PDFs without knowing which code made them. */
+       + ' &nbsp;·&nbsp; <span class="en">b' + e(S((typeof window !== 'undefined' && window.APP_BUILD) || '?')) + '</span>'
        + '</div><div class="en"><b class="pgnum">'+i+'</b> / <span class="pgtot">'+total+'</span></div></div>'
        + '</div>';
 }
