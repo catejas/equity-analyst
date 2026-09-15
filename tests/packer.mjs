@@ -32,6 +32,13 @@ function run(blocks, shells, { laidOut = true, toc = true } = {}) {
   const d = dom.window.document;
   Object.defineProperty(dom.window.HTMLElement.prototype, 'offsetHeight', {
     get() { return Number(this.getAttribute('data-h') || 0); }, configurable: true });
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'clientWidth', {
+    get: () => 520, configurable: true });
+  /* blocks report their height wherever they are — that is the point of the
+     ruler: a block's height must not depend on the box it is sitting in */
+  dom.window.HTMLElement.prototype.getBoundingClientRect = function () {
+    return { height: Number(this.getAttribute('data-h') || 0) };
+  };
   dom.window.getComputedStyle = () => ({ marginTop: '0', marginBottom: '0' });
   /* the page geometry the paginator reads its budget from */
   for (const el of d.querySelectorAll('.page')) {
@@ -69,7 +76,17 @@ function check(name, got, want) {
   if (want.minPages && got.pages < want.minPages) { console.log(`   FAIL: expected at least ${want.minPages} pages`); fail = 1; }
   if (want.maxPages && got.pages > want.maxPages) { console.log(`   FAIL: expected at most ${want.maxPages} pages`); fail = 1; }
   if (!got.tocClean) { console.log('   FAIL: content was dealt onto the contents page'); fail = 1; }
-  if (got.audit) console.log(`   audit: blk${got.audit.blocks}/bud${got.audit.budget}/pg${got.audit.pages} (seeded ${got.audit.seeded}, grew ${got.audit.grew})`);
+  if (got.audit) {
+    const a = got.audit;
+    console.log(`   audit: blk${a.blocks}/bud${a.budget}/h${a.totalHeight}/exp${a.expectedPages}/pg${a.pages}`);
+    /* the whole point of the audit: pages produced must match the height the
+       paginator measured, or one of the two is lying */
+    const contentPages = a.pages - 1;
+    if (Math.abs(contentPages - a.expectedPages) > 1) {
+      console.log(`   FAIL: ${contentPages} content pages for ${a.expectedPages} expected from measured height`);
+      fail = 1;
+    }
+  }
 }
 
 /* the real fault: everything in page one, empty shells after it */
