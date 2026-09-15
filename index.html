@@ -335,6 +335,19 @@ select{
   font-size:.62rem; line-height:1; pointer-events:none;
   box-shadow:0 1px 2px rgba(0,0,0,.18);
 }
+
+/* Document rows: one line each, the name on the left and its two buttons on
+   the right. "Executive Summary" wrapped to two lines when the buttons took a
+   third of the row, which for two words looks like a mistake. */
+.docrows{ margin-top:11px; border-top:1px solid var(--line); }
+.docrow{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+.docrow:last-child{ border-bottom:0; }
+.docrow .dn{ font-size:.86rem; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
+.docrow .db{ display:flex; gap:6px; flex:0 0 auto; }
+.docrow .db .btn{ margin:0; font-size:.72rem; padding:7px 12px; min-height:34px; }
+.docrow.off .dn{ color:var(--mut); }
 .grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
 .btn.xs{font-size:.72rem;padding:11px 2px;min-height:44px;letter-spacing:.01em;}
 .ico{position:relative;z-index:2;min-width:52px;min-height:44px;}
@@ -485,7 +498,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="15-09-2026.1";</script>
+<script>window.APP_BUILD="15-09-2026.2";</script>
 </head>
 <body>
 
@@ -596,13 +609,12 @@ body.previewing{overflow:hidden;}
 
     <label for="soloPick" style="margin-top:10px;">Imported independently</label>
     <div class="selwrap"><select id="soloPick"><option value="">— none imported —</option></select></div>
-    <div class="grid5" style="margin-top:11px;">
-      <button class="btn xs pri" id="btnSoloSearch" style="margin:0;">Research</button>
+    <div class="grid3" style="margin-top:11px;">
+      <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
       <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
       <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
-      <button class="btn xs" id="btnSoloPdf" data-doc="solo" data-act="make" style="margin:0;">PDF</button>
-      <button class="btn xs" id="btnSoloShare" data-doc="solo" data-act="share" style="margin:0;">Share</button>
     </div>
+    <div id="soloDocs"></div>
     <div id="soloMsg" class="note" style="margin-top:8px;"></div>
   </div>
 
@@ -2666,6 +2678,30 @@ function auditPayload(d){
    payload is what made rank 2 and rank 3 say they had too few companies while
    all three were already imported, and what made a segment-only block report
    every company section as missing. */
+
+/* The three documents any saved record can build, as rows with working
+   buttons. Previously only the run selected on the Sector page had document
+   buttons at all, so five saved independent companies had no way to produce a
+   report for any but the one on screen. */
+function docRows(kind, ready, label){
+  var docs = [
+    { k:'report', n:'Research Report' },
+    { k:'exec',   n:'Executive Summary' },
+    { k:'score',  n:'Score Card' }
+  ];
+  return '<div class="docrows">' + docs.map(function(d){
+    var doc = kind + ':' + d.k;
+    return '<div class="docrow' + (ready ? '' : ' off') + '">'
+      + '<span class="dn">' + esc(d.n) + '</span>'
+      + '<span class="db">'
+        + '<button class="btn" data-doc="' + doc + '" data-act="make"'
+          + (ready ? '' : ' disabled') + '>PDF</button>'
+        + '<button class="btn" data-doc="' + doc + '" data-act="share"'
+          + (ready ? '' : ' disabled') + '>Share</button>'
+      + '</span></div>';
+  }).join('') + '</div>';
+}
+
 function docReadiness(d, kind){
   /* An independent company has no sector study and no Top 3, so offering it a
      Sector Research Report and three ranked company slots was listing four
@@ -3896,9 +3932,12 @@ function renderCompanyPage(){
   var solos = soloRecords(), soloCur = soloRecord();
   if(soloCur) SEL.solo = soloCur.id;
   fillPicker('#soloPick', solos, SEL.solo, '\u2014 none imported \u2014');
-  ['btnSoloDelete','btnSoloPdf','btnSoloShare'].forEach(function(id){
+  ['btnSoloDelete'].forEach(function(id){
     if($('#'+id)) $('#'+id).disabled = !soloCur;
   });
+  /* Rows for whichever saved independent company is selected, so all five of
+     them can produce their documents rather than only the newest. */
+  if($('#soloDocs')) $('#soloDocs').innerHTML = docRows('solo', !!soloCur);
 
   var recs = companyRecords(), cur = coRecord();
   if(cur) SEL.company = cur.id;
@@ -3935,17 +3974,14 @@ function renderCompanyPage(){
             return '<div class="slotwhy"><b>Screened ' + s.screenScore.toFixed(1) + ' of 100.</b>'
               + (why ? ' ' + esc(why) : '') + '</div>';
           })()
-        + '<div class="grid5" style="margin-top:9px;">'
+        + '<div class="grid3" style="margin-top:9px;">'
           + '<button class="btn xs pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
             + (named ? '' : ' disabled') + '>Research</button>'
           + '<button class="btn xs co-import" data-rank="' + s.rank + '" style="margin:0;">Import</button>'
           + '<button class="btn xs dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
             + (done ? '' : ' disabled') + '>Delete</button>'
-          + '<button class="btn xs" data-doc="co' + s.rank + '" data-act="make" style="margin:0;"'
-            + (done ? '' : ' disabled') + '>PDF</button>'
-          + '<button class="btn xs" data-doc="co' + s.rank + '" data-act="share" style="margin:0;"'
-            + (done ? '' : ' disabled') + '>Share</button>'
         + '</div>'
+        + docRows('co' + s.rank, done)
         + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
 }

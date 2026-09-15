@@ -18,30 +18,45 @@ var PNG_SCALE = 4;   /* 4960 x 7016 = 600 DPI at A4. Messaging apps downscale
 /* Every document is built from the whole run: the segment study plus whichever
    companies have been imported. The pieces are stored separately so each can be
    researched in one reply; they are only reassembled here. */
+var DOC_SUBJECT = null;
+
+/* An independent company's documents are built from its own record, whichever
+   of the saved ones is selected. */
+function soloPayload(){
+  var solo = soloRecord();
+  if(!solo || !solo.data) return null;
+  try{
+    var b = EQ.buildReport(solo.data);
+    if(!b.ok) return null;
+    return {
+      meta: { segment: (solo.data.run && solo.data.run.segment) || null,
+              subsegment: (solo.data.run && solo.data.run.subsegment) || null,
+              company: solo.company,
+              analysis_datetime: new Date(solo.ts).toISOString() },
+      report: b.report, warnings: b.warnings || [], companyIndex: 0,
+      standalone: true
+    };
+  }catch(e){ return null; }
+}
+
 function currentPayload(kind){
   if(!window.composedReport) return null;
+  /* Accept the row form too — "solo:exec" — so a caller that has not been
+     through doAction still resolves to the right record. */
+  if(kind && kind.indexOf(':') > 0){
+    var bits = kind.split(':');
+    DOC_SUBJECT = bits[0];
+    kind = (bits[1] === 'report') ? bits[0]
+         : (bits[1] === 'exec') ? 'exec'
+         : (bits[1] === 'score') ? 'score' : bits[0];
+  }
   /* An independent company is its own run. Its documents are built from its own
      payload, addressed by the picker in its own box — not through the Saved
      Company Research list, which is what made its PDF button hand over whichever
      company that list was showing. */
-  if(kind === 'solo' && typeof soloRecord === 'function'){
-    var solo = soloRecord();
-    if(solo && solo.data){
-      try{
-        var b = EQ.buildReport(solo.data);
-        if(b.ok) return {
-          meta: { segment: (solo.data.run && solo.data.run.segment) || null,
-                  subsegment: (solo.data.run && solo.data.run.subsegment) || null,
-                  company: solo.company,
-                  analysis_datetime: new Date(solo.ts).toISOString() },
-          report: b.report, warnings: b.warnings || [], companyIndex: 0,
-          /* Tells the renderer to state the safety verdict at the top: an
-             independent run has no Top 3 for the kill switch to act on. */
-          standalone: true
-        };
-      }catch(e){}
-    }
-    return null;
+  if(DOC_SUBJECT === 'solo' || kind === 'solo'){
+    if(typeof soloRecord !== 'function') return null;
+    return soloPayload();
   }
   var built = composedReport();
   if(!built) return null;
@@ -587,6 +602,22 @@ function doAll(act, msgTarget){
 /* ---------- one delegated handler for every document row ---------- */
 function doAction(kind, act, msgTarget){
   if(kind === 'all') return doAll(act, msgTarget);
+
+  /* The document rows address a record and a document: "solo:exec" is the
+     executive summary of the selected independent company, "co2:score" the
+     score card of rank 2. Splitting here keeps every existing kind working
+     while the rows can name both halves. */
+  var who = kind, what = null;
+  if(kind.indexOf(':') > 0){
+    var bits = kind.split(':');
+    who = bits[0]; what = bits[1];
+    kind = (what === 'report') ? who
+         : (what === 'exec')   ? 'exec'
+         : (what === 'score')  ? 'score' : who;
+    DOC_SUBJECT = who;
+  } else {
+    DOC_SUBJECT = null;
+  }
   MSG_EL = msgTarget || '#docMsg';
   var p = needPayload(kind); if(!p) return;
   var langs = langsWanted();

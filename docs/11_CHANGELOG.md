@@ -970,3 +970,31 @@ Changed:
   than leaving every number without context.
 
 Tests: 384 engine assertions and twenty browser suites.
+
+## v4.0.6 — 15-09-2026
+Fixed — the two errors that stopped the Anlon import, both the same mistake of
+refusing a payload over one imperfect field and discarding everything else in it:
+- A litigation subject reading "company or promoter or subsidiary" — the model
+  echoing the allowed values back as the value — is now read as the company,
+  with the original wording kept in subjectAsStated.
+- A driver model with no segments sets the block aside and says the forecast and
+  intrinsic value are omitted, instead of rejecting the run and then reporting
+  six more "required" fields for a model that is no longer there.
+
+Added — documents for every saved record, not only the newest:
+- Each record now carries three rows: Research Report, Executive Summary and
+  Score Card, each with its own PDF and Share button. Previously only the run
+  on screen had document buttons, so five saved independent companies had no way
+  to produce a report for any but the last one imported.
+- A row addresses a record and a document — "solo:exec" is the executive summary
+  of the selected independent company, "co2:score" the score card of rank 2 —
+  and currentPayload resolves that form too, so a caller that has not been
+  through doAction still reaches the right record.
+- Verified: five independent companies saved, the oldest selected, all three of
+  its documents build for it, and switching to the newest switches the output.
+
+Changed:
+- Document names are in title case, and the rows put the name on one line with
+  its two buttons on the right. "Executive Summary" was wrapping to two lines.
+
+Tests: 387 engine assertions and twenty-one browser suites.

@@ -274,8 +274,18 @@ export function validatePayload(payload, { repair = true } = {}) {
         if (!OUTCOMES.includes(sr.outcome)) e(`${where}: outcome must be one of ${OUTCOMES.join(', ')}.`);
         if (given(sr.subject)) {
           const subj = normaliseSubject(sr.subject);
-          if (!subj) e(`${where}: subject "${sr.subject}" is not readable as company, promoter or subsidiary.`);
-          else sr.subject = subj;
+          if (subj) sr.subject = subj;
+          else {
+            /* A register search that names its subject oddly — including a model
+               that echoed the list of allowed values back as the value — still
+               tells us the register was searched. Losing the whole run over one
+               descriptive word is the worse answer, so it is read as the company
+               and the original wording is kept where it can be seen. */
+            w(`${where}: subject "${sr.subject}" was not one of company, promoter or subsidiary; `
+              + 'it is recorded against the company.');
+            sr.subjectAsStated = sr.subject;
+            sr.subject = 'company';
+          }
         }
         if (sr.outcome === 'matters found' && (!isArr(sr.matters) || sr.matters.length === 0)) {
           e(`${where}: outcome is "matters found" but no matters are listed.`);
@@ -292,13 +302,18 @@ export function validatePayload(payload, { repair = true } = {}) {
 
     // --- driver model
     const model = c.model;
+    const modelUsable = isObj(model) && isArr(model.segments) && model.segments.length > 0;
     if (!isObj(model)) {
       w(`${at}: no driver model; the forecast and intrinsic value will be omitted.`);
+    } else if (!modelUsable) {
+      /* Without segments there is nothing to drive, so the block is set aside
+         whole and the remaining model checks are skipped — running them would
+         report six more "required" fields for a model that is no longer there. */
+      w(`${at}: the driver model has no segments, so the forecast and intrinsic value are omitted.`);
+      delete c.model;
     } else {
-      if (!isNum(model.years)) e(`${at}: model.years is required.`);
-      if (!isArr(model.segments) || model.segments.length === 0) {
-        e(`${at}: model.segments must be a non-empty array.`);
-      } else model.segments.forEach((sg, j) => {
+      if (!isNum(model.years)) w(`${at}: model.years not stated, so the forecast horizon is unknown.`);
+      model.segments.forEach((sg, j) => {
         for (const k of ['baseVolume', 'volumeCagr', 'baseRealisation', 'realisationCagr']) {
           if (!isNum(sg?.[k])) e(`${at}: model.segments[${j}].${k} is required and must be a number.`);
         }
