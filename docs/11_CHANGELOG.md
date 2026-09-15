@@ -1146,3 +1146,25 @@ Also:
   paginator must grow its own pages rather than truncate.
 
 Tests: 387 engine assertions and twenty-three browser suites.
+
+## v4.1.5 — 15-09-2026
+The audit earned its keep on its first run.
+
+`blk41/bud972/pg4` said it in one line: 41 blocks, a correct A4 budget of 972px,
+and only 4 pages. Correct budget with too few pages leaves one possibility —
+the block heights were wrong.
+
+They were. Every block was measured while the other forty sat in the same box,
+a box with overflow hidden and a constrained height, so the numbers that came
+back were a fraction of the truth. Blocks are now measured one at a time in a
+ruler of the same width, off-screen and free to grow, with nothing else in it.
+A block's height must not depend on the box it happens to be sitting in.
+
+The audit now reports the measured total and what that implies:
+`blk41/bud972/h24800/exp26/pg27`. Pages produced must match total height over
+budget; if they do not the dealing is at fault, and if the total itself is
+implausibly small the measurement is. `tests/packer.mjs` asserts exactly that
+relation on every case, which is the check that would have caught this at the
+first attempt rather than the sixth.
+
+Tests: 387 engine assertions and twenty-three browser suites.
