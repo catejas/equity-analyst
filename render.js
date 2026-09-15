@@ -1006,12 +1006,22 @@ var FILL_AND_TOC = '<script>(function(){\n'
    and blocks are dealt onto pages by accumulating those heights. Nothing here
    asks a container to report overflow. */
 + 'var pages = [].slice.call(document.querySelectorAll(".page"));\n'
++ 'var seeded = pages.length;\n'
 + 'if(pages.length < 2) return;\n'
 + 'var host = pages[0].parentNode;\n'
 
 /* Collect every block in document order, out of whichever shell it landed in. */
 + 'var blocks = [], b0;\n'
+/* The contents page is furniture: it is never a destination for content, and
+   nothing is ever collected out of it. Content starts on the page after it. */
++ 'var tocPageEl = null;\n'
++ 'for(var t0 = 0; t0 < pages.length; t0++){\n'
++ '  if(pages[t0].querySelector("[data-toc]")){ tocPageEl = pages[t0]; break; }\n'
++ '}\n'
++ 'var deal = [];\n'
 + 'for(var i = 0; i < pages.length; i++){\n'
++ '  if(pages[i] === tocPageEl) continue;\n'
++ '  deal.push(pages[i]);\n'
 + '  var bd = pages[i].querySelector(".body");\n'
 + '  if(!bd) continue;\n'
 + '  while(bd.firstElementChild){\n'
@@ -1023,9 +1033,25 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + 'if(!blocks.length) return;\n'
 
 /* Measure each block once, in a box the width of a page body. */
-+ 'var first = pages[0].querySelector(".body");\n'
-+ 'var budget = first.clientHeight;\n'
-+ 'if(!budget || budget < 80){\n'
++ 'if(!deal.length) return;\n'
++ 'var first = deal[0].querySelector(".body");\n'
+/* The budget is the page geometry, never the box's own clientHeight. That box
+   is unconstrained in print and preview, so its clientHeight equals the height
+   of everything inside it — ask it for a budget and it answers "all of it",
+   which is how thirty-two sections ended up on one page five builds running.
+   getBoundingClientRect on the page honours the 297mm CSS height; the constant
+   is the same figure in pixels and is only reached if layout is unavailable. */
++ 'function pxOf(el){\n'
++ '  if(!el) return 0;\n'
++ '  var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;\n'
++ '  return (r && r.height) ? r.height : (el.offsetHeight || 0);\n'
++ '}\n'
++ 'var pgH = pxOf(pages[0]) || 1122.5;\n'
++ 'var hdH = pxOf(pages[0].querySelector(".rh"));\n'
++ 'var ftH = pxOf(pages[0].querySelector(".rfw")) || pxOf(pages[0].querySelector(".rf"));\n'
++ 'var budget = Math.round(pgH - hdH - ftH - 12);\n'
++ 'if(!(budget > 120)) budget = 0;\n'
++ 'if(!budget){\n'
 /* no layout to measure: put everything back on page one and leave it be */
 + '  for(var r0 = 0; r0 < blocks.length; r0++) first.appendChild(blocks[r0]);\n'
 + '  return;\n'
@@ -1045,12 +1071,12 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + 'var pi = 0, box = first, used = 0;\n'
 + 'function nextBox(){\n'
 + '  pi += 1;\n'
-+ '  if(pi < pages.length) return pages[pi].querySelector(".body");\n'
-+ '  var clone = pages[pages.length - 1].cloneNode(true);\n'
++ '  if(pi < deal.length) return deal[pi].querySelector(".body");\n'
++ '  var clone = deal[deal.length - 1].cloneNode(true);\n'
 + '  var cb = clone.querySelector(".body");\n'
 + '  while(cb.firstChild) cb.removeChild(cb.firstChild);\n'
 + '  host.appendChild(clone);\n'
-+ '  pages.push(clone);\n'
++ '  deal.push(clone); pages.push(clone);\n'
 + '  return cb;\n'
 + '}\n'
 + 'for(var k = 0; k < blocks.length; k++){\n'
@@ -1091,6 +1117,17 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + '  }\n'
 + '}\n'
 + 'window.__EQ_TOC = map;\n'
+/* The pagination audit. Five builds were spent guessing what this code did
+   from the shape of a finished PDF. It now says so itself, in the footer of
+   every document: how many blocks it dealt, the budget it measured, and how
+   many pages resulted. A short report with "blk 0" is a different fault from
+   one with "bud 0", and neither needs another round of guessing. */
++ 'window.__EQ_PAGINATION = { blocks: blocks.length, budget: budget,\n'
++ '  pages: pages.length, seeded: seeded, grew: pages.length - seeded };\n'
++ 'var auditTxt = " \\u00b7 blk" + blocks.length + "/bud" + Math.round(budget)\n'
++ '  + "/pg" + pages.length;\n'
++ 'var stamps = document.querySelectorAll(".bstamp");\n'
++ 'for(var s0 = 0; s0 < stamps.length; s0++) stamps[s0].textContent += auditTxt;\n'
 + 'var tocHost = document.querySelector("[data-toc]");\n'
 + 'if(tocHost && map.length){\n'
 + '  var out = "<div style=@font-size:16pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
@@ -1123,7 +1160,7 @@ function foot(p, i, total, lang, docName){
        + e(dmy((p && p.meta && p.meta.analysis_datetime) || (p && p.report && p.report.run && p.report.run.reportBuiltAt))) + '</span> &nbsp;·&nbsp; ' + e(L(lang,'research_only'))
        /* The build that produced this file. Two separate faults were
           diagnosed from PDFs without knowing which code made them. */
-       + ' &nbsp;·&nbsp; <span class="en">b' + e(S((typeof window !== 'undefined' && window.APP_BUILD) || '?')) + '</span>'
+       + ' &nbsp;·&nbsp; <span class="en bstamp">b' + e(S((typeof window !== 'undefined' && window.APP_BUILD) || '?')) + '</span>'
        + '</div><div class="en"><b class="pgnum">'+i+'</b> / <span class="pgtot">'+total+'</span></div></div>'
        + '</div>';
 }
