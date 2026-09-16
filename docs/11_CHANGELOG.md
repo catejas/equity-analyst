@@ -1239,3 +1239,33 @@ Score Card:
 
 Tests: 387 engine assertions, twenty-two browser suites, five documents rendered
 in Chromium.
+
+## v4.2.1 — 16-09-2026
+Fixed — the Score Card was losing four sections off the bottom of the page:
+- Two shells were seeded, not the four its own comment claimed, and with the
+  forensic breakdown and the overall-score arithmetic added there was nowhere to
+  put them: seven blocks sat in a box 3219px tall inside a 961px page. Ten
+  shells are seeded now; unused ones are removed.
+- **The spill emptied every page into the next.** The guard that stops a page
+  giving away its last block only protected page one, so the whole card
+  cascaded onto the final shell — one block stranded at the front, seven stacked
+  at the back, eight blank pages between. Every page now keeps a block.
+- A pillar table taller than a page can divide again, because the alternative is
+  scaling the page, and a scaled page is what made page two's type differ from
+  page one's. The "continued" marker is gone from the split header.
+
+Measured in Chromium at this build, every block's bottom now sits inside its
+page: the four pillars, the forensic tests, the overall dimensions and the total.
+
+Changed:
+- **The footer is the report name, the date and time, and the page number.**
+  The disclaimer line and the build stamp are gone from it.
+- Readable type is up about a tenth; the footer and small print are unchanged,
+  so the disclaimer does not grow with the text it sits under.
+
+Page fill, measured in the browser rather than guessed:
+  company 28 pages, 84% average · score card 8 pages, 90% · summary 8 pages, 76%
+
+Note: the engine test suite was lost when the container reset and has not been
+re-run at this build; the browser suites and the five-document Chromium render
+all pass.
