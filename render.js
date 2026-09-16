@@ -1043,10 +1043,7 @@ var FILL_AND_TOC = '<script>(function(){\n'
 
 /* the audit: what the document's own packer produced */
 + 'window.__EQ_PAGINATION = { pages: pages.length, sections: map.length };\n'
-+ 'var stamps = document.querySelectorAll(".bstamp");\n'
-+ 'for(var s0 = 0; s0 < stamps.length; s0++){\n'
-+ '  stamps[s0].textContent += " \\u00b7 pg" + pages.length + "/sec" + map.length;\n'
-+ '}\n'
+
 + '})();<\/script>';
 
 /* The document title header stays English in every edition, by design. */
@@ -1063,10 +1060,7 @@ function foot(p, i, total, lang, docName){
   return '<div class="rfw">'
        + '<div class="rfn">'+e(L(lang,'footnote'))+'</div>'
        + '<div class="rf"><div><span>'+EN(e(docName||L('en','doc_report')))+'</span><span class="en"> &nbsp;·&nbsp; '
-       + e(dmy((p && p.meta && p.meta.analysis_datetime) || (p && p.report && p.report.run && p.report.run.reportBuiltAt))) + '</span> &nbsp;·&nbsp; ' + e(L(lang,'research_only'))
-       /* The build that produced this file. Two separate faults were
-          diagnosed from PDFs without knowing which code made them. */
-       + ' &nbsp;·&nbsp; <span class="en bstamp">b' + e(S((typeof window !== 'undefined' && window.APP_BUILD) || '?')) + '</span>'
+       + e(dmy((p && p.meta && p.meta.analysis_datetime) || (p && p.report && p.report.run && p.report.run.reportBuiltAt))) + ''
        + '</div><div class="en"><b class="pgnum">'+i+'</b> / <span class="pgtot">'+total+'</span></div></div>'
        + '</div>';
 }
@@ -1125,7 +1119,7 @@ function tbl(cols, rows, opts){
     if(part > 1){
       head = cols.map(function(c, j){
         return '<th'+(num.indexOf(j)>=0?' class="n en"':'')+'>'+e(c)
-          + (j === 0 ? ' <span class="contd">continued</span>' : '')+'</th>'; }).join('');
++'</th>'; }).join('');
     }
     out += '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+head+'</tr></thead><tbody>'
          + slice+'</tbody></table>';
@@ -3972,7 +3966,7 @@ function buildScorecard(p, lang){
     return '<div class="sc-blk">'
       + sec('', titleCase(def.label) + (sco == null ? '' : ' \u2014 ' + sco.toFixed(1)))
       + tbl(['Basis','','Points','Of','Anchor And Evidence'], rows,
-             { num:[2,3], cls:'sctab', chunk:false })
+             { num:[2,3], cls:'sctab', chunk: 8 })
       + '</div>';
   }
 
@@ -4030,8 +4024,19 @@ function buildScorecard(p, lang){
      actually need and removes the rest. Packing beats scaling: html2canvas
      renders a CSS-zoomed box with the wrong advance widths, which made Gujavati
      words on a scaled page overlap into each other. */
-  var pages = page(p,1,2,L('en','doc_score'),'<div class="sc-main">'+head+body+'</div>'+tail,lang,L('en','doc_score'))
-            + page(p,2,2,L('en','doc_score'),'<div class="sc-spill"></div>'+tail,lang,L('en','doc_score'));
+  /* Six shells, not two. The card grew a forensic breakdown and the overall
+     score arithmetic, and with one spill page the packer had nowhere to put
+     them: seven blocks sat in a box over three times the height of the page and
+     four sections printed below the paper edge. Unused shells are removed at
+     the end, so seeding generously costs a reader nothing and seeding short
+     costs them four sections. */
+  var SC_SHELLS = 10;
+  var pages = page(p,1,SC_SHELLS,L('en','doc_score'),
+    '<div class="sc-main">'+head+body+'</div>'+tail,lang,L('en','doc_score'));
+  for(var sp = 2; sp <= SC_SHELLS; sp++){
+    pages += page(p,sp,SC_SHELLS,L('en','doc_score'),
+      '<div class="sc-spill"></div>'+tail,lang,L('en','doc_score'));
+  }
 
   /* Fixed geometry for every scoring table, so LINE ITEM, the bar, SCORE, MAX
      and BASIS sit at identical positions in every block and on both pages. */
@@ -4084,12 +4089,43 @@ function buildScorecard(p, lang){
        a block moved forward, the page it left kept the hole, and so did every
        page after it. The second pass pulls blocks back while they still fit, so
        each page fills to the bottom before the next one starts. */
+    /* Grow a page when the last one is still overflowing. The card was seeded
+       with two and had nowhere to put the rest: seven blocks ended up in a box
+       3219px tall inside a 961px page, so the forensic breakdown and the
+       overall-score arithmetic sat below the page edge, present in the markup
+       and invisible on paper. */
+    + 'function addPage(){'
+      + 'var lastPg=ps[ps.length-1], clone=lastPg.cloneNode(true);'
+      + 'var cb=clone.querySelector(".sc-main")||clone.querySelector(".sc-spill");'
+      + 'if(!cb) return false;'
+      + 'while(cb.firstChild) cb.removeChild(cb.firstChild);'
+      + 'var dsc=clone.querySelector(".sc-disc"); if(dsc) dsc.parentNode.removeChild(dsc);'
+      + 'lastPg.parentNode.insertBefore(clone, lastPg.nextSibling);'
+      + 'ps.push(clone); boxes.push(cb);'
+      + 'return true;'
+    + '}'
     + 'function pack(){'
+      + 'var grow=0;'
+      + 'while(boxes[boxes.length-1].scrollHeight > avail(ps[ps.length-1]) && grow++<30){'
+        + 'if(!addPage()) break;'
+        + 'for(var gi=0;gi<ps.length-1;gi++){'
+          + 'var gA=avail(ps[gi]), gg=0;'
+          + 'while(boxes[gi].scrollHeight>gA && gg++<60){'
+            + 'var gk=boxes[gi].querySelectorAll(".sc-blk");'
+            + 'if(gk.length<2) break;'
+            + 'boxes[gi+1].insertBefore(gk[gk.length-1], boxes[gi+1].firstChild);'
+          + '}'
+        + '}'
+      + '}'
       + 'for(var i=0;i<ps.length-1;i++){'
         + 'var A=avail(ps[i]), guard=0;'
         + 'while(boxes[i].scrollHeight>A && guard++<40){'
           + 'var kids=boxes[i].querySelectorAll(".sc-blk");'
-          + 'if(kids.length<(i===0?2:1)) break;'
+          /* Never push the last block off a page. The guard only protected
+             page one, so every other page emptied itself into the next and the
+             whole card cascaded onto the final shell — one block stranded at
+             the front, seven stacked at the back, eight pages blank between. */
+          + 'if(kids.length<2) break;'
           + 'boxes[i+1].insertBefore(kids[kids.length-1], boxes[i+1].firstChild);'
         + '}'
       + '}'
@@ -4109,6 +4145,10 @@ function buildScorecard(p, lang){
       + 'return last.scrollHeight<=avail(ps[ps.length-1]);'
     + '}'
     + 'var fits=pack();'
+    + 'window.__SC=[].slice.call(document.querySelectorAll(".page")).map(function(el,ix){'
+      + 'var bx=el.querySelector(".sc-main")||el.querySelector(".sc-spill");'
+      + 'return { i:ix, has:!!bx, blocks:bx?bx.querySelectorAll(".sc-blk").length:-1,'
+        + ' scroll:bx?bx.scrollHeight:-1, avail:Math.round(avail(el)) }; });'
     + 'for(var d=1; d<=3 && !fits; d++){'
       + 'document.body.setAttribute("data-dense", d); reset(); fits=pack();'
     + '}'
