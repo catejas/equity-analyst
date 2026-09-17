@@ -591,6 +591,10 @@ var CSS = (window.EQCharts && window.EQCharts.CSS ? window.EQCharts.CSS : '') + 
      legible to a colour-blind reader, and every band here also carries a word. */
   --s5-1:#C0392B; --s5-2:#E2703A; --s5-3:#D69A0E; --s5-4:#149C8B; --s5-5:#1F6FB2;
   --good:#149C8B; --warn:#D69A0E; --amber:#D69A0E; --bad:#C0392B; --crit:#8E2A20;
+  --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  /* One body size for every data block in every section, set to the size
+     the verdict box uses. Sections used to each carry their own size. */
+  --body:13.2pt; --bodyline:1.45;
 }
 html,body{ background:#E9E7E1; }
 body{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; color:var(--ink);
@@ -633,12 +637,12 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
 .sc2row .v{ flex:0 0 11mm; text-align:right; font-weight:700; }
 .sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:11.5pt; }
 .rfw{ border-top:.6pt solid var(--rule); }
-.rfn{ padding:2.2mm 15mm 0; font-size:6.6pt; line-height:1.42; color:var(--ink4);
+.rfn{ padding:1.4mm 15mm 0; font-size:6.6pt; line-height:1.36; color:var(--ink4);
       text-align:justify; }
 body.gu .rfn{ font-size:8.8pt; line-height:1.55; }
-.rfw .rf{ border-top:0; padding-top:1.6mm; }
+.rfw .rf{ border-top:0; padding-top:1mm; }
 .rf{ display:flex; justify-content:space-between; align-items:center;
-     padding:3mm 15mm 7mm; border-top:.6pt solid var(--rule); font-size:7.4pt; color:var(--ink4); }
+     padding:1.6mm 15mm 2.6mm; border-top:.6pt solid var(--rule); font-size:7.4pt; color:var(--ink4); }
 .rf b{ color:var(--ink2); font-weight:700; }
 h1{ font-size:22pt; line-height:1.1; letter-spacing:-.025em; font-weight:700; }
 .sec{ display:flex; align-items:baseline; gap:3mm; margin:5mm 0 2.5mm; }
@@ -3811,6 +3815,32 @@ function buildScorecard(p, lang){
   var overall = (co.overall && co.overall.score);
   var cover   = (co.overall && co.overall.coverage);
 
+  /* The eight dimensions in the order the card presents them, and the name
+     each goes by. The engine's keys are internal — `risk`, and
+     `valuationExpectedReturn` for what the pillars still call valuation and
+     opportunity — and a reader should not have to map one to the other
+     halfway down the page. */
+  var DIM_ORDER = ['businessQuality','growthMultibagger','valuationExpectedReturn','risk',
+                   'financialQuality','managementGovernance','technicalEntry','catalysts'];
+  var DIM_LABEL = { businessQuality:'Business Quality',
+                    growthMultibagger:'Growth And Multibagger',
+                    valuationExpectedReturn:'Valuation Expected Return',
+                    valuationOpportunity:'Valuation Expected Return',
+                    risk:'Risk And Quality Control',
+                    riskQuality:'Risk And Quality Control',
+                    financialQuality:'Financial Quality',
+                    managementGovernance:'Management Governance',
+                    technicalEntry:'Technical Entry',
+                    catalysts:'Catalysts' };
+  /* Dimension scores arrive as plain numbers. Reading `.score` off a number
+     returns undefined, which is why every row of the build table printed a
+     dash where its score belonged and the points never summed to the total. */
+  function dimScore(v){
+    if(typeof v === 'number') return isFinite(v) ? v : null;
+    if(v && typeof v === 'object' && typeof v.score === 'number') return v.score;
+    return null;
+  }
+
   function pct(x){ return (x == null) ? 0 : Math.max(0, Math.min(100, x)); }
   function tile(k, v, sub){
     return '<div class="tile"><div class="k">' + e(k) + '</div><div class="v">' + v
@@ -3883,7 +3913,7 @@ function buildScorecard(p, lang){
       + 'The score starts at 100 and each finding takes points from it, so a low '
       + 'score means findings were made, not that data was missing.</p>'
       + tbl(['Test','Severity','Reading','What It Means'], rows,
-            { num:[2], cls:'sctab', chunk:false })
+            { num:[2], cls:'sctab fortab', chunk:false })
       + '</div>';
   }
 
@@ -3896,13 +3926,15 @@ function buildScorecard(p, lang){
     var dims = co.dimensions || {};
     var PILL = (window.EQ && window.EQ.scoring && window.EQ.scoring.PILLARS) || {};
     var total = 0;
-    var rows = Object.keys(ov.weights).map(function(k){
+    var keys = DIM_ORDER.filter(function(k){ return ov.weights[k] != null; })
+      .concat(Object.keys(ov.weights).filter(function(k){ return DIM_ORDER.indexOf(k) < 0; }));
+    var rows = keys.map(function(k){
       var wt = ov.weights[k] * 100;
-      var d = dims[k] || (co.pillars && co.pillars[k]) || {};
-      var sc = (d.score == null) ? null : d.score;
+      var sc = dimScore(dims[k]);
+      if(sc == null) sc = dimScore(co.pillars && co.pillars[k]);
       var earned = (sc == null) ? null : (sc / 100) * wt;
       if(earned != null) total += earned;
-      var label = (PILL[k] && PILL[k].label) ||
+      var label = DIM_LABEL[k] || (PILL[k] && PILL[k].label) ||
         titleCase(k.replace(/([A-Z])/g,' $1'));
       return { cells:[
         '<span class="ti">' + e(label) + '</span>',
@@ -3924,7 +3956,11 @@ function buildScorecard(p, lang){
       + '. Anything not scored is left out and the remaining weights carry the '
       + 'total, which is why the parts can sum slightly below the figure shown.</p>'
       + tbl(['Dimension','Score','Weight','Points'], rows,
-            { num:[1,2,3], cls:'sctab', chunk:false })
+            { num:[1,2,3], cls:'sctab buildtab', chunk:false })
+      + ((co.exclusionReasons && co.exclusionReasons.length)
+          ? '<div class="note"><b>Barred from the Top 3.</b> '
+            + e(co.exclusionReasons.join(' ')) + '</div>'
+          : '')
       + '</div>';
   }
 
@@ -3964,23 +4000,28 @@ function buildScorecard(p, lang){
     });
     var sco = (co.pillars && co.pillars[key] && co.pillars[key].score);
     return '<div class="sc-blk">'
-      + sec('', titleCase(def.label) + (sco == null ? '' : ' \u2014 ' + sco.toFixed(1)))
+      + sec('', (DIM_LABEL[key] || titleCase(def.label)) + (sco == null ? '' : ' \u2014 ' + sco.toFixed(1)))
+      /* One header for the table, not one every eight rows. Chunking split a
+         single dimension into two tables and printed BASIS / POINTS / OF /
+         ANCHOR AND EVIDENCE again in the middle of it, which reads as a new
+         section starting under the old heading. The packer divides long
+         tables by the row where it has to. */
       + tbl(['Basis','','Points','Of','Anchor And Evidence'], rows,
-             { num:[2,3], cls:'sctab', chunk: 8 })
+             { num:[2,3], cls:'sctab', chunk:false })
       + '</div>';
   }
 
   /* The four pillars, then the forensic tests shown the same way, then the
      arithmetic that turns all of it into the overall figure on the front. */
-  var body = Object.keys(PIL).map(pillarBlock).join('')
-    + forensicBlock()
-    + overallBlock();
+  var body = Object.keys(PIL).map(pillarBlock).join('');
 
-  /* The four dimensions that have no pillar of their own. */
+  /* The four dimensions that have no pillar of their own. They belong with the
+     four that do — above the forensic tests, not below them — because the
+     build table underneath adds all eight together. */
   var dimRows = ['financialQuality','managementGovernance','technicalEntry','catalysts'].map(function(k){
     var r = (co.ratings && co.ratings.dimensions && co.ratings.dimensions[k]) || {};
     var sc = (r.score == null) ? null : r.score;
-    var label = k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
+    var label = DIM_LABEL[k] || k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
     return { cells:[
       '<span class="ti">' + e(label) + '</span>',
       '<span class="scbar"><i style="width:' + pct(sc).toFixed(0) + '%;background:' + ragBarHex(pct(sc)) + '"></i></span>',
@@ -3990,33 +4031,19 @@ function buildScorecard(p, lang){
                  : '<b>' + e(S(r.band) || '') + '.</b> ' + e(S(r.evidence) || '')
     ]};
   });
-  body += '<div class="sc-blk">' + sec('', 'Overall dimensions')
-        + tbl(['Dimension','','Score','Wt','Anchor and evidence'], dimRows, { num:[2,3], cls:'sctab' })
-        + '</div>';
+  body += '<div class="sc-blk">' + sec('', 'Overall Dimensions')
+        + tbl(['Dimension','','Score','Wt','Anchor And Evidence'], dimRows,
+              { num:[2,3], cls:'sctab', chunk:false })
+        + '</div>'
+        + forensicBlock()
+        + overallBlock();
 
-  /* Totals. The weights shown are the ones actually used, so a sector override
-     is visible on the page rather than buried in the method. */
-  var wUsed = (co.overall && co.overall.weights) || OW;
-  var totRows = Object.keys(wUsed).map(function(k){
-    var v = (co.dimensions && co.dimensions[k]);
-    var label = k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
-    return { cells:[ label,
-      '<span class="scbar"><i style="width:' + pct(v).toFixed(0) + '%;background:' + ragBarHex(pct(v)) + '"></i></span>',
-      v == null ? '<span class="mut">&mdash;</span>' : '<b class="en">' + v.toFixed(1) + '</b>',
-      '<span class="en">' + Math.round(wUsed[k]*100) + '%</span>',
-      '' ]};
-  }).concat([{ __cls:'tot', cells:[ '<b>Overall investment score</b>',
-      '<span class="scbar"><i style="width:' + pct(overall).toFixed(0) + '%;background:' + ragBarHex(pct(overall)) + '"></i></span>',
-      '<b class="en">' + (overall == null ? '—' : overall.toFixed(1)) + '</b>',
-      '<span class="en">100</span>',
-      (co.tied ? 'Tied within the ' + (rep.run && rep.run.noiseBand) + '-point noise band' : '') ]}]);
-
-  body += '<div class="sc-blk">' + sec('', 'Total')
-        + tbl(['Dimension','','Score','Weight','Note'], totRows, { num:[2,3], cls:'sctab' })
-        + ((co.exclusionReasons && co.exclusionReasons.length)
-            ? '<div class="note"><b>Barred from the Top 3.</b> ' + e(co.exclusionReasons.join(' ')) + '</div>'
-            : '')
-        + '</div>';
+  /* The Total block used to repeat, line for line, what the build table above
+     already shows — the same eight dimensions, the same scores, the same
+     weights — and then restate the overall figure printed on the front tile.
+     Three statements of one number is not corroboration. The one thing it
+     carried that nothing else did, the reason a company is barred, now sits
+     under the arithmetic that bars it. */
 
   var tail = '<div class="grow"></div>';
 
@@ -4041,17 +4068,58 @@ function buildScorecard(p, lang){
   /* Fixed geometry for every scoring table, so LINE ITEM, the bar, SCORE, MAX
      and BASIS sit at identical positions in every block and on both pages. */
   var CSS2 = '\n.sctab{ table-layout:fixed; width:100%; }\n'
-           + '.sctab th:nth-child(1),.sctab td:nth-child(1){ width:42mm; }\n'
-           + '.sctab th:nth-child(2),.sctab td:nth-child(2){ width:20mm; }\n'
-           + '.sctab th:nth-child(3),.sctab td:nth-child(3){ width:13mm; text-align:right; }\n'
-           + '.sctab th:nth-child(4),.sctab td:nth-child(4){ width:11mm; text-align:right; }\n'
+           /* The evidence column is the only one carrying sentences, so it
+              takes what the four figure columns do not need. Every
+              millimetre given back to it is a line of wrapping saved on
+              sixty-six rows. */
+           + '.sctab th:nth-child(1),.sctab td:nth-child(1){ width:34mm; }\n'
+           + '.sctab th:nth-child(2),.sctab td:nth-child(2){ width:15mm; }\n'
+           + '.sctab th:nth-child(3),.sctab td:nth-child(3){ width:12mm; text-align:right; }\n'
+           + '.sctab th:nth-child(4),.sctab td:nth-child(4){ width:10mm; text-align:right; }\n'
            + '.sctab td:nth-child(5){ width:auto; }\n'
+           /* The one deliberate exception to the single body size. The
+              evidence column is the only thing on the card that carries
+              sentences rather than figures, and at the body size it wraps
+              to five lines on sixty-six rows — nine pages of paper for
+              one column's line breaks. Labels, scores, weights and every
+              other document stay at var(--body); this column alone steps
+              down one notch. */
+           + '.sctab td:nth-child(5){ font-size:11pt; line-height:1.4; }\n'
+           + '.fortab td:nth-child(4){ font-size:11pt; line-height:1.4; }\n'
+           /* The forensic table has four columns, not five, and its last one
+              carries a sentence rather than a figure. Left on the five-column
+              geometry it inherited a 42mm first column and an 11mm fourth,
+              so the explanation — the only part a reader needs — was squeezed
+              into the narrowest column on the card. */
+           + '.fortab th:nth-child(1),.fortab td:nth-child(1){ width:34mm; }\n'
+           + '.fortab th:nth-child(2),.fortab td:nth-child(2){ width:18mm; text-align:left; }\n'
+           + '.fortab th:nth-child(3),.fortab td:nth-child(3){ width:16mm; text-align:right; }\n'
+           + '.fortab th:nth-child(4),.fortab td:nth-child(4){ width:auto; text-align:left; }\n'
+           + '.fortab td:nth-child(5),.fortab th:nth-child(5){ display:none; }\n'
+           /* Four numeric columns. On the pillar geometry the points column
+              inherited 11mm and wrapped every figure onto two lines, which is
+              how nine rows of arithmetic came to fill a page. */
+           + '.buildtab th:nth-child(1),.buildtab td:nth-child(1){ width:auto; }\n'
+           + '.buildtab th:nth-child(2),.buildtab td:nth-child(2){ width:26mm; text-align:right; }\n'
+           + '.buildtab th:nth-child(3),.buildtab td:nth-child(3){ width:26mm; text-align:right; }\n'
+           + '.buildtab th:nth-child(4),.buildtab td:nth-child(4){ width:26mm; text-align:right; }\n'
+           + '.buildtab td:nth-child(5),.buildtab th:nth-child(5){ display:none; }\n'
            + '.scbar{ display:block; height:2.6mm; background:#EEF1F5; border-radius:1.3mm;'
            + ' overflow:hidden; margin-top:.6mm; }\n'
            + '.scbar i{ display:block; height:100%; border-radius:0 1.3mm 1.3mm 0; }\n'
            + '\n.sc-blk{break-inside:avoid}\n.sc-blk table{margin-bottom:0}\n'
-           + '.sc-blk .sec{margin:6mm 0 2.5mm}\n.sc-blk .bar{margin:0}\n'
-           + '.sc-blk td,.sc-blk th{padding-top:2.3mm;padding-bottom:2.3mm}\n'
+           /* Same one body size as every other document. The density steps
+              below still step down from here when a card will not otherwise
+              fit, so nothing that used to fit stops fitting. */
+           + '.sc-blk, .sc-blk td, .sc-blk th, .sc-blk .note, .sc-blk p, .sc-blk li'
+           + '{font-size:var(--body);line-height:var(--bodyline)}\n'
+           /* Sixty-six rows of table carry the card. Two millimetres of
+              padding on each is four pages of paper, so the row rhythm is
+              set once, here, tight enough that eight dimensions fit in six
+              pages at the one body size the rest of the set uses. */
+           + '.sc-blk .sec{margin:3.6mm 0 2mm}\n.sc-blk .bar{margin:0}\n'
+           + '.sc-blk td,.sc-blk th{padding-top:1.5mm;padding-bottom:1.5mm}\n'
+           + '.sc-blk p.mut{margin:0 0 1.5mm}\n'
            + '.sc-blk .ti{font-size:12.8pt}\n'
            + 'body.gu .sc-blk td,body.gu .sc-blk th{padding-top:1.9mm;padding-bottom:1.9mm}\n'
            /* The card is contractually two pages. Rather than spilling onto a
@@ -4083,7 +4151,86 @@ function buildScorecard(p, lang){
     /* Blocks are remembered in document order so each density attempt starts
        from the same layout instead of compounding the previous one. */
     + 'var ORDER=[].slice.call(boxes[0].querySelectorAll(".sc-blk"));'
-    + 'function reset(){ ORDER.forEach(function(el){ boxes[0].appendChild(el); }); }'
+    /* A density retry starts from the whole card. A continuation holds real
+       rows, so it has to be poured back into the block it came from before it
+       is thrown away — dropping it took thirty rows of scoring off the card
+       and left four dimensions showing a handful of components each. */
+    + 'function reset(){'
+      /* Reverse document order: a continuation can itself have been
+         divided, and pouring the first one home before the second
+         destroys the block the second was waiting to pour into. */
+      + '[].slice.call(document.querySelectorAll(".sc-blk[data-cont]")).reverse().forEach(function(c){'
+        + 'var src=document.querySelector(".sc-blk[data-cutid=\\""+c.getAttribute("data-cont")+"\\"]");'
+        + 'var home=src && src.querySelector("tbody");'
+        + 'var away=c.querySelector("tbody");'
+        + 'if(home && away){ while(away.rows.length) home.appendChild(away.rows[0]); }'
+        + 'if(src) src.removeAttribute("data-cutid");'
+        + 'if(c.parentNode) c.parentNode.removeChild(c); });'
+      + 'ORDER.forEach(function(el){'
+        + 'var t=el.querySelector("table");'
+        + 'if(t){ var og=t.querySelector("colgroup");'
+          + 'if(og && og.parentNode===t) t.removeChild(og); t.style.tableLayout=""; }'
+        + 'boxes[0].appendChild(el); });'
+    + '}'
+    /* Continue a dimension across a page break instead of pushing the whole
+       block forward. A block is one heading and one long table, so a card of
+       eight of them packed whole leaves a third of every page empty and runs
+       to seven pages. The heading stays with at least two of its rows — a
+       heading standing alone over a page break is the one thing worth wasting
+       paper to avoid — and the rest continues at the top of the next page
+       under the same geometry. */
+    + 'var SPLIT=0;'
+    + 'function colPin(tbl){'
+      + 'var hr=tbl.rows && tbl.rows[0]; if(!hr) return null;'
+      + 'var tw=tbl.getBoundingClientRect().width || 1, ws=[], ci=0;'
+      + 'for(ci=0;ci<hr.cells.length;ci++)'
+        + 'ws.push(hr.cells[ci].getBoundingClientRect().width / tw * 100);'
+      + 'return ws;'
+    + '}'
+    + 'function applyPin(tbl, ws){'
+      + 'if(!tbl || !ws || !ws.length) return;'
+      + 'var og=tbl.querySelector("colgroup");'
+      + 'if(og && og.parentNode===tbl) tbl.removeChild(og);'
+      + 'var cg=document.createElement("colgroup");'
+      + 'ws.forEach(function(w){ var c=document.createElement("col");'
+        + 'c.style.width=w.toFixed(3)+"%"; cg.appendChild(c); });'
+      + 'tbl.insertBefore(cg, tbl.firstChild); tbl.style.tableLayout="fixed";'
+    + '}'
+    + 'function scSplit(blk, i, A){'
+      + 'if(!blk || !boxes[i] || !boxes[i+1]) return false;'
+      + 'var tbl=blk.querySelector("table"); if(!tbl) return false;'
+      + 'var bodies=tbl.tBodies; if(!bodies || !bodies.length) return false;'
+      + 'var body=bodies[bodies.length-1];'
+      /* The first half carries the heading and must keep two rows under
+         it; a continuation carries no heading, so one row is a whole
+         thing to read and insisting on two leaves pages a quarter
+         full. */
+      + 'var minLeft = blk.querySelector(".sec") ? 2 : 1;'
+      + 'if(body.rows.length <= minLeft + 1) return false;'
+      
+      + 'var carry=blk.cloneNode(false); carry.removeAttribute("id");'
+      + 'var sid="sc"+(SPLIT++);'
+      + 'blk.setAttribute("data-cutid", sid); carry.setAttribute("data-cont", sid);'
+      + 'var t2=tbl.cloneNode(false);'
+      + 'var th=tbl.tHead; if(th) t2.appendChild(th.cloneNode(true));'
+      + 'var b2=document.createElement("tbody");'
+      + 't2.appendChild(b2); carry.appendChild(t2);'
+      + 'var g=0;'
+      + 'boxes[i+1].insertBefore(carry, boxes[i+1].firstChild);'
+      + 'while(boxes[i].scrollHeight>A && body.rows.length>minLeft && g++<200){'
+        + 'b2.insertBefore(body.rows[body.rows.length-1], b2.firstChild);'
+      + '}'
+      + 'if(!b2.rows.length || boxes[i].scrollHeight>A){'
+        + 'while(b2.rows.length) body.appendChild(b2.rows[0]);'
+        + 'carry.parentNode.removeChild(carry);'
+        + 'return false;'
+      + '}'
+      /* No column pinning here: .sctab already fixes every column in
+         millimetres, so both halves inherit identical geometry. Pinning
+         measured percentages over the top of that squeezed the evidence
+         column and doubled the height of every row it touched. */
+      + 'return true;'
+    + '}'
     /* Two passes. The first pushes whatever overflows onto the next page, which
        is all this used to do — and it is why pages ended up mostly blank: once
        a block moved forward, the page it left kept the hole, and so did every
@@ -4117,10 +4264,19 @@ function buildScorecard(p, lang){
           + '}'
         + '}'
       + '}'
+      + 'for(var round=0;round<3;round++){'
       + 'for(var i=0;i<ps.length-1;i++){'
         + 'var A=avail(ps[i]), guard=0;'
         + 'while(boxes[i].scrollHeight>A && guard++<40){'
           + 'var kids=boxes[i].querySelectorAll(".sc-blk");'
+          /* Divide the last block only when moving it away whole would leave
+             a real hole. Splitting whenever anything overflowed fragmented
+             every dimension in the card and took it from seven pages to ten. */
+          + 'if(kids.length){'
+            + 'var lastK=kids[kids.length-1];'
+            + 'var freeK=A-(boxes[i].scrollHeight-lastK.offsetHeight);'
+            + 'if(freeK>=240 && scSplit(lastK, i, A)) continue;'
+          + '}'
           /* Never push the last block off a page. The guard only protected
              page one, so every other page emptied itself into the next and the
              whole card cascaded onto the final shell — one block stranded at
@@ -4136,10 +4292,14 @@ function buildScorecard(p, lang){
           + 'if(!nxt) break;'
           + 'boxes[p].appendChild(nxt);'
           + 'if(boxes[p].scrollHeight>Ap){'
-            /* it did not fit after all: put it straight back and stop */
+            /* It did not fit whole. Leave its heading and as many rows as the
+               page can carry, and continue the rest overleaf; only if it will
+               not divide does it go back. */
+            + 'if(scSplit(nxt, p, Ap)) break;'
             + 'boxes[p+1].insertBefore(nxt, boxes[p+1].firstChild); break;'
           + '}'
         + '}'
+      + '}'
       + '}'
       + 'var last=boxes[boxes.length-1];'
       + 'return last.scrollHeight<=avail(ps[ps.length-1]);'
@@ -4149,8 +4309,16 @@ function buildScorecard(p, lang){
       + 'var bx=el.querySelector(".sc-main")||el.querySelector(".sc-spill");'
       + 'return { i:ix, has:!!bx, blocks:bx?bx.querySelectorAll(".sc-blk").length:-1,'
         + ' scroll:bx?bx.scrollHeight:-1, avail:Math.round(avail(el)) }; });'
-    + 'for(var d=1; d<=3 && !fits; d++){'
-      + 'document.body.setAttribute("data-dense", d); reset(); fits=pack();'
+    /* The card used to be contractually two pages, and when it would not fit
+       the type was stepped down until it did. It is now six or seven, it packs
+       by dividing a dimension across a break rather than by shrinking, and the
+       whole document set reads at one size — so stepping the type down here
+       would make this the only document in the set that does not. Pages are
+       cheaper than a second type size. */
+    + 'if(!fits){ var gz=0;'
+      + 'while(boxes[boxes.length-1].scrollHeight>avail(ps[ps.length-1]) && gz++<12){'
+        + 'if(!addPage()) break; pack();'
+      + '}'
     + '}'
     /* drop the shells nothing landed on */
     + 'for(var j=ps.length-1;j>=1;j--){'
@@ -4713,21 +4881,30 @@ function packDoc(p, lang, cfg){
 
   var CSS2 = (cfg.extraCss || '') + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
     + '.ir-blk:last-child{ margin-bottom:0; }\n'
-    + '.ir-blk table{ margin-bottom:1.5mm; font-size:10.7pt; }\n'
-    + '.ir-blk td,.ir-blk th{ padding-top:2.1mm; padding-bottom:2.1mm; }\n'
+    + '.ir-blk table{ margin-bottom:1.5mm; font-size:var(--body); }\n'
+    + '.ir-blk td{ font-size:var(--body); line-height:var(--bodyline); }\n'
+    + '.ir-blk td,.ir-blk th{ padding-top:1.7mm; padding-bottom:1.7mm; }\n'
     + 'body.gu .ir-blk td,body.gu .ir-blk th{ padding-top:1.45mm; padding-bottom:1.45mm; }\n'
     + '.ir-blk .sec{ margin:5mm 0 2.5mm; }\n'
     + '.ir-blk .ti{ font-size:14.0pt; }\n'
-    + '.ir-blk .note{ font-size:10.7pt; line-height:1.55; margin-top:2mm; }\n'
+    + '.ir-blk .note{ font-size:var(--body); line-height:var(--bodyline); margin-top:2mm; }\n'
+    /* Everything a section can put on the page, at one size. The sections were
+       written at different times and each set its own, which is why a table on
+       one page read smaller than the same table on the next. */
+    + '.ir-blk, .ir-blk p, .ir-blk li, .ir-blk .mut, .ir-blk .bar, .ir-blk .chbar,'
+      + ' .ir-blk .fig-t, .ir-blk .fig-s, .ir-blk .fig .fig-n, .ir-blk .fig-l,'
+      + ' .ir-blk .ir-score, .ir-blk .ir-score td, .ir-blk .sc2row'
+      + '{ font-size:var(--body); line-height:var(--bodyline); }\n'
+    + '.ir-blk .fig-s, .ir-blk .fig-l{ font-size:calc(var(--body) - 2.4pt); }\n'
     /* A long case runs to several paragraphs. Marking them as blocks the
        packer can divide is what stops one over-long box from being an
        indivisible slab that forces the whole document to be scaled. */
     + '.ir-blk .note p{ margin:0 0 1.8mm; }\n'
     + '.ir-blk .note p:last-child{ margin-bottom:0; }\n'
     + 'body.gu .ir-blk .note{ line-height:1.72; }\n'
-    + '.ir-blk .lead{ font-size:12.2pt; line-height:1.55; }\n'
+    + '.ir-blk .lead{ font-size:var(--body); line-height:var(--bodyline); }\n'
     + '.ir-ul{ margin:2mm 0 2.5mm 5mm; padding:0; }\n'
-    + '.ir-ul li{ margin:1.9mm 0; line-height:1.55; font-size:11.2pt; }\n'
+    + '.ir-ul li{ margin:1.6mm 0; line-height:var(--bodyline); font-size:var(--body); }\n'
     + 'body.gu .ir-ul li{ line-height:1.75; }\n'
     + '.ir-grp{ break-inside:avoid; margin:5mm 0 1mm; }\n'
     + '.ir-grp:first-child{ margin-top:0; }\n'
@@ -4860,18 +5037,41 @@ function packDoc(p, lang, cfg){
            heading standing over nothing, which is what emptied
            "Products and services" of its rows; two rows stay behind so
            the first half is a table and not a stub. */
+      /* Only go into a table when the block has nothing else to give. A
+         section built as heading + table + two figures + a note used to be
+         divided by table row alone, so the figures stayed welded to the
+         heading and the block overflowed its page however many rows were
+         carried away. Whole children come off the end first; the table is
+         continued by the row only once it is the last thing left. */
       + 'var tail=host.children[host.children.length-1], rows=null;'
-      + 'if(tail){'
-        + 'var tb=tail.tagName==="TABLE" ? tail : tail.querySelector("table");'
-        + 'if(tb){ var bodies=tb.tBodies; if(bodies && bodies.length && bodies[0].rows.length>=4)'
+      /* A table is a table however many colgroups and heads sit in front
+         of its body: divide it by the row, never by moving the whole body
+         away and leaving the header standing over nothing. */
+      + 'if(host.tagName==="TABLE"){'
+        + 'var bs0=host.tBodies;'
+        + 'if(bs0 && bs0.length && bs0[bs0.length-1].rows.length>=2) rows=bs0[bs0.length-1];'
+      + '}'
+      + 'else if(tail && host.children.length<=keep+1){'
+        /* pinCols puts a <colgroup> in front of the body, so a continuation
+           that is one table stops being a single-child chain and the descent
+           lands on the TABLE with two children. Recognise the body itself
+           here, or a re-pinned table can never be divided again. */
+        + 'var tb=tail.tagName==="TABLE" ? tail'
+          + ' : (tail.tagName==="TBODY" ? tail.parentNode : tail.querySelector("table"));'
+        + 'if(tb){ var bodies=tb.tBodies; if(bodies && bodies.length && bodies[0].rows.length>=2)'
           + 'rows=bodies[0]; }'
       + '}'
-      + 'if(rows){ host=rows; keep=2; }'
+      /* Two rows stay behind so the half left above is a table and not a
+         stub — but a continuation carries no header of its own, so one row
+         is a whole answer there. Insisting on two is what left a 1,186px
+         continuation undividable and sent the whole document to the scale
+         guard. */
+      + 'if(rows){ host=rows; keep=only.hasAttribute("data-cont") ? 1 : 2; }'
       + 'else if(host.children.length<=keep){'
         + 'var h2=host.children[host.children.length-1], d2=0;'
-        + 'while(h2 && h2.children.length && h2.children.length<4 && d2++<4)'
+        + 'while(h2 && h2.children.length && h2.children.length<2 && d2++<4)'
           + 'h2=h2.children[h2.children.length-1];'
-        + 'if(!h2 || h2.children.length<4) return false;'
+        + 'if(!h2 || h2.children.length<2) return false;'
         + 'host=h2; keep=1;'
       + '}'
         /* Rebuild the ancestors so the continuation keeps its box, its colour
@@ -4900,7 +5100,12 @@ function packDoc(p, lang, cfg){
            produces one is put back and the block moves forward whole. */
       + 'var kept=only.querySelectorAll("table tr").length;'
       + 'var words=(only.innerText||"").trim().split(/\\s+/).length;'
-      + 'var thin=(hadRows>=2 && kept<2 ? words<25 : words<12);'
+      /* A continuation carries no heading and no table header, so one row
+         left on the page is a complete thing to read. Judging it by the
+         two-row rule meant for a first half is what reverted the Sources
+         cut and left the page fifteen pixels over. */
+      + 'var minKeep=only.hasAttribute("data-cont") ? 1 : 2;'
+      + 'var thin=(hadRows>=2 && kept<minKeep ? words<25 : words<12);'
       /* Moving whole children was not enough and it has taken the table
          with it. Continue the table by the row instead: the rows lead the
          continuation, so a note that followed the table still follows it
@@ -4914,7 +5119,7 @@ function packDoc(p, lang, cfg){
       + 'if(thin || boxes[i].scrollHeight>A){'
         + 'var cands=only.querySelectorAll("tbody,.grid4,.grid3,.grid2,ul,ol"), qi=0;'
         + 'for(qi=cands.length-1;qi>=0;qi--){'
-          + 'if(cands[qi].children.length>=4 && !cur.contains(cands[qi])){ pick=cands[qi]; break; } }'
+          + 'if(cands[qi].children.length>=2 && !cur.contains(cands[qi])){ pick=cands[qi]; break; } }'
         + 'if(pick){'
           /* measured before anything moves: once rows leave, the columns
              the measurement preserves have already changed */
@@ -4934,7 +5139,7 @@ function packDoc(p, lang, cfg){
       + 'while(boxes[i].scrollHeight>A-8 && pick.children.length>pmin && g8++<400){'
             + 'cRun.insertBefore(pick.children[pick.children.length-1], cRun.firstChild); }'
           + 'kept=only.querySelectorAll("table tr").length;'
-          + 'thin=(hadRows>=2 ? kept<2'
+          + 'thin=(hadRows>=2 ? kept<minKeep'
             + ' : (only.innerText||"").trim().split(/\\s+/).length<12);'
         + '}'
       + '}'
@@ -4981,29 +5186,35 @@ function packDoc(p, lang, cfg){
            when the space that would go to waste is worth a division, and fall
            back to moving it whole when it will not divide. */
         + 'var free=A-(boxes[i].scrollHeight-last.offsetHeight);'
-        + 'if(free>=170 && cut(last, i, A)) continue;'
+        + 'if(free>=110 && cut(last, i, A)) continue;'
         + 'boxes[i+1].insertBefore(last, boxes[i+1].firstChild);'
       + '}'
       + 'return boxes[i].scrollHeight<=A;'
     + '}'
-    + 'for(var i=0;i<ps.length-1;i++) drain(i);'
+    /* One sweep: push every page's overflow forward, then grow the document
+       if the last page still has more than it can hold. */
+    + 'function sweep(){'
+      + 'for(var i=0;i<ps.length-1;i++) drain(i);'
+      + 'var grow=0;'
+      + 'while(boxes[boxes.length-1].scrollHeight>avail(ps[ps.length-1]) && grow++<40){'
+        + 'var lastPg=ps[ps.length-1];'
+        + 'var np=lastPg.cloneNode(true);'
+        + 'var nb=np.querySelector(".ir-box");'
+        + 'if(!nb) break;'
+        + 'while(nb.firstChild) nb.removeChild(nb.firstChild);'
+        + 'lastPg.parentNode.insertBefore(np, lastPg.nextSibling);'
+        + 'ps.push(np); boxes.push(nb);'
+        + 'if(!drain(ps.length-2)) break;'
+      + '}'
+    + '}'
+    + 'sweep();'
     /* Grow the document rather than squeeze it. The shells are written before
        anything is measured, so a payload with more prose than usual can fill
        every one of them and still have blocks left over — and `.page` is
        overflow:hidden, which means the surplus does not merely look bad, it is
        gone from the PDF without a trace. A fresh shell is cloned from the last
        one and the overflow drains into it, as many times as it takes. */
-    + 'var grow=0;'
-    + 'while(boxes[boxes.length-1].scrollHeight>avail(ps[ps.length-1]) && grow++<40){'
-      + 'var lastPg=ps[ps.length-1];'
-      + 'var np=lastPg.cloneNode(true);'
-      + 'var nb=np.querySelector(".ir-box");'
-      + 'if(!nb) break;'
-      + 'while(nb.firstChild) nb.removeChild(nb.firstChild);'
-      + 'lastPg.parentNode.insertBefore(np, lastPg.nextSibling);'
-      + 'ps.push(np); boxes.push(nb);'
-      + 'if(!drain(ps.length-2)) break;'
-    + '}'
+
     /* A settling pass. Dividing a block changes the width its table columns
        get, so the half left behind can measure shorter after the fact than
        it did at the moment of the cut — which is how a two-line remnant
@@ -5016,7 +5227,12 @@ function packDoc(p, lang, cfg){
        because the block below it was measured before the tables above
        re-laid themselves out — kept that room. Pull the next opener up,
        whole if it fits and divided if it does not. */
-    + 'for(var round=0;round<3;round++)'
+    /* Settling and sweeping are two halves of the same job and each creates
+       work for the other: pulling a block up leaves a continuation that may
+       itself overrun, and pushing overflow forward leaves room above. Running
+       settle once and stopping is what left four pages overflowing into the
+       scale guard, which then shrank the whole document to 84 per cent. */
+    + 'for(var round=0;round<4;round++){'
     + 'for(var s2=0;s2<boxes.length-1;s2++){'
       + 'var Av2=avail(ps[s2]), g7=0;'
       + 'while(boxes[s2+1].firstElementChild && g7++<20){'
@@ -5026,6 +5242,8 @@ function packDoc(p, lang, cfg){
         + 'if(cut(nb2, s2, Av2)) break;'
         + 'boxes[s2+1].insertBefore(nb2, boxes[s2+1].firstChild); break;'
       + '}'
+    + '}'
+    + 'sweep();'
     + '}'
     /* A table divided across a page break lays each half out on its own, so
        the halves choose different column widths from their own contents:
@@ -5099,7 +5317,12 @@ function packDoc(p, lang, cfg){
        its own contents, so the five rows that carried over used to choose
        different columns from the three left behind, and the section read as
        two tables that had drifted apart. */
-    + 'document.querySelectorAll("[data-cont]").forEach(function(c){'
+    /* Pinning a divided table's columns changes how its rows wrap, so the
+       halves settle to heights nobody measured. Pin, sweep the new heights
+       forward, then pin again — otherwise a page ends fifteen pixels over
+       and the scale guard shrinks the whole document for it. */
+    + 'function pinAll(){'
+      + 'document.querySelectorAll("[data-cont]").forEach(function(c){'
       + 'var cid=c.getAttribute("data-cont");'
       + 'var first=document.querySelector("[data-cutid=\\""+cid+"\\"]");'
       + 'if(!first) return;'
@@ -5113,7 +5336,9 @@ function packDoc(p, lang, cfg){
       + 'var ws=stored ? stored.split(",").map(Number) : colWidths(t1);'
       + 'if(!ws || !ws.length) return;'
       + 'pinCols(t1, ws); pinCols(t2, ws);'
-    + '});'
+      + '});'
+    + '}'
+    + 'for(var pz=0;pz<4;pz++){ pinAll(); sweep(); }'
     + 'for(var j=ps.length-1;j>=0;j--){'
       + 'if(!boxes[j].children.length) ps[j].parentNode.removeChild(ps[j]);'
     + '}'
@@ -5153,19 +5378,33 @@ function packDoc(p, lang, cfg){
     + 'if(toc0){ var tb=toc0.parentNode;'
       + 'while(tb && tb.className.indexOf("body")<0) tb=tb.parentNode;'
       + 'if(tb && tb.scrollHeight>tb.clientHeight+4) toc0.className+=" tight"; }'
-    + 'var need=1;'
+    /* One factor for the whole document is right when several pages are tight:
+       a report whose type steps down and up again reads as two documents. It
+       is wrong when a single block — one table row of prose that is taller
+       than a page and cannot be divided anywhere — is the only thing over the
+       line, because then thirty-five pages are shrunk to rescue one. Up to two
+       outliers are scaled where they sit; beyond that the old single factor
+       still applies. */
+    + 'var tight=[];'
     + 'live.forEach(function(pg){'
       + 'var bd=pg.querySelector(".body"); if(!bd) return;'
       + 'var box=target(pg); if(!box) return;'
       + 'var A=bd.clientHeight-2;'
       + 'if(box.scrollHeight<=A) return;'
-      + 'need=Math.min(need, A/box.scrollHeight);'
+      + 'tight.push({ pg:pg, z:A/box.scrollHeight });'
     + '});'
-    + 'if(need<1){'
-      + 'var z=Math.max(0.35, Math.floor(need*1000)/1000);'
-      + 'live.forEach(function(pg){'
-        + 'var bd=pg.querySelector(".body"); if(!bd) return;'
-        + 'var box=target(pg); if(!box) return;'
+    + 'if(tight.length){'
+      + 'var zMin=1, t2=0;'
+      + 'for(t2=0;t2<tight.length;t2++) zMin=Math.min(zMin, tight[t2].z);'
+      + 'var wide=tight.length>2;'
+      + 'var plan=[];'
+      + 'if(wide){ live.forEach(function(pg){ plan.push({ pg:pg, z:zMin }); }); }'
+      + 'else { tight.forEach(function(t){ plan.push({ pg:t.pg, z:t.z }); }); }'
+      + 'plan.forEach(function(t){'
+        + 'var z=Math.max(0.35, Math.floor(t.z*1000)/1000);'
+        + 'if(z>=0.999) return;'
+        + 'var bd=t.pg.querySelector(".body"); if(!bd) return;'
+        + 'var box=target(t.pg); if(!box) return;'
         + 'var A=bd.clientHeight-2;'
         + 'var wrap=document.createElement("div");'
         + 'wrap.style.cssText="height:"+A+"px;overflow:hidden";'

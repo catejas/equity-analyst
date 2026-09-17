@@ -107,8 +107,21 @@
     return { g: g, y: y, plotW: plotW, plotH: plotH, lo: lo, hi: hi };
   }
 
+  /* Every figure is drawn to its own viewBox, then displayed at a size the
+     page can carry. A chart is an aid to a paragraph, not a poster: capping
+     the rendered height at FIG_CAP and letting the width follow the aspect
+     ratio keeps a figure to roughly a fifth of the text column on every page,
+     and keeps two figures in one section from filling the page between them.
+     Small inline marks — sparklines — are left alone. */
+  var FIG_CAP = 165;
   function svg(w, h, inner) {
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" preserveAspectRatio="xMidYMid meet"'
+    var st = '';
+    if (h >= 40) {
+      st = ' style="width:100%;max-width:' + Math.round(w * FIG_CAP / h)
+         + 'px;max-height:' + FIG_CAP + 'px;margin:0 auto;"';
+    }
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%"' + st
+      + ' preserveAspectRatio="xMidYMid meet"'
       + ' xmlns="http://www.w3.org/2000/svg" role="img">' + inner + '</svg>';
   }
 
@@ -597,6 +610,7 @@
 
   /* The stylesheet the figures need, appended to the document CSS. */
   var CSS = `
+:root{ --sans:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .fig{margin:2.5mm 0 3.5mm;break-inside:avoid;page-break-inside:avoid;}
 .fig-t{font:600 9.6pt/1.35 var(--sans);color:var(--ink2);margin-bottom:1.2mm;}
 .fig-t b{color:var(--navy);}
@@ -609,6 +623,7 @@
 .fig-l i{width:2.4mm;height:2.4mm;border-radius:0.5mm;display:inline-block;flex:0 0 auto;}
 .fig-row{display:flex;align-items:center;gap:3mm;}
 .fig svg{display:block;}
+.fig-b>svg{display:block;}
 .fig text.ax{font:400 7.8pt var(--sans);fill:var(--ink3);}
 .fig text.barv{font:700 9.6pt var(--sans);fill:var(--ink);}
 .fig .fig-n{font:400 8.6pt var(--sans);color:var(--ink2);margin-top:1.6mm;line-height:1.45;}
