@@ -1337,3 +1337,28 @@ in any of the five documents.
 
   company 17 pages, 82% · sector 21, 83% · executive summary 6, 75%
   company summary 5, 63% · score card 4, 80%
+
+## v4.3.3 — 17-09-2026
+A block that fits a page is moved, not divided.
+
+"How The Overall Score Is Built" was being split across the page break: two
+dimensions, then the page-foot note, then the remaining six overleaf. The
+arithmetic a reader is meant to follow was interrupted by a disclaimer.
+
+The splitter divided any block that would not fit the space left on the current
+page, without first asking whether it would fit a page of its own. That table is
+ten rows and 370px against a 1012px page. It now moves whole; dividing is kept
+for blocks that cannot fit anywhere intact.
+
+Verified: no block on the card is split across a page.
+
+  page 1  Business Quality
+  page 2  Growth And Multibagger · Valuation Expected Return
+  page 3  Risk And Quality Control · Overall Dimensions · Forensic Quality
+  page 4  How The Overall Score Is Built
+
+Fill falls from 80% to 77% across the four pages, which is the cost of keeping
+the section whole and worth paying.
+
+`tests/sccheck.mjs` lists the blocks on each page and fails if any carries a
+continuation marker.

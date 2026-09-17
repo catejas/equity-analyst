@@ -4206,6 +4206,13 @@ function buildScorecard(p, lang){
     + '}'
     + 'function scSplit(blk, i, A){'
       + 'if(!blk || !boxes[i] || !boxes[i+1]) return false;'
+      /* A block short enough to sit on a page of its own is moved, never
+         divided. The overall-score table is ten rows and 370px on a 1012px
+         page; splitting it put two dimensions above the page-foot note and the
+         rest overleaf, so the arithmetic a reader is meant to follow was
+         interrupted by a disclaimer. Dividing is for blocks that cannot fit
+         anywhere whole. */
+      + 'if(blk.getBoundingClientRect().height <= A) return false;'
       + 'var tbl=blk.querySelector("table"); if(!tbl) return false;'
       + 'var bodies=tbl.tBodies; if(!bodies || !bodies.length) return false;'
       + 'var body=bodies[bodies.length-1];'
