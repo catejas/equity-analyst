@@ -290,6 +290,52 @@ convertibles, and state zero if there genuinely are none. Omitting the overhang
 is the commonest error on Indian small caps and it moves per-share value.
 
 ═══════════════════════════════════════════════════════════════════
+4b. THE FINANCIAL SERIES — NOT OPTIONAL
+═══════════════════════════════════════════════════════════════════
+
+The application computes the sector's own metrics — EBITDA margin, ROCE, ROIC,
+free cash flow, the cash conversion cycle, receivable days, net debt to EBITDA,
+interest cover, accruals and cash conversion — from "financials.annual". It
+computes nothing it was not given, and prints "missing input" by name for every
+gap, so a series carrying only a revenue line produces a page of blanks where
+the financial section should be. Fill every field listed in the schema for AT
+LEAST THE LAST TWO FULL YEARS, on ONE basis, stated on every row.
+
+These figures are published. They are not a matter of judgement and there is no
+acceptable reason to leave them null without having looked. Where to find them,
+in order:
+
+  1. The annual report itself. Search "<company>" annual report FY26 filetype:pdf
+     and read the statement of profit and loss, the balance sheet and the cash
+     flow statement. Every field above is a line on one of those three.
+  2. The exchange filing of the audited results — site:nseindia.com or
+     site:bseindia.com "<company>" financial results — which carries revenue,
+     EBITDA, depreciation, finance cost, PBT, tax and PAT for the year and the
+     quarter, in the standard LODR format.
+  3. The aggregators, which transcribe the same filing and are quickest to read:
+     Screener ("<company>" screener.in) gives the P&L, balance sheet, cash flow
+     and the ratio strip in one page; Trendlyne, Tijori, Moneycontrol and
+     MarketScreener carry the same series. Read the balance sheet page for
+     borrowings, equity, cash, receivables, inventory and payables — these are
+     the fields most often skipped, and ROCE and ROIC cannot be computed
+     without total debt and shareholders' equity.
+  4. The credit rating rationale (CRISIL, ICRA, CARE, India Ratings, Brickwork,
+     Acuité), which states revenue, EBITDA, PAT, net worth, gearing and
+     coverage for two or three years in a single table.
+  5. The investor presentation and the earnings call deck.
+
+If a figure still cannot be found after all five, write null for that one field
+and say in researchNotes which sources you checked. Do not leave the whole
+series short because the first source did not carry it.
+
+Two warnings. Never mix bases: a consolidated revenue with a standalone profit
+produces a margin that is not a margin. And where the forensic block and the
+financial series both carry a figure for the same year, they must agree — the
+application reads the forensic line items as a fallback for anything the series
+omits, so a contradiction between them silently changes which number a metric
+was computed from.
+
+═══════════════════════════════════════════════════════════════════
 5. FORENSIC INPUTS
 ═══════════════════════════════════════════════════════════════════
 
@@ -606,8 +652,16 @@ including pledged shares.
       "baseRates": { "claim": "the growth or margin assumption being made",
         "historicalShare": 0.0, "source": "how often companies in this situation sustained it" },
 
-      "financials": { "annual": [ { "period": "FY25", "basis": "consolidated", "revenue": 0 } ],
-        "quarterly": [ { "period": "Q1FY26", "basis": "consolidated" } ] },
+      "financials": {
+        "annual": [ { "period": "FY25", "basis": "consolidated", "revenue": 0,
+          "ebitda": 0, "ebit": 0, "depreciation": 0, "interestExpense": 0,
+          "profitBeforeTax": 0, "tax": 0, "netProfit": 0,
+          "cashFromOperations": 0, "capitalExpenditure": 0,
+          "totalAssets": 0, "shareholdersEquity": 0, "totalDebt": 0,
+          "cashAndEquivalents": 0, "receivables": 0, "inventory": 0,
+          "payables": 0, "costOfGoodsSold": 0 } ],
+        "quarterly": [ { "period": "Q1FY26", "basis": "consolidated", "revenue": 0,
+          "ebitda": 0, "netProfit": 0 } ] },
 
   "priceHistory": {
     "spacing": "weekly",
@@ -704,6 +758,8 @@ something in it:
   forensic         two consecutive years of line items, and ten years of
                    profit against operating cash
   litigation       every register, with the clean ones recorded as clean
+  financials       two full years of the annual series, every field named in
+                   the schema, one basis, so the metrics section computes
   model            segment drivers, costs, capex, working capital, debt, shares
   valuation        price with its date, discount rate, and three scenarios
   market           consensus, shareholding by quarter, liquidity, price history
@@ -723,6 +779,12 @@ where you looked — but do not return the block empty because it was quicker.
 The same goes for the price series and the ten-year history: search the
 exchange, the annual report, the screener sites and the company's own investor
 page before concluding that a number does not exist.
+
+NEITHER IS THE FINANCIAL SERIES. Section 4b lists five places that carry every
+field of it, and a run that returns "financials" as a revenue line has not been
+to any of them. The metrics section is where a reader checks whether the story
+is in the numbers; returning it empty removes the only page in the report that
+can contradict the narrative.
 
 A COMPANY RUN STILL NEEDS ITS BACKDROP. Two pages of it: where the industry
 sits in its cycle, the policy and regulation that touch this company with the

@@ -126,8 +126,58 @@ function runForensic(c) {
 }
 
 /** Sector metric set, computed only where the payload supplied the inputs. */
+/* The forensic block already carries most of a P&L and a balance sheet, and a
+   payload that fills it but leaves `financials.annual` as a revenue line used
+   to print six "missing input" rows in the metrics section while the numbers
+   sat one key away. Anything the financial series does not state is taken from
+   the forensic line items for the same year, which are on the same basis by
+   contract. Nothing here invents a figure: every fallback is a field the
+   payload supplied, or plain arithmetic over two of them. */
+function financialsFor(c) {
+  const series = c.financials?.annual;
+  const stated = (Array.isArray(series) && series.length ? series[series.length - 1]
+    : (c.financials && !Array.isArray(c.financials) ? c.financials : null)) || {};
+  const fx = c.forensic || {};
+  const cur = fx.current || {};
+  const inp = fx.inputs || {};
+  const dec = Array.isArray(fx.decade) && fx.decade.length ? fx.decade[fx.decade.length - 1] : {};
+  const num = (...vals) => {
+    for (const v of vals) if (typeof v === 'number' && isFinite(v)) return v;
+    return undefined;
+  };
+  const ebit = num(stated.ebit, cur.ebit);
+  const dep = num(stated.depreciation, cur.depreciation, dec.depreciation);
+  const tax = num(stated.tax, inp.tax);
+  const pbt = num(stated.profitBeforeTax, inp.profitBeforeTax);
+  return {
+    ...stated,
+    basis: stated.basis ?? fx.basis ?? null,
+    period: stated.period ?? dec.period ?? null,
+    revenue: num(stated.revenue, cur.revenue),
+    netProfit: num(stated.netProfit, cur.netProfit, inp.standaloneProfit),
+    ebit,
+    /* EBITDA is EBIT before depreciation. Two supplied numbers, one addition. */
+    ebitda: num(stated.ebitda, (ebit !== undefined && dep !== undefined) ? ebit + dep : undefined),
+    depreciation: dep,
+    totalAssets: num(stated.totalAssets, cur.totalAssets),
+    shareholdersEquity: num(stated.shareholdersEquity, inp.bookEquity, inp.netWorth),
+    totalDebt: num(stated.totalDebt, inp.totalDebt, cur.longTermDebt),
+    cashAndEquivalents: num(stated.cashAndEquivalents, inp.cashAndEquivalents),
+    cashFromOperations: num(stated.cashFromOperations, cur.cashFromOperations),
+    capitalExpenditure: num(stated.capitalExpenditure, stated.capex, dec.capex),
+    interestExpense: num(stated.interestExpense, inp.interestExpense),
+    receivables: num(stated.receivables, cur.receivables),
+    inventory: num(stated.inventory, cur.inventory),
+    payables: num(stated.payables, inp.payables),
+    costOfGoodsSold: num(stated.costOfGoodsSold, inp.purchases),
+    taxRate: num(stated.taxRate,
+      (tax !== undefined && pbt !== undefined && pbt !== 0) ? tax / pbt : undefined,
+      inp.statutoryRate),
+  };
+}
+
 function computeMetrics(c) {
-  const f = c.financials?.annual?.[c.financials.annual.length - 1] || c.financials;
+  const f = financialsFor(c);
   if (!f || typeof f !== 'object' || Array.isArray(f)) return null;
   const sector = c.sector && metrics.SECTOR_METRICS[c.sector] ? c.sector : null;
   const wanted = sector ? metrics.SECTOR_METRICS[sector] : metrics.SECTOR_METRICS.manufacturing;
