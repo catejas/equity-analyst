@@ -666,6 +666,11 @@ body.gu .eyebrow{ letter-spacing:.06em; }
 .toc-t{ font-size:6.2pt; }
 .toc-d{ flex:1; border-bottom:.4pt dotted var(--rule); transform:translateY(-1mm); }
 .toc-p{ font-size:6.2pt; font-weight:600; color:var(--ink2); font-variant-numeric:tabular-nums; min-width:8mm; text-align:right; }
+.srctab th:nth-child(1),.srctab td:nth-child(1){ width:auto; }
+.srctab th:nth-child(2),.srctab td:nth-child(2){ width:32mm; }
+.srctab th:nth-child(3),.srctab td:nth-child(3){ width:12mm; text-align:right; }
+.srctab th:nth-child(4),.srctab td:nth-child(4){ width:22mm; }
+.srctab th:nth-child(5),.srctab td:nth-child(5){ width:24mm; }
 table{ width:100%; border-collapse:collapse; font-size:7.4pt; }
 th{ text-align:left; font-size:6.2pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
     color:var(--ink3); padding:2mm; border-bottom:.9pt solid var(--navy); white-space:nowrap; }
@@ -2180,7 +2185,7 @@ function buildCompany(p, lang){
     out += S3('Sources')
       + tbl(['Source','Publisher','Tier','Date','Label'], arr(c.sources).map(function(x){
           return { cells:[e(S(x.title)), e(S(x.publisher)), '<span class="en">' + e(S(x.tier)) + '</span>',
-            e(S(x.date)), e(S(x.evidence))] }; }), { num:[2] })
+            e(S(x.date)), e(S(x.evidence))] }; }), { num:[2] , cls:'srctab' })
       + '<div class="mut" style="margin-top:1.5mm">Confidence: ' + e(S(c.confidence && c.confidence.label))
       + '.</div>';
   }
@@ -5607,7 +5612,7 @@ function buildSector(p, lang){
       out += S2((S(c.symbol)) + ' — sources')
         + tbl(['Source','Publisher','Tier','Date','Label'], arr(c.sources).map(function(x){
             return { cells:[e(S(x.title)), e(S(x.publisher)), '<span class="en">' + e(S(x.tier)) + '</span>',
-              e(S(x.date)), e(S(x.evidence))] }; }), { num:[2] })
+              e(S(x.date)), e(S(x.evidence))] }; }), { num:[2] , cls:'srctab' })
         + '<div class="mut" style="margin-top:1.5mm">Confidence: '
           + e(S(c.confidence && c.confidence.label)) + '.</div>'
         + (arr(c.conflicts).length

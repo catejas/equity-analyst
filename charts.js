@@ -357,7 +357,7 @@
     rows.forEach(function (r, i) {
       var y = pad.t + i * rowH + rowH / 2;
       body += '<text x="' + (pad.l - 8) + '" y="' + (y + 3) + '" text-anchor="end" class="ax">'
-        + esc(r.label || '') + '</text>';
+        + esc(fitLabel(r.label || '', pad.l - 14, 8)) + '</text>';
       body += '<rect x="' + x(r.low).toFixed(1) + '" y="' + (y - 8) + '" width="'
         + Math.max(2, x(r.high) - x(r.low)).toFixed(1) + '" height="16" rx="2" fill="'
         + (r.color || C.teal) + '" opacity="0.85"/>';
@@ -391,7 +391,7 @@
       var max = isNum(r.max) ? r.max : 100;
       var pc = isNum(r.value) ? Math.max(0, Math.min(1, r.value / max)) : 0;
       body += '<text x="' + (pad.l - 8) + '" y="' + (y + 3) + '" text-anchor="end" class="ax">'
-        + esc(r.label || '') + '</text>';
+        + esc(fitLabel(r.label || '', pad.l - 14, 8)) + '</text>';
       body += '<rect x="' + pad.l + '" y="' + (y - 6) + '" width="' + plotW + '" height="12" fill="' + C.grid + '"/>';
       body += '<rect x="' + pad.l + '" y="' + (y - 6) + '" width="' + (plotW * pc).toFixed(1)
         + '" height="12" fill="' + scaleColour(pc * 100) + '"/>';
@@ -525,7 +525,7 @@
       var y = pad.t + i * 30 + 8;
       body += '<circle cx="' + pad.l + '" cy="' + y + '" r="4.5" fill="' + (it.color || C.teal) + '"/>';
       body += '<text x="' + (pad.l - 12) + '" y="' + (y + 3) + '" text-anchor="end" class="ax">'
-        + esc(it.when || '') + '</text>';
+        + esc(fitLabel(it.when || '', pad.l - 18, 8)) + '</text>';
       body += '<text x="' + (pad.l + 12) + '" y="' + (y + 3) + '" class="ax ink">' + esc(it.label) + '</text>';
     });
     return figure(opts.title, opts.source, svg(w, h, body));
@@ -545,7 +545,7 @@
       body += '<rect x="140" y="' + y + '" width="' + bw.toFixed(1) + '" height="' + (rowH - 10)
         + '" fill="' + (i === steps.length - 1 ? C.teal : C.navy2) + '" opacity="'
         + (0.45 + 0.55 * (i / Math.max(1, steps.length - 1))).toFixed(2) + '"/>';
-      body += '<text x="132" y="' + (y + rowH / 2 - 1) + '" text-anchor="end" class="ax">' + esc(s.label) + '</text>';
+      body += '<text x="132" y="' + (y + rowH / 2 - 1) + '" text-anchor="end" class="ax">' + esc(fitLabel(s.label, 126, 8)) + '</text>';
       body += '<text x="' + (146 + bw).toFixed(1) + '" y="' + (y + rowH / 2 - 1) + '" class="ax ink">'
         + esc(fmt(s.value, 0)) + '</text>';
     });
@@ -568,7 +568,7 @@
     rows.forEach(function (r, i) {
       var y = pad.t + i * 34;
       var up = r.right >= r.left;
-      body += '<text x="112" y="' + (y + 4) + '" text-anchor="end" class="ax">' + esc(r.label) + '</text>';
+      body += '<text x="112" y="' + (y + 4) + '" text-anchor="end" class="ax">' + esc(fitLabel(r.label, 106, 8)) + '</text>';
       body += '<line x1="120" y1="' + y + '" x2="340" y2="' + y + '" stroke="' + C.grid + '"/>';
       body += '<circle cx="120" cy="' + y + '" r="4" fill="' + C.ink3 + '"/>';
       body += '<circle cx="340" cy="' + y + '" r="4" fill="' + (up ? C.s5 : C.s1) + '"/>';

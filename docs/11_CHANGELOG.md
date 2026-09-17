@@ -1296,3 +1296,44 @@ the left edge. The company report, both summaries and the score card are clean.
 
 Tests: five documents rendered in Chromium, every cell and element checked
 against its container.
+
+## v4.3.1 — 17-09-2026
+There were no near-empty pages. The measurement was wrong.
+
+I reported company pages 3, 4 and 7 as 8–10% full and proposed fixing them.
+`tests/fill.mjs` took the tallest single child of the page body as the content
+height, rather than the extent of the content. A page carrying two charts and a
+dense text block therefore reported 10%, when page 3 holds 957px of content in
+1012px of page — 95% full, and a screenshot shows it full.
+
+The measurement now takes the distance from the first child's top to the last
+child's bottom. Real figures at this build:
+
+  company    17 pages, 83% average — every middle page 69–98%
+  sector     21 pages, 83%
+  executive summary 6 pages, 75% · company summary 5, 63% · score card 4, 80%
+
+The only pages under 45% are the contents page and the last page of each
+document, which is where a tail belongs.
+
+No layout code changed in this build. The packer was doing its job; I was
+reading it wrongly and nearly rewrote it on the strength of that.
+
+## v4.3.2 — 17-09-2026
+Nothing overflows anywhere now.
+
+- **The sector labels running off the left edge.** A right-anchored SVG label
+  draws leftwards from its x, and a long one simply keeps going: three catalyst
+  labels on one page ran 90, 59 and 333px past the paper. Every right-anchored
+  label in every chart is now cut to the room it has — five sites, not the one
+  I had found. The full text is in the table beneath each figure.
+- **The sources table had five equal columns** under fixed layout, so the last
+  one was narrower than the word inside it and FACT pushed 10px out of its own
+  cell on every source row. The table now has real widths: the title takes what
+  is left, and the four short columns take what they need.
+
+Verified in Chromium: not one cell and not one element overflows its container
+in any of the five documents.
+
+  company 17 pages, 82% · sector 21, 83% · executive summary 6, 75%
+  company summary 5, 63% · score card 4, 80%
