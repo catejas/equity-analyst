@@ -1269,3 +1269,30 @@ Page fill, measured in the browser rather than guessed:
 Note: the engine test suite was lost when the container reset and has not been
 re-run at this build; the browser suites and the five-document Chromium render
 all pass.
+
+## v4.3.0 — 17-09-2026
+Type set to the footer's size, as asked.
+
+The footer line — "Company Research Report · 17-09-2026 · 3 / 17" — measures
+7.4pt, and body text measured 13.2pt. The whole sheet is rescaled so body meets
+the footer: both now compute at 9.87px in Chromium. Nothing falls below 6.2pt,
+so the small print stays legible rather than scaling into nothing with the rest.
+
+Page counts fall accordingly, measured in the browser:
+  company 32 -> 17 · sector 42 -> 21 · executive summary 14 -> 6
+  company summary 9 -> 5 · score card 8 -> 4
+
+Overflow, found by checking every cell and element against its container rather
+than by eye:
+- **"Points" was 5px wider than its own column** on every scoring table, on
+  every page. The column is 14mm now and the label column gave up the two
+  millimetres.
+- **A chart label ran 65px past the edge of the paper.** SVG text neither wraps
+  nor shrinks — it simply keeps drawing. Labels are now cut to what their slot
+  holds, with the full text still in the table beneath the figure.
+
+Known and not fixed: three labels on one page of the sector report extend past
+the left edge. The company report, both summaries and the score card are clean.
+
+Tests: five documents rendered in Chromium, every cell and element checked
+against its container.

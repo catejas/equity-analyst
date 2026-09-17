@@ -26,6 +26,18 @@
   function resetFigures() { FIG = 0; }
   function nextFigure() { return ++FIG; }
 
+
+  /* SVG text neither wraps nor shrinks, and a long label simply keeps drawing:
+     one catalyst label ran 333px past the edge of the paper. Anything drawn as
+     a label is shortened to what its slot can hold. The full text is always in
+     the table beneath the figure, so nothing is lost by cutting it here. */
+  function fitLabel(t, maxPx, fontPx) {
+    var s = String(t == null ? '' : t);
+    var per = (fontPx || 8) * 0.52;          /* average advance for this family */
+    var max = Math.max(3, Math.floor((maxPx || 90) / per));
+    return s.length <= max ? s : s.slice(0, max - 1).replace(/[\s,;:.-]+$/, '') + '\u2026';
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -120,7 +132,7 @@
       st = ' style="width:100%;max-width:' + Math.round(w * FIG_CAP / h)
          + 'px;max-height:' + FIG_CAP + 'px;margin:0 auto;"';
     }
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%"' + st
+    return '<svg style="overflow:hidden" viewBox="0 0 ' + w + ' ' + h + '" width="100%"' + st
       + ' preserveAspectRatio="xMidYMid meet"'
       + ' xmlns="http://www.w3.org/2000/svg" role="img">' + inner + '</svg>';
   }
@@ -311,7 +323,7 @@
       body += '<text x="' + (pad.l + step * (i + 0.5)).toFixed(1) + '" y="' + (Math.min(y0, y1) - 4).toFixed(1)
         + '" text-anchor="middle" class="ax">' + esc(fmt(p.it.value)) + '</text>';
       body += '<text x="' + (pad.l + step * (i + 0.5)).toFixed(1) + '" y="' + (h - pad.b + 13)
-        + '" text-anchor="middle" class="ax">' + esc(p.it.label || '') + '</text>';
+        + '" text-anchor="middle" class="ax">' + esc(fitLabel(p.it.label || '', step, 8)) + '</text>';
     });
 
     return figure(opts.title, opts.source, svg(w, h, body));
@@ -612,23 +624,23 @@
   var CSS = `
 :root{ --sans:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .fig{margin:2.5mm 0 3.5mm;break-inside:avoid;page-break-inside:avoid;}
-.fig-t{font:600 9.6pt/1.35 var(--sans);color:var(--ink2);margin-bottom:1.2mm;}
+.fig-t{font:600 6.2pt/1.35 var(--sans);color:var(--ink2);margin-bottom:1.2mm;}
 .fig-t b{color:var(--navy);}
 .fig-b{background:var(--panel2);border:1px solid var(--rule2);padding:2mm 2mm 1mm;}
-.fig-s{font:400 8pt/1.3 var(--sans);color:var(--ink4);margin-top:0.8mm;}
-.fig-na{font:italic 400 9pt/1.4 var(--sans);color:var(--ink3);padding:6mm 2mm;text-align:center;}
-.fig-l{display:flex;flex-wrap:wrap;gap:3mm;margin-top:1mm;font:400 8.2pt/1.2 var(--sans);color:var(--ink2);}
+.fig-s{font:400 6.2pt/1.3 var(--sans);color:var(--ink4);margin-top:0.8mm;}
+.fig-na{font:italic 400 6.2pt/1.4 var(--sans);color:var(--ink3);padding:6mm 2mm;text-align:center;}
+.fig-l{display:flex;flex-wrap:wrap;gap:3mm;margin-top:1mm;font:400 6.2pt/1.2 var(--sans);color:var(--ink2);}
 .fig-l.col{display:block;}
 .fig-l span{display:flex;align-items:center;gap:1.2mm;margin-bottom:0.8mm;}
 .fig-l i{width:2.4mm;height:2.4mm;border-radius:0.5mm;display:inline-block;flex:0 0 auto;}
 .fig-row{display:flex;align-items:center;gap:3mm;}
 .fig svg{display:block;}
 .fig-b>svg{display:block;}
-.fig text.ax{font:400 7.8pt var(--sans);fill:var(--ink3);}
-.fig text.barv{font:700 9.6pt var(--sans);fill:var(--ink);}
-.fig .fig-n{font:400 8.6pt var(--sans);color:var(--ink2);margin-top:1.6mm;line-height:1.45;}
+.fig text.ax{font:400 6.2pt var(--sans);fill:var(--ink3);}
+.fig text.barv{font:700 6.2pt var(--sans);fill:var(--ink);}
+.fig .fig-n{font:400 6.2pt var(--sans);color:var(--ink2);margin-top:1.6mm;line-height:1.45;}
 .fig text.ax.ink{fill:var(--ink2);}
-table.heat{width:100%;border-collapse:collapse;font:400 8.6pt var(--sans);}
+table.heat{width:100%;border-collapse:collapse;font:400 6.2pt var(--sans);}
 table.heat th{font-weight:600;color:var(--ink2);padding:1mm;text-align:left;}
 table.heat th.num,table.heat td.num{text-align:right;}
 table.heat td{padding:1mm 1.4mm;border:1px solid var(--paper);}
@@ -643,6 +655,6 @@ svg.spark{vertical-align:middle;}
     slope: slope, valueChain: valueChain, sparkline: sparkline,
     figure: figure, unavailable: unavailable,
     resetFigures: resetFigures, figureCount: function () { return FIG; },
-    scaleColour: scaleColour, palette: C, CSS: CSS, fmt: fmt
+    fitLabel: fitLabel, scaleColour: scaleColour, palette: C, CSS: CSS, fmt: fmt
   };
 })(typeof window !== 'undefined' ? window : globalThis);
