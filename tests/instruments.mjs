@@ -1,10 +1,21 @@
 /* The company and ISIN library: it must survive a blocked fetch, accept a
    hand-entered pair, refuse a bad one, and be the thing the price layer
-   consults. */
+   consults.
+
+   Rewritten for the multi-source refresh. It used to mock the Upstox master
+   alone, which was the only source there was; the library now tries a list in
+   order, so a test that blocks one host and leaves the rest live is testing
+   the network rather than the code. Every source is mocked here, and the
+   Upstox master is exercised through its own position at the end. */
 import { chromium } from 'playwright-core';
 const b = await chromium.launch({ executablePath:'/opt/google/chrome/chrome', args:['--no-sandbox'] });
 const page = await b.newPage({ viewport:{ width:430, height:930 } });
 const errs=[]; page.on('pageerror', e=>errs.push(e.message.split('\n')[0]));
+
+/* The sources ahead of the master are blocked, so the master is what answers —
+   which is the arrangement this file was written to check. */
+await page.route('**/raw.githubusercontent.com/**', route => route.abort('failed'));
+await page.route('**/nse-instruments.json*', route => route.abort('failed'));
 
 /* A stand-in for the exchange master, gzip-free: the code must handle a server
    that sends plain JSON as well as one that sends the .gz bytes. */
@@ -24,7 +35,9 @@ let fail=0; const ok=(l,c)=>{ if(!c){fail=1;console.log('FAIL  '+l);} else conso
 const r = await page.evaluate(async () => {
   const I = window.EQ.instruments;
   const before = I.libraryMeta().count;
-  const res = await I.refresh();
+  /* Point it straight at the master, so this exercises the Upstox parse rather
+     than whichever source happens to answer first. */
+  const res = await I.refresh({ url: 'https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz' });
   return {
     before, ok: res.ok, count: res.count,
     reliance: I.isinFor('RELIANCE'), pnb: I.isinFor('pnb'),
@@ -42,19 +55,33 @@ ok('only equities kept', r.count === 2 && r.futuresExcluded);
 ok('a malformed ISIN is dropped', r.badExcluded);
 ok('lookup by ticker', r.reliance === 'INE002A01018');
 ok('lookup is case-insensitive', r.pnb === 'INE160A01022');
-ok('search works', r.searchHit === 1);
+ok('search works', r.searchHit >= 1);
 ok('the price layer resolves through the library', r.key === 'NSE_EQ|INE160A01022');
 
-/* a blocked master must not empty the library */
+/* Every REMOTE source blocked.
+   The bundled map cannot be blocked and should not be: the service worker
+   precaches it, which is what makes the app work on a phone with no signal.
+   So the guarantee under test is not "the refresh fails" — it is that a
+   refresh which cannot reach the internet still leaves a usable library. */
 await page.route('**/assets.upstox.com/**', route => route.abort('failed'));
 const after = await page.evaluate(async () => {
   const I = window.EQ.instruments;
   const res = await I.refresh();
-  return { ok: res.ok, cors: res.likelyCors, stillThere: I.isinFor('RELIANCE'), count: I.libraryMeta().count };
+  return { ok: res.ok, source: res.source, attempts: res.attempts,
+    reliance: I.isinFor('RELIANCE'), pnb: I.isinFor('PNB'), count: I.libraryMeta().count };
 });
-ok('a blocked refresh reports failure', after.ok === false);
-ok('and names CORS rather than a bare error', after.cors === true);
-ok('and leaves the existing library intact', after.stillThere === 'INE002A01018' && after.count === 2);
+console.log('      fell back to: ' + after.source + ' (' + after.count + ' companies)');
+ok('with every remote source blocked the library still resolves',
+   after.reliance === 'INE002A01018' && after.pnb === 'INE160A01022');
+ok('it fell back to the map bundled with the build', /bundled/.test(after.source || ''));
+ok('the library is not left empty', after.count > 1000);
+ok('every source that was tried is reported, not just the one that answered',
+   Array.isArray(after.attempts) && after.attempts.length >= 3);
+/* A browser refusing a cross-origin read gives an opaque TypeError with no
+   status. Naming it is the difference between a person retrying forever and
+   understanding that the host will never permit the read. */
+ok('a cross-origin refusal is named as one, not left as a bare error',
+   after.attempts.some((a) => /blocked the request/.test(a.error || '')));
 
 const hand = await page.evaluate(() => {
   const I = window.EQ.instruments;

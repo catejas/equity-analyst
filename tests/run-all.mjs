@@ -25,12 +25,13 @@ const FIRST = ['gen-fixtures'];
 /* Files that are tools or generators rather than assertions. */
 const NOT_TESTS = new Set(['run-all', 'gen-fixtures', 'gen-test', 'gen-write',
   'measure', 'scmeasure', 'probe', 'readit', 'loadpage', 'picker', 'audit', 'flow']);
+/* Anything starting with an underscore is a scratch probe, not a suite. */
 
 const only = process.argv.slice(2);
 const all = fs.readdirSync(DIR)
   .filter((f) => f.endsWith('.mjs'))
   .map((f) => f.replace(/\.mjs$/, ''))
-  .filter((n) => !NOT_TESTS.has(n))
+  .filter((n) => !NOT_TESTS.has(n) && !n.startsWith('_'))
   .sort();
 const chosen = only.length ? only : all;
 const order = [...FIRST.filter((f) => !only.length || only.includes(f)), ...chosen];
@@ -84,17 +85,21 @@ for (const name of order) {
   }
 }
 
-/* The Python cross-check is part of the suite, not an extra. */
+/* The Python suites are part of this, not extras: arith.py is the only
+   independent check on the engine's arithmetic, and toclinks.py reads the
+   printed PDF, which no JavaScript suite can do. */
 if (!only.length) {
-  const py = await new Promise((res) => {
-    const p = spawn('python3', [path.join(DIR, 'arith.py')], { cwd: ROOT });
-    let out = ''; p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
-    p.on('close', (code) => res({ code, out }));
-  });
-  const ok = py.code === 0;
-  results.push({ name: 'arith.py', ok });
-  console.log(`${'arith.py'.padEnd(16)} ${ok ? 'pass' : 'FAIL'}`);
-  if (!ok) console.log(py.out.split('\n').slice(-6).join('\n'));
+  for (const name of ['arith.py', 'toclinks.py']) {
+    const py = await new Promise((res) => {
+      const p = spawn('python3', [path.join(DIR, name)], { cwd: ROOT });
+      let out = ''; p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
+      p.on('close', (code) => res({ code, out }));
+    });
+    const ok = py.code === 0;
+    results.push({ name, ok });
+    console.log(`${name.padEnd(16)} ${ok ? 'pass' : 'FAIL'}`);
+    if (!ok) console.log(py.out.split('\n').slice(-8).join('\n'));
+  }
 }
 
 if (server) server.kill();

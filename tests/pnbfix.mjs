@@ -48,6 +48,11 @@ ok('report built from the PNB payload', html !== 'NOCOMPANY' && html.length > 20
 
 /* --- figure captions and headings ------------------------------------- */
 ok('no "Fig N" prefix on captions', !/<b>Fig \d+<\/b>/.test(body));
+/* Four builders had their output wrapped in figure() a second time, which
+   produced a figure inside a figure: two captions, the counter advanced twice,
+   and an inner figure carrying no source line. */
+ok('no figure is nested inside another figure',
+   !/<figure class="fig[^>]*>(?:(?!<\/figure>)[\s\S])*?<figure class="fig/.test(body));
 ok('headings are Title Case', /Sum of the Parts/.test(body) && /Pay and Alignment/.test(body));
 ok('no sentence-case heading left', !/>Return on capital, deconstructed</.test(body));
 
@@ -138,8 +143,19 @@ ok('the scatters are drawn at half height', /max-height:96px/.test(body));
      /Business quality is the strongest at 77\.3/.test(body));
   ok('the forensic commentary names the tests that ran',
      /13 of 15 accounting tests/.test(body));
-  ok('the forensic commentary explains the kill switch',
-     /bars the company from the Top 3 on its own/.test(body));
+  /* PNB used to carry a SEVERE accounting flag, because contingent liabilities
+     above half of net worth is severe — for a manufacturer. For a bank,
+     guarantees and letters of credit ARE the business and run to several times
+     net worth at every healthy institution. That threshold barred all three
+     banks in a sub-sector run and emptied the Top 3, so lenders are now
+     measured against a lender's threshold. The commentary therefore takes the
+     non-severe branch, which is the correct reading of a clean bank. */
+  ok('the forensic commentary reads a flag as a reason to read the note, '
+     + 'not as a bar',
+     /reason to read the note/.test(body));
+  ok('and no severe accounting finding is raised against a bank for holding '
+     + 'ordinary guarantees',
+     !/bars the company from the Top 3 on its own/.test(body));
   ok('the model commentary states whether the base year reconciles',
      /base year ties to the 147,?017 of revenue|base year ties to the 147017 of revenue/.test(body));
   ok('the reconciliation line names the figure it tied to, not a count of self-checks',

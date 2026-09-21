@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
 const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
-const SRC = process.argv[2] || (U + '2f13d57b-PNB_gemini-code-1789969768806.json');
+const SRC = process.argv[2] || (U + '944cc4df-attachment.txt');
 const raw = fs.readFileSync(SRC, 'utf8');
 const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
 
@@ -21,7 +21,26 @@ const page = await b.newPage({ viewport: { width: 430, height: 930 } });
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]));
 page.on('dialog', (d) => d.accept());
-await page.route('**/api.upstox.com/**', (r) => r.abort('failed'));
+/* Upstox works on the real device — Tejas verified 105 bars — so the fixtures
+   are built with a price series present. Building them without one meant the
+   tear sheet's price chart and the P/E bands were never exercised by any
+   layout test. The exchange master stays blocked, because it is blocked for
+   real. */
+const candles = [];
+{
+  const t0 = Date.parse('2026-07-20T00:00:00+05:30');
+  for (let i = 0; i < 105; i++) {
+    const d = new Date(t0 - i * 7 * 86400000).toISOString();
+    const c = 110 * (1 - i * 0.003) * (1 + Math.sin(i / 7) * 0.04);
+    candles.push([d, c * 0.99, c * 1.02, c * 0.97, c, 3.5e7, 0]);
+  }
+}
+await page.route('**/data/nse-instruments.json', (r) => r.abort('failed'));
+await page.route('**/assets.upstox.com/**', (r) => r.abort('failed'));
+await page.route('**/api.upstox.com/**', (r) => r.fulfill({
+  status: 200, contentType: 'application/json',
+  headers: { 'access-control-allow-origin': '*' },
+  body: JSON.stringify({ status: 'success', data: { candles } }) }));
 await page.goto('http://127.0.0.1:8848/index.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1200);
 
@@ -34,7 +53,7 @@ const ready = await page.evaluate(async (j) => {
     document.getElementById('btnDoImport').click();
     await new Promise((s) => setTimeout(s, 500));
     document.getElementById('btnSaveImport').click();
-    await new Promise((s) => setTimeout(s, 1800));
+    await new Promise((s) => setTimeout(s, 3000));
   };
   const tab = (t) => [...document.querySelectorAll('nav button')].find((x) => x.dataset.tab === t)?.click();
   tab('sector');
@@ -69,6 +88,18 @@ for (const kind of ['co1', 'co2', 'co3', 'sector', 'exec', 'score']) {
   }
   fs.writeFileSync(`/tmp/doc-${kind}.html`, html);
   console.log(`  wrote /tmp/doc-${kind}.html  ${(html.length / 1024).toFixed(0)} KB`);
+}
+
+/* And the printed PDF, which toclinks.py reads. Printing is the only way to
+   see what the link annotations and the destination table actually contain —
+   the DOM says nothing about either. */
+{
+  const pp = await b.newPage({ viewport: { width: 1000, height: 1400 } });
+  await pp.setContent(fs.readFileSync('/tmp/doc-co1.html', 'utf8'), { waitUntil: 'networkidle' });
+  await pp.waitForTimeout(1200);
+  await pp.pdf({ path: '/tmp/toc-plain.pdf', printBackground: true, preferCSSPageSize: true });
+  await pp.close();
+  console.log('  wrote /tmp/toc-plain.pdf');
 }
 
 if (errs.length) console.log('  page errors: ' + errs.slice(0, 3).join(' | '));
