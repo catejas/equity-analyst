@@ -209,6 +209,25 @@ ok('and it is ordered by score, best first', (() => {
 ok('the company carrying a moderate governance flag is not barred by it',
    second.eligible.every(([, e]) => e === true));
 
+/* The gate only works if the research is told about it. The prompt listed the
+   registers and explained why they matter, and never said that leaving one
+   unsearched bars the company outright — so a research run could comply with
+   everything it was asked and still produce a shortlist of nothing. */
+{
+  const gate = await page.evaluate(() => {
+    const p = EQ.buildPrompt({ sector: 'banking', horizon: '3-5' });
+    const t = typeof p === 'string' ? p : (p.prompt || '');
+    return {
+      states: /BARRED FROM THE TOP 3/.test(t),
+      fallback: /register unreachable/.test(t),
+      inRegisterSection: t.indexOf('BARRED FROM THE TOP 3') > t.indexOf('LITIGATION AND REGULATORY'),
+    };
+  });
+  ok('the prompt states that an unsearched essential register bars the company', gate.states);
+  ok('and offers the honest alternative, so the answer is not silence', gate.fallback);
+  ok('and says it where the registers are listed, not in a footnote', gate.inRegisterSection);
+}
+
 ok('no page errors', errs.length === 0);
 if (errs.length) console.log('      ' + errs.slice(0, 4).join('\n      '));
 if (out.warnings.length) console.log('      warnings: ' + out.warnings.join(' | ').slice(0, 300));
