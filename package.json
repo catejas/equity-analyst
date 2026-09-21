@@ -1,6 +1,13 @@
 {
+  "name": "equity-analyst",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run-all.mjs",
+    "fixtures": "node tests/gen-fixtures.mjs",
+    "serve": "python3 -m http.server 8848 --bind 127.0.0.1"
+  },
   "dependencies": {
-    "jsdom": "^30.1.0",
     "playwright-core": "^1.63.0"
   }
 }

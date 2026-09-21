@@ -3692,6 +3692,29 @@ function eqSelfPeerRow(c){
    result where it sits; this is the argument that runs between them, so the
    report arrives somewhere rather than being forty sections that each happen
    to be true. */
+/* How long a passage has to be before it is set in two columns.
+
+   MEASURED, not chosen by eye. On the current documents the prose runs at a
+   median of 116 characters per line and reaches 149 — against the 55 to 75
+   that typography has settled on for continuous text, and the ~90 beyond which
+   the eye starts losing its place returning to the left margin. A 173mm
+   measure at 7.4pt is simply too wide to read a paragraph across.
+
+   Setting the whole page in two columns is the wrong answer, and the
+   measurement says why: only 10% of these documents is prose by height. The
+   other 90% is tables and figures, which need the full 173mm and would be
+   crushed to 83mm. So the columns go on the PROSE ALONE. Exhibits keep the
+   full measure, the commentary reads at about 56 characters a line, and the
+   page stays as full as it was — this reflows text that is already there
+   rather than reclaiming space, because at 99% fill there is no space to
+   reclaim.
+
+   The threshold exists because a short passage in two columns looks broken:
+   three lines split into two stacks of one and a half is worse than one wide
+   line. Below it, a passage stays single-column. */
+/* Prose is emitted at the full measure. Setting it in columns was tried and
+   reverted — see the note above pairPass for what the measurement showed. */
+
 function eqStory(block, cls){
   if(!block) return '';
   var ps = arr(block.paragraphs);
@@ -5922,10 +5945,52 @@ function packDoc(p, lang, cfg){
         + 'if(out!==v) t.nodeValue=out;'
       + '});'
     + '})();'
+    /* WHY THIS DOCUMENT IS NOT SET IN TWO COLUMNS.
+
+       The question was asked for the right reason — the reports carry rich
+       commentary now, and a reader should not have to cross a 173mm line to
+       read it. Measured on the finished documents, the prose runs at a median
+       of 125 characters per line and reaches 149, against the 55 to 75
+       typography has settled on and the ~90 past which the eye starts losing
+       its return to the left margin. That defect is real.
+
+       Four fixes were built and measured, and each was reverted for a reason
+       the measurement gave:
+
+         Two-column pages. Prose is 7-10% of these documents by height. The
+         other 90% is tables and figures that need the full measure, and a
+         7-column financial statement (FY25 through FY31E) crushed to 83mm
+         either spills or wraps into something unreadable.
+
+         Two-column prose blocks. Individual paragraphs render 3 to 5 lines
+         tall, 8-20mm. Split into two columns that is two stubs of a line and a
+         half, which reads worse than one wide paragraph.
+
+         Grouping consecutive prose and columning the run. Only 1 to 2 runs per
+         document are long enough to qualify, because prose here is interleaved
+         between exhibits rather than continuous. A layout that applies to two
+         blocks out of eighteen reads as a mistake, not a design.
+
+         Larger type. From 7.4pt to 9.6pt moves the median only from 125 to 103
+         characters, because the cause is the 173mm measure and not the size,
+         and it costs two pages.
+
+       What remains is pairPass below: prose in a 60% column beside the exhibit
+       it discusses, which is the institutional layout and needs no continuous
+       prose to work. It keeps what it can — see __pairStats, which records why
+       each candidate was rejected rather than leaving "0 pairs" to be read as
+       "nothing to gain". On the current documents most candidates fail because
+       the exhibit spills when narrowed, which is a fact about 7-column tables
+       rather than something the layout can talk it out of.
+
+       The honest remaining lever is narrowing the text measure itself, leaving
+       white space beside prose but not beside exhibits. That changes the look
+       of every report, so it is a decision to be taken deliberately rather
+       than slipped in under a layout pass. */
     + 'var PAIR_MAX_MM=118;'   /* neither half may be taller than this        */
     + 'var PAIR_MIN_MM=16;'    /* below this, stacking wastes nothing anyway  */
     + '(function pairPass(){'
-      + 'var MM=3.7795275591;'
+      + 'var MM=3.7795275591; var W=window;'
       /* .ir-box names two different things: the page's content container, and
          an inner box a section may use for its own content. Selecting all of
          them paired blocks INSIDE a section — which is why this first cost a
@@ -5992,6 +6057,17 @@ function packDoc(p, lang, cfg){
              sector report grew from 6 pages to 7. */
           + 'var stacked=ha+hb;'
           + 'var paired=pair.getBoundingClientRect().height;'
+          /* Why a candidate was rejected, kept on the document. Pairing that
+             silently produces nothing is indistinguishable from pairing that
+             is switched off, and for a long time the two were confused here:
+             the layout was reported as "0 pairs, 99% fill" and read as "there
+             is nothing to gain", when what it actually meant was unknown. */
+          + 'W.__pairStats=W.__pairStats||{candidates:0,spill:0,taller:0,noRoom:0,kept:0};'
+          + 'W.__pairStats.candidates++;'
+          + 'if(spills) W.__pairStats.spill++;'
+          + 'else if(paired >= stacked) W.__pairStats.taller++;'
+          + 'else if(room && paired > room) W.__pairStats.noRoom++;'
+          + 'else W.__pairStats.kept++;'
           + 'if(spills || paired >= stacked || (room && paired > room)){'
             + 'a.classList.add("ir-blk"); a.classList.remove("ir-sub");'
             + 'b.classList.add("ir-blk"); b.classList.remove("ir-sub");'
