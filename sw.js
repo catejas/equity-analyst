@@ -2,14 +2,13 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '21-09-2026.10';
+var BUILD = '21-09-2026.14';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './render.js', './charts.js', './sectors.js', './data/nse-instruments.json', './docs.js', './vendor/html2canvas.min.js', './vendor/jspdf.umd.min.js',
   './src/engine-bridge.js',
-  './src/data/provider.js',
   './src/data/store.js',
   './src/core/prices.js',
   './src/core/instruments.js',

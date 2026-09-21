@@ -1180,40 +1180,56 @@ function barRow(label, pctW, value, colour, tick){
     + '</div><div class="bv en">'+e(value)+'</div></div>';
 }
 
-/* The eight things that carry weight in the overall score. Shape is kept from
-   the IPO build — [label, label, weight, keys, item labels, item labels, item
-   weights] — because the radar and the score sheet read it positionally. The
-   duplicated label column is a remnant of the two-language edition and is
-   removed when those two are rebuilt. */
+/* DEAD AS OF 21-09-2026.11 — READ BEFORE EDITING.
+
+   BLOCKS and everything that reads it — scoreSection, scBlock, chartRadar,
+   blockScore, bName, bItems — are from the IPO build and are no longer called
+   by any document. They read `p.score_lines`, a flat payload shape the v5
+   schema does not produce: on a current payload `score_lines` is undefined and
+   every figure here computes to zero.
+
+   The score card a reader actually sees is built from the engine's own pillars
+   through the `.v*` vector layout in buildScorecard. Editing a weight below
+   changes nothing on any page, which is the hazard worth naming: this looks
+   like the scoring system and is not it. Weights live in src/core/scoring.js.
+
+   It is left in place rather than deleted because the deletion is ~200 lines
+   across four functions and an export, and is worth doing deliberately rather
+   than as a side effect of a dead-code sweep.
+
+   The eight things that used to carry weight in the overall score:
+
+     [ label, weight, component keys, component labels, component weights ]
+
+   The shape carried two dead columns from the IPO build — the label and the
+   component-label array were each held TWICE, a remnant of the two-language
+   edition, and nothing had read index 1 or index 5 for months. They are gone,
+   and every reader below is reindexed with them. */
 var BLOCKS = [
-  ['Business quality','Business quality',20,
+  ['Business quality',20,
    ['moat','industryPosition','revenueQuality','pricingPower','customerQuality','productQuality','tamRunway','management','governance','capitalAllocation','resilience'],
    ['Moat','Industry position','Revenue quality','Pricing power','Customer quality','Product quality','TAM and runway','Management','Governance','Capital allocation','Resilience'],
-   ['Moat','Industry position','Revenue quality','Pricing power','Customer quality','Product quality','TAM and runway','Management','Governance','Capital allocation','Resilience'],
    [15,10,8,7,5,5,10,10,10,10,10]],
-  ['Growth and multibagger','Growth and multibagger',20,
+  ['Growth and multibagger',20,
    ['tam','revenueRunway','epsGrowth','marketShare','reinvestment','incrementalReturns','operatingLeverage','marginExpansion','newProductsMarkets','exports','capacity','execution','longevity'],
    ['TAM','Revenue runway','EPS growth','Market share','Reinvestment','Incremental returns','Operating leverage','Margin expansion','New products and markets','Exports','Capacity','Execution','Longevity'],
-   ['TAM','Revenue runway','EPS growth','Market share','Reinvestment','Incremental returns','Operating leverage','Margin expansion','New products and markets','Exports','Capacity','Execution','Longevity'],
    [10,10,10,8,8,10,7,7,7,5,5,8,5]],
-  ['Valuation and opportunity','Valuation and opportunity',20,
+  ['Valuation and opportunity',20,
    ['dcf','relativeValuation','historicalValuation','peerValuation','growthAdjustedValuation','fcfYield','marginOfSafety','impliedExpectations','scenarioAsymmetry','catalystAdjusted'],
    ['DCF','Relative valuation','Historical valuation','Peer valuation','Growth-adjusted valuation','FCF yield','Margin of safety','Implied expectations','Scenario asymmetry','Catalyst-adjusted'],
-   ['DCF','Relative valuation','Historical valuation','Peer valuation','Growth-adjusted valuation','FCF yield','Margin of safety','Implied expectations','Scenario asymmetry','Catalyst-adjusted'],
    [15,10,8,8,10,7,15,10,10,7]],
-  ['Risk and quality control','Risk and quality control',10,
+  ['Risk and quality control',10,
    ['balanceSheet','accounting','governance','promoter','customerConcentration','regulatory','cyclicality','competition','technology','execution','liquidity','geopolitics','valuationRisk','dilution'],
    ['Balance sheet','Accounting','Governance','Promoter','Customer concentration','Regulatory','Cyclicality','Competition','Technology','Execution','Liquidity','Geopolitics','Valuation risk','Dilution'],
-   ['Balance sheet','Accounting','Governance','Promoter','Customer concentration','Regulatory','Cyclicality','Competition','Technology','Execution','Liquidity','Geopolitics','Valuation risk','Dilution'],
    [10,12,12,8,5,7,5,7,5,8,5,4,7,5]],
-  ['Financial quality','Financial quality',10, ['financialQuality'], ['Financial quality'], ['Financial quality'], [10]],
-  ['Management and governance','Management and governance',10, ['managementGovernance'], ['Management and governance'], ['Management and governance'], [10]],
-  ['Technical entry','Technical entry',5, ['technicalEntry'], ['Technical entry'], ['Technical entry'], [5]],
-  ['Catalysts','Catalysts',5, ['catalysts'], ['Catalysts'], ['Catalysts'], [5]]
+  ['Financial quality',10, ['financialQuality'], ['Financial quality'], [10]],
+  ['Management and governance',10, ['managementGovernance'], ['Management and governance'], [10]],
+  ['Technical entry',5, ['technicalEntry'], ['Technical entry'], [5]],
+  ['Catalysts',5, ['catalysts'], ['Catalysts'], [5]]
 ];
 function bName(b,lang){ return b[0]; }
-function bItems(b,lang){ return b[4]; }
-function blockScore(p,b){ var t=0; b[3].forEach(function(k){ t += Number((p.score_lines||{})[k])||0; }); return t; }
+function bItems(b,lang){ return b[3]; }
+function blockScore(p,b){ var t=0; b[2].forEach(function(k){ t += Number((p.score_lines||{})[k])||0; }); return t; }
 
 /* ============================ COVER ============================ */
 /* ===================== PROVENANCE, X2 / X3 / I1 / C1 =====================
@@ -1447,8 +1463,8 @@ function scoreMovers(p, lang, howMany){
   var rows = [];
   BLOCKS.forEach(function(b){
     var items = bItems(b, lang);
-    b[3].forEach(function(k, i){
-      var mx = Number(b[6][i]) || 0, v = Number(sl[k]);
+    b[2].forEach(function(k, i){
+      var mx = Number(b[4][i]) || 0, v = Number(sl[k]);
       if(!mx || isNaN(v)) return;
       rows.push({ label: items[i], v: v, mx: mx, pc: v / mx * 100,
                   basis: gsb[k] ? safeTr(S(sb[k]), S(gsb[k])) : (tr(p, lang, sb[k]) || '') });
@@ -1947,16 +1963,16 @@ function scoreSection(p, lang, compact){
         + chartGauge(total, lang)
         + '<div style="margin-top:2mm">'+BLOCKS.map(function(bk){
             var g = blockScore(p,bk);
-            return barRow(bName(bk,lang), bk[2]?g/bk[2]*100:0, g.toFixed(1)+' / '+bk[2],
-                          ragBar(bk[2]?g/bk[2]*100:0)); }).join('')+'</div>'
+            return barRow(bName(bk,lang), bk[1]?g/bk[1]*100:0, g.toFixed(1)+' / '+bk[1],
+                          ragBar(bk[1]?g/bk[1]*100:0)); }).join('')+'</div>'
       + '</div>'
       + '<div style="flex:0 0 62mm;display:flex;align-items:center">'+chartRadar(p, lang)+'</div></div>'
     + (compact ? '' : '<div class="sc2col">'+BLOCKS.map(function(bk){
         var items = bItems(bk,lang), g = blockScore(p,bk);
         return '<div class="sc2blk"><div class="sc2hd">'+e(bName(bk,lang))
-          + '<span class="en">'+g.toFixed(1)+'/'+bk[2]+'</span></div>'
-          + bk[3].map(function(k,i){
-              var vv = Number(sl[k])||0, mx = bk[6][i];
+          + '<span class="en">'+g.toFixed(1)+'/'+bk[1]+'</span></div>'
+          + bk[2].map(function(k,i){
+              var vv = Number(sl[k])||0, mx = bk[4][i];
               return '<div class="sc2row"><span class="l">'+e(items[i])+'</span>'
                 + '<span class="t"><i style="width:'+(mx?vv/mx*100:0).toFixed(0)+'%;background:'
                 + ragBarHex(mx?vv/mx*100:0)+'"></i></span>'
@@ -2169,6 +2185,8 @@ function buildCompany(p, lang){
   out += eqComment(c, 'valuation');
   /* How the discount rate was built, how the parts sum, and what the price
      already assumes — beside the scenarios they qualify. */
+  var bands = eqMultipleBands(c);
+  if(bands) out += S3('The multiple against its own history') + bands;
   var wac = eqWacc(c);
   if(wac) out += S3('How the discount rate is built') + wac;
   var sot = eqSotp(c);
@@ -2297,6 +2315,9 @@ function buildCompany(p, lang){
     B: built.B, TITLES: built.TITLES, leadIn: leadIn,
     runHead: 'Company Research Report', docName: 'Company Research Report',
     shellTitle: (S(c.name) || S(c.symbol)) + ' — Company Research Report',
+    /* Page one. The sector study has no single subject to summarise, and the
+       executive summary is itself a summary, so only this document gets one. */
+    tearSheet: eqTearSheet(p, c, lang),
     toc: true, seedPages: 40
   });
 }
@@ -2844,6 +2865,245 @@ function eqScenarioBanner(rep){
     + '</tbody></table>'
     + '<div class="mut">Left column: what the research assumed. Right: what this report was '
     + 'built on. Everything not listed here is unchanged.</div></div>';
+}
+
+/* What the market has paid for this company, against what it pays now.
+
+   A multiple quoted on its own is not an argument. "It trades at 8x" invites
+   the question 8x against what, and the honest answers are three: against its
+   peers, against what the business is worth, and against its own history. The
+   first two are elsewhere in this pillar; this is the third.
+
+   The band is drawn at one standard deviation either side of the period mean,
+   and the series is built by the engine — see multipleBands in valuation.js
+   for why each point is divided by the figure that had actually been reported
+   by that date rather than by today's. */
+function eqMultipleBands(c){
+  var m = c && c.multipleBands;
+  if(!m) return '';
+  if(!m.available){
+    /* Said, not silently dropped: a reader who has seen this section on one
+       report should be told why it is absent from another. */
+    return '<div class="note">' + e(S(m.reason || 'not available')) + '</div>';
+  }
+  var vals = arr(m.points).map(function(x){ return x.value; });
+  var cats = arr(m.points).map(function(x, i){
+    var step = Math.ceil(vals.length / 6);
+    return (i % step === 0 && x.date) ? String(x.date).slice(0,7) : '';
+  });
+  var flat = function(v){ return vals.map(function(){ return v; }); };
+
+  var chart = '';
+  try{
+    chart = CH_().lines({
+      categories: cats, height: 190,
+      series: [
+        { name: m.metric, values: vals },
+        { name: 'Mean ' + n(m.mean,2) + 'x', values: flat(m.mean), dashed: true },
+        { name: '+1 SD ' + n(m.plusOne,2) + 'x', values: flat(m.plusOne), dashed: true },
+        { name: '−1 SD ' + n(m.minusOne,2) + 'x', values: flat(m.minusOne), dashed: true }
+      ],
+      source: 'Computed from the fetched price series and reported '
+        + (m.metric === 'P/B' ? 'shareholders’ equity' : 'earnings per share') + '.'
+    });
+  }catch(err){ chart = ''; }
+
+  return chart
+    + tbl(['Reading','Value'], [
+        { cells:['Now', '<b>' + n(m.current,2) + 'x</b>'] },
+        { cells:['Period mean', n(m.mean,2) + 'x'] },
+        { cells:['Standard deviation', n(m.sd,2)] },
+        { cells:['Range over the period', n(m.low,2) + 'x – ' + n(m.high,2) + 'x'] },
+        { cells:['Where it sits', (m.z>=0?'+':'') + n(m.z,2) + ' SD'] }
+      ], { num:[1] })
+    + '<div class="note"><b>' + e(S(m.label)) + '.</b> ' + e(S(m.reading)) + '</div>'
+    + '<div class="mut">' + e(S(m.note))
+      + (arr(m.periods).length ? ' Denominators: ' + e(arr(m.periods).join(', ')) + '.' : '')
+      + '</div>';
+}
+
+/* THE TEAR SHEET — page one.
+
+   Every reference report opens with one: rating, target, upside, the case in
+   three lines, the numbers that decide it, and a price chart. Ours opened with
+   a table of contents, which tells a reader what is in the document but
+   nothing about the company. This is the single largest structural gap against
+   the benchmark reports and it is the first thing anyone sees.
+
+   Everything here is already computed elsewhere in the report. The tear sheet
+   states, it does not calculate — if a figure is not available it is left out
+   rather than filled with a dash, because a sheet of dashes is worse than a
+   shorter sheet. */
+function eqTearSheet(p, c, lang){
+  if(!c) return '';
+  var v = c.valuation || {}, ov = c.overall || {}, sn = c.snapshot || {};
+  var price = isNum_(v.currentPrice) ? v.currentPrice : null;
+
+  /* The target is the base case the research supplied, which is the one the
+     rest of the document argues. Upside is computed against the live price. */
+  var base = null;
+  arr(v.scenarios).forEach(function(x){ if(x && x.scenario === 'base') base = x; });
+  var target = base && isNum_(base.fairValue) ? base.fairValue : null;
+  var up = (isNum_(target) && isNum_(price) && price > 0) ? ((target - price) / price) * 100 : null;
+
+  /* A stance, not a score. A reader wants to know what the work concluded, and
+     "72.4 out of 100" is not an answer to that. The bands are the same ones the
+     score commentary uses, crossed with whether the price leaves room. */
+  var stance = (function(){
+    if(!isNum_(ov.score)) return null;
+    if(c.eligibleForTop3 === false) return { word: 'Not eligible', cls: 'ts-neg',
+      why: 'barred from the Top 3 — see why on the scoring pillar' };
+    if(isNum_(up)){
+      if(ov.score >= 65 && up >= 20) return { word: 'Constructive', cls: 'ts-pos',
+        why: 'the work supports the business and the price leaves room' };
+      if(ov.score >= 65 && up <= -10) return { word: 'Fully valued', cls: 'ts-neg',
+        why: 'a business the work supports, at a price that already reflects it' };
+      if(ov.score < 45) return { word: 'Weak', cls: 'ts-neg', why: 'the evidence does not support the case' };
+    }
+    return { word: 'Balanced', cls: 'ts-mid', why: 'the case and the price are finely matched' };
+  })();
+
+  var head = '<div class="ts-head">'
+    + '<div class="ts-name">' + e(S(c.name || c.symbol)) + '</div>'
+    + '<div class="ts-sub">' + e(S(c.symbol))
+      + (c.exchange ? ' · ' + e(S(c.exchange)) : '')
+      + (c.isin ? ' · ' + e(S(c.isin)) : '')
+      + (c.sector ? ' · ' + e(secTitleCase(S(c.sector))) : '')
+      + '</div></div>';
+
+  /* The four numbers a reader looks for first, in the order they look. */
+  var tiles = [];
+  if(isNum_(price)) tiles.push({ k:'Price', v:n(price,2), s: v.priceAsOf ? 'as at ' + e(S(v.priceAsOf)) : '' });
+  if(isNum_(target)) tiles.push({ k:'Base case', v:n(target,0), s:'the research’s own base scenario' });
+  if(isNum_(up)) tiles.push({ k:'Upside', v:(up>=0?'+':'') + n(up,1) + '%', s:'against the current price',
+    cls: up>=0 ? 'ts-pos' : 'ts-neg' });
+  if(isNum_(ov.score)) tiles.push({ k:'Overall', v:n(ov.score,1),
+    s: (ov.band ? e(S(ov.band)) + ' · ' : '') + 'weighted across four pillars' });
+
+  var tileHtml = tiles.length ? '<div class="ts-tiles">' + tiles.map(function(t){
+    return '<div class="ts-tile"><div class="ts-k">' + e(t.k) + '</div>'
+      + '<div class="ts-v ' + (t.cls||'') + '">' + t.v + '</div>'
+      + (t.s ? '<div class="ts-s">' + t.s + '</div>' : '') + '</div>';
+  }).join('') + '</div>' : '';
+
+  var stanceHtml = stance ? '<div class="ts-stance ' + stance.cls + '">'
+    + '<b>' + e(stance.word) + '</b> — ' + e(stance.why) + '</div>' : '';
+
+  /* The case, in the analyst's own three lines. */
+  var th = arr(c.thesis).slice(0,3);
+  var thesisHtml = th.length ? '<div class="ts-sec">The case</div><ol class="ts-th">'
+    + th.map(function(t){ return '<li>' + e(S(t)) + '</li>'; }).join('') + '</ol>' : '';
+
+  /* Key statistics — only the ones the payload actually carried. */
+  var stats = [];
+  var addStat = function(k, val){ if(val !== null && val !== undefined && val !== '') stats.push([k, val]); };
+  addStat('Market capitalisation', isNum_(sn.marketCap) ? n(sn.marketCap,0) : null);
+  addStat('Free float', isNum_(sn.freeFloatPct) ? n(sn.freeFloatPct*100,1) + '%' : null);
+  addStat('52-week range', (isNum_(sn.week52Low) && isNum_(sn.week52High))
+    ? n(sn.week52Low,2) + ' – ' + n(sn.week52High,2) : null);
+  addStat('Average daily value', isNum_(sn.avgDailyValue) ? n(sn.avgDailyValue,0) : null);
+  var perf = sn.performance || {};
+  addStat('12-month return', isNum_(perf.m12) ? eqSignedPct(perf.m12*100) : null);
+  addStat('Against ' + e(S(perf.benchmark || 'the index')),
+    isNum_(perf.m12Relative) ? eqSignedPct(perf.m12Relative*100) : null);
+  var statHtml = stats.length ? '<div class="ts-sec">Key statistics</div>'
+    + tbl(['',''], stats.map(function(r){ return { cells:[e(r[0]), r[1]] }; }), { num:[1], plain:true })
+    : '';
+
+  /* Key financials — reported years and forecast years side by side, which is
+     the comparison the whole document is built to support. */
+  var fin = (function(){
+    var ann = orderedAnn(c);
+    if(!ann.length) return '';
+    var rows = ann.slice(-3);
+    var head2 = [''].concat(rows.map(function(r){ return '<span class="en">' + e(S(r.period || '')) + '</span>'; }));
+    var line = function(label, key, dp){
+      return { cells: [e(label)].concat(rows.map(function(r){ return n(r[key], dp==null?0:dp); })) };
+    };
+    return '<div class="ts-sec">Key financials, as reported</div>'
+      + tbl(head2, [ line('Revenue','revenue'), line('EBITDA','ebitda'),
+          line('Profit after tax','netProfit'), line('EPS diluted','epsDiluted',2) ],
+        { num:[1,2,3] });
+  })();
+
+  /* The price chart. It exists only now that the series travels with the
+     report; before this the tear sheet could not have carried one. */
+  var chart = (function(){
+    var ph = c.priceHistory;
+    var closes = ph && arr(ph.closes).filter(isNum_);
+    if(!closes || closes.length < 8) return '';
+    /* Weekly closes over two years is ~105 points; label a handful, not all. */
+    var dates = arr(ph.dates);
+    var cats = closes.map(function(_, i){
+      if(!dates.length) return '';
+      var step = Math.ceil(closes.length / 6);
+      return (i % step === 0 && dates[i]) ? String(dates[i]).slice(0,7) : '';
+    });
+    try{
+      return '<div class="ts-sec">Price, ' + (ph.spacing === 'weekly' ? 'weekly' : 'daily')
+        + ' closes</div>'
+        + CH_().lines({ categories: cats,
+            series: [{ name: S(c.symbol) || 'Price', values: closes }],
+            height: 150, title: '',
+            source: ph.source ? ('Price history via ' + S(ph.source)) : null });
+    }catch(err){ return ''; }
+  })();
+
+  /* The three scenarios side by side, with the probability the research put on
+     each. A single base case printed alone reads as a forecast; the range is
+     what makes it an argument. */
+  var scen = (function(){
+    var rows = arr(v.scenarios).filter(function(x){ return x && isNum_(x.fairValue); });
+    if(rows.length < 2) return '';
+    return '<div class="ts-sec">The range</div>'
+      + tbl(['Case','Value','Probability','Against price'], rows.map(function(x){
+          var d = (isNum_(price) && price > 0) ? ((x.fairValue - price) / price) * 100 : null;
+          return { cells: [ e(S(x.scenario).replace(/^./, function(m){ return m.toUpperCase(); })),
+            n(x.fairValue, 0),
+            isNum_(x.probability) ? n(x.probability * 100, 0) + '%' : '\u2014',
+            isNum_(d) ? eqSignedPct(d) : '\u2014' ] };
+        }), { num:[1,2,3] });
+  })();
+
+  /* What would break it. A tear sheet that carries only the case is an
+     advertisement; the reference reports all carry the disconfirming test
+     beside it, and this document already computes them. */
+  var breakers = arr(c.thesisBreakers).slice(0,3);
+  var brkHtml = breakers.length ? '<div class="ts-sec">What would break the case</div>'
+    + '<ul class="ts-br">' + breakers.map(function(t){
+        return '<li>' + e(S(t)) + '</li>'; }).join('') + '</ul>' : '';
+
+  /* The single risk the research weighted highest. */
+  var topRisk = (function(){
+    var rs = arr(c.risks).filter(function(r){ return r && S(r.risk); });
+    if(!rs.length) return '';
+    rs.sort(function(a,b){ return (b.probability||0) - (a.probability||0); });
+    var r0 = rs[0];
+    return '<div class="ts-risk"><b>Most likely risk:</b> ' + e(S(r0.risk))
+      + (isNum_(r0.probability) ? ' \u2014 ' + n(r0.probability*100,0) + '% likely' : '')
+      + (isNum_(r0.impactPct) ? ', ' + n(r0.impactPct,0) + '% impact' : '') + '.</div>';
+  })();
+
+  return '<div class="tearsheet">' + head + stanceHtml + tileHtml
+    + '<div class="ts-cols"><div class="ts-col">' + thesisHtml + statHtml + brkHtml + '</div>'
+    + '<div class="ts-col">' + fin + scen + chart + '</div></div>' + topRisk
+    + '<div class="ts-foot">Every figure on this page is computed by the application from the '
+    + 'research payload, and is argued in full in the pillars that follow. '
+    + 'Research tool only — not investment advice.</div></div>';
+}
+
+/* The reported years, oldest first, however the payload ordered them. */
+function orderedAnn(c){
+  var rows = arr(c && c.financials && c.financials.annual).slice();
+  if(rows.length < 2) return rows;
+  var key = function(r){
+    var m = /FY\s*'?(\d{2,4})/i.exec(String((r && r.period) || ''));
+    if(!m) return null;
+    var y = parseInt(m[1],10); return y < 100 ? 2000 + y : y;
+  };
+  var ks = rows.map(key);
+  if(ks.every(function(k){ return k != null; })) return rows.sort(function(a,b){ return key(a)-key(b); });
+  return rows.reverse();
 }
 
 /* The reconciliation line, in the three states it can honestly be in.
@@ -3859,12 +4119,16 @@ function eqRiskMatrix(c){
   var pts = rk.map(function(r){
     return { x: r.probability * 100, y: r.impactPct, title: S(r.risk) };
   });
-  return K.figure('Risks — likelihood against what it would cost',
-    'Stated in the research, one point per risk',
-    K.scatter({ points: pts, xRange:[0,100],
-      yRange:[0, Math.max.apply(null, pts.map(function(p){ return p.y; })) * 1.25 || 10],
-      cap: 96, xLabel:'Likelihood %', yLabel:'Impact on value %' }),
-    { note:'Upper right is what the thesis turns on: likely and expensive. Lower left can be '
+  /* Title, source and note go INTO the builder. Wrapping a builder's output in
+     figure() again produced a figure inside a figure: two captions, the figure
+     counter advanced twice, and the inner one carrying no source line — which
+     is what the missing-source audit was actually finding. */
+  return K.scatter({ points: pts, xRange:[0,100],
+    yRange:[0, Math.max.apply(null, pts.map(function(p){ return p.y; })) * 1.25 || 10],
+    cap: 96, xLabel:'Likelihood %', yLabel:'Impact on value %',
+    title: 'Risks — likelihood against what it would cost',
+    source: 'Stated in the research, one point per risk',
+    note: 'Upper right is what the thesis turns on: likely and expensive. Lower left can be '
       + 'monitored rather than hedged.' });
 }
 
@@ -3945,12 +4209,12 @@ function eqRoicChart(c){
   if(wacc != null){
     series.push({ name:'Cost of capital', values: d.map(function(){ return wacc; }), dashed:true });
   }
-  return K.figure('Return on invested capital against its cost',
-    'Company filings; cost of capital per the buildup',
-    K.lines({ categories: d.map(function(x){ return S(x.period); }), series: series }),
-    { note: wacc == null ? 'No cost of capital was stated, so only the return is shown.'
-        : 'Where the solid line sits below the dashed one, the business is earning less on new '
-          + 'capital than that capital costs.' });
+  return K.lines({ categories: d.map(function(x){ return S(x.period); }), series: series,
+    title: 'Return on invested capital against its cost',
+    source: 'Company filings; cost of capital per the buildup',
+    note: wacc == null ? 'No cost of capital was stated, so only the return is shown.'
+      : 'Where the solid line sits below the dashed one, the business is earning less on new '
+        + 'capital than that capital costs.' });
 }
 
 /* How the revenue mix has shifted. In a conglomerate the mix IS the thesis,
@@ -3968,11 +4232,11 @@ function eqSectorMixChart(c){
       var hit = arr(p0.lines).filter(function(l){ return S(l.name)===nm; })[0];
       return hit && hit.revenue != null ? hit.revenue : 0; }) };
   });
-  return K.figure('Revenue by operating line',
-    'Company filings',
-    K.columns({ categories: d.map(function(p0){ return S(p0.period); }),
-      series: series, stacked: true }),
-    { note:'Each band is one operating line. What matters is how the proportions move, '
+  return K.columns({ categories: d.map(function(p0){ return S(p0.period); }),
+    series: series, stacked: true,
+    title: 'Revenue by operating line',
+    source: 'Company filings',
+    note: 'Each band is one operating line. What matters is how the proportions move, '
       + 'not the total height.' });
 }
 
@@ -3989,14 +4253,14 @@ function eqPeerScatter(c){
   var xs = pts.map(function(p){ return p.x; }), ys = pts.map(function(p){ return p.y; });
   var pad = function(a){ var lo=Math.min.apply(null,a), hi=Math.max.apply(null,a);
     var g=(hi-lo)||1; return [Math.max(0, lo-g*0.2), hi+g*0.2]; };
-  return K.figure('Peers — what you pay against what the business earns',
-    'Company filings and exchange data',
-    K.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
-      /* Half the usual height: two axes and a handful of points do not need a
-         page to say what they say. */
-      cap: 96,
-      xLabel:'Return on equity %', yLabel:'P/E' }),
-    { note:'Upper left is expensive for the return earned; lower right is the opposite.' });
+  return K.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
+    /* Half the usual height: two axes and a handful of points do not need a
+       page to say what they say. */
+    cap: 96,
+    xLabel:'Return on equity %', yLabel:'P/E',
+    title: 'Peers — what you pay against what the business earns',
+    source: 'Company filings and exchange data',
+    note: 'Upper left is expensive for the return earned; lower right is the opposite.' });
 }
 
 /* Return on capital, taken apart. Three numbers that multiply to ROE, and the
@@ -4074,7 +4338,28 @@ function eqWacc(c){
     { cells:['Weight — debt', pct(w.debtWeight)] },
     { __cls:'tot', cells:['<b>WACC</b>', '<b>'+pct(w.wacc)+'</b>'] }
   ], { num:[1] })
-  + (S(w.source) ? '<p class="note">Source: '+e(S(w.source))+'</p>' : '');
+  + (S(w.source) ? '<p class="note">Source: '+e(S(w.source))+'</p>' : '')
+  /* The table above is what the research stated. This is what the arithmetic
+     says about it — recomputed from the same inputs, because the one number a
+     discounted valuation turns on was the only number in this report that
+     nothing checked. */
+  + (function(){
+      var k = c.valuation && c.valuation.waccCheck;
+      if(!k || !k.available) return '';
+      var out = '';
+      if(!k.ties){
+        out += '<div class="note neg"><b>The buildup does not add up.</b> '
+          + arr(k.notes).map(function(x){ return e(S(x)); }).join(' ')
+          + ' Every figure discounted at this rate inherits the error.</div>';
+      } else {
+        out += '<div class="mut">Recomputed from the inputs above: cost of equity '
+          + n(k.computedCostOfEquity*100,2) + '%, blended cost of capital '
+          + n(k.computedWacc*100,2) + '%. Both tie to the stated figures.</div>';
+      }
+      if(k.usedNote) out += '<div class="note"><b>The rate actually used.</b> '
+        + e(S(k.usedNote)) + '</div>';
+      return out;
+    })();
 }
 
 /* Sum of the parts. A conglomerate valued on one multiple is valued wrongly:
@@ -4186,12 +4471,43 @@ function eqCovered(rep){
   });
   return { list: scored.slice(0, 3), allBarred: true };
 }
-function eqBarredBanner(cov){
+/* An empty Top 3 already said so. What it did not say was what would fix it.
+
+   The screen refusing to nominate anything is the kill switch working, not the
+   report failing — a high score on thin research is exactly what this process
+   exists to refuse. But "the reason is stated against each" left a reader to
+   collect three separate exclusion lists and work out what they had in common.
+   On a real sub-sector run all three banks were barred for the same thing, and
+   that one sentence is the whole remedy.
+
+   So the reasons are aggregated, counted, and put where the Top 3 would have
+   been. The bar is not lowered; it is made legible. */
+function eqBarredBanner(cov, rep){
   if(!cov.allBarred || !cov.list.length) return '';
-  return '<div class="note"><b>No company cleared the kill switch, so there is no Top 3.</b> '
-    + 'The ' + cov.list.length + ' highest-ranked companies are covered in full below because '
-    + 'the research exists and is worth reading, but none of them may be recommended on this '
-    + 'run. The reason is stated against each.</div>';
+  var all = arr(rep && rep.full).length ? arr(rep.full) : cov.list;
+  var groups = {};
+  all.forEach(function(c){
+    arr(c.exclusionReasons).forEach(function(r){
+      /* Group by the shape of the reason, so "11 registers" and "9 registers"
+         count as one finding rather than two. */
+      var key = S(r).replace(/\d+/g, '#').slice(0, 90);
+      (groups[key] = groups[key] || { text: S(r), n: 0 }).n++;
+    });
+  });
+  var reasons = Object.keys(groups).map(function(k){ return groups[k]; })
+    .sort(function(a, b){ return b.n - a.n; });
+
+  return '<div class="note warn"><b>No company cleared the kill switch, so there is no Top 3.</b> '
+    + 'The ' + cov.list.length + ' highest-ranked companies are covered in full below, because the '
+    + 'research exists and is worth reading — but none may be recommended on this run.</div>'
+    + (reasons.length
+        ? '<div class="note"><b>What would have to change.</b><br>'
+          + reasons.map(function(r){
+              return e(r.text) + ' <span class="mut">(' + r.n + ' of ' + all.length
+                + ' compan' + (all.length === 1 ? 'y' : 'ies') + ')</span>';
+            }).join('<br>')
+          + '</div>'
+        : '');
 }
 
 function buildExec(p, lang){
@@ -4583,9 +4899,9 @@ function scBlock(p, b, lang){
      readable before the number is. Column widths are fixed in CSS rather than
      sized to content, because every block was otherwise auto-sizing its own and
      the SCORE column landed in a different place in each one. */
-  return sec('', bName(b,lang)+' — '+got.toFixed(1)+' / '+b[2])
-    + tbl([L(lang,'line_item'),'',L(lang,'score'),L(lang,'max'),L(lang,'basis')], b[3].map(function(k,i){
-        var val = Number(sl[k])||0, mx = b[6][i], pcv = mx ? val/mx*100 : 0;
+  return sec('', bName(b,lang)+' — '+got.toFixed(1)+' / '+b[1])
+    + tbl([L(lang,'line_item'),'',L(lang,'score'),L(lang,'max'),L(lang,'basis')], b[2].map(function(k,i){
+        var val = Number(sl[k])||0, mx = b[4][i], pcv = mx ? val/mx*100 : 0;
         return { cells:[e(items[i]),
                         '<span class="scbar"><i style="width:'+pcv.toFixed(0)+'%;background:'
                           + ragBarHex(pcv)+'"></i></span>',
@@ -5349,7 +5665,7 @@ function chartRadar(p, lang){
   var W = 330, H = 250, cx = W/2, cy = H/2 + 4, R = 74;
   var pts = [], axes = '', labs = '';
   BLOCKS.forEach(function(b, i){
-    var frac = b[2] ? Math.max(0, Math.min(1, blockScore(p,b)/b[2])) : 0;
+    var frac = b[1] ? Math.max(0, Math.min(1, blockScore(p,b)/b[1])) : 0;
     var ang = -Math.PI/2 + (2*Math.PI*i)/BLOCKS.length;
     var ax = cx + Math.cos(ang)*R, ay = cy + Math.sin(ang)*R;
     axes += '<line x1="'+cx+'" y1="'+cy+'" x2="'+ax.toFixed(1)+'" y2="'+ay.toFixed(1)+'" stroke="'+CH.grey+'" stroke-width="0.8"/>';
@@ -5691,13 +6007,26 @@ function packDoc(p, lang, cfg){
       lang, cfg.docName);
     first = 2;
   }
-  /* Contents is page one, ahead of the cover, without exception. A reader
-     opening a forty-page research document should see what is in it before
-     anything else. */
+  /* Contents, then — where there is one — the tear sheet ahead of it.
+
+     Contents used to be page one without exception, on the reasoning that a
+     reader opening a forty-page document should see what is in it first. That
+     is true of a reference manual and false of a research report: every
+     benchmark report opens on a tear sheet, because the reader's first
+     question is what the company is worth, not what is in the document. So the
+     tear sheet takes page one where the document has one, and contents follows
+     it. A document with no single subject — the sector study — keeps contents
+     first, because there is no company to summarise. */
   shells = page(p, 1, 25, cfg.runHead,
       '<div class="ir-toc" data-toc></div><div class="grow"></div>',
       lang, cfg.docName)
     + shells;
+  if(cfg.tearSheet){
+    shells = page(p, 1, 25, cfg.runHead,
+        '<div class="ir-tear">' + cfg.tearSheet + '</div><div class="grow"></div>',
+        lang, cfg.docName)
+      + shells;
+  }
 
   for(var i = first; i <= cfg.seedPages; i++){
     shells += page(p, i, 25, cfg.runHead,
@@ -5761,6 +6090,41 @@ function packDoc(p, lang, cfg){
     /* The pillar bridge is one line of orientation, not a box competing with
        the pillar heading above it. */
     + '.bridgebox{ margin:0 0 3mm; }\n'
+    /* The tear sheet. Two columns here are right where they were wrong
+       everywhere else: this page is built from short blocks of equal weight,
+       not from continuous prose interleaved with wide tables. */
+    + '.tearsheet{ font-size:var(--body); line-height:var(--bodyline); }\n'
+    + '.ts-head{ border-bottom:1.6pt solid var(--gold); padding-bottom:2mm; margin-bottom:3mm; }\n'
+    + '.ts-name{ font-size:15pt; font-weight:800; letter-spacing:-.02em; line-height:1.1; }\n'
+    + '.ts-sub{ font-size:7.4pt; color:var(--ink3); margin-top:1mm; }\n'
+    + '.ts-stance{ border-left:2.4pt solid var(--gold); padding:1.6mm 0 1.6mm 3mm;'
+      + ' margin:0 0 3mm; font-size:8.4pt; }\n'
+    + '.ts-stance.ts-pos{ border-left-color:var(--pos); }\n'
+    + '.ts-stance.ts-neg{ border-left-color:var(--neg); }\n'
+    + '.ts-tiles{ display:flex; gap:3mm; margin:0 0 4mm; }\n'
+    + '.ts-tile{ flex:1 1 0; min-width:0; border:0.6pt solid var(--line);'
+      + ' border-radius:1.4mm; padding:2mm 2.4mm; }\n'
+    + '.ts-k{ font-size:6.4pt; font-weight:800; letter-spacing:.06em;'
+      + ' text-transform:uppercase; color:var(--ink3); }\n'
+    + '.ts-v{ font-size:13pt; font-weight:800; letter-spacing:-.02em; margin-top:.6mm;'
+      + ' font-variant-numeric:tabular-nums; }\n'
+    + '.ts-v.ts-pos{ color:var(--pos); } .ts-v.ts-neg{ color:var(--neg); }\n'
+    + '.ts-s{ font-size:6.2pt; color:var(--mut); margin-top:.6mm; line-height:1.3; }\n'
+    + '.ts-cols{ display:flex; gap:6mm; align-items:flex-start; }\n'
+    + '.ts-col{ flex:1 1 50%; min-width:0; }\n'
+    + '.ts-sec{ font-size:6.8pt; font-weight:800; letter-spacing:.06em;'
+      + ' text-transform:uppercase; color:var(--ink3); margin:0 0 1.4mm;'
+      + ' padding-bottom:.8mm; border-bottom:0.5pt solid var(--line); }\n'
+    + '.ts-col .ts-sec{ margin-top:4mm; } .ts-col .ts-sec:first-child{ margin-top:0; }\n'
+    + '.ts-th{ margin:0 0 0 4mm; padding:0; font-size:7.6pt; line-height:1.42; }\n'
+    + '.ts-th li{ margin:0 0 1.6mm; padding-left:1mm; }\n'
+    + '.ts-br{ margin:0 0 0 4mm; padding:0; font-size:7.2pt; line-height:1.4; color:var(--ink2); }\n'
+    + '.ts-br li{ margin:0 0 1.2mm; padding-left:1mm; }\n'
+    + '.ts-risk{ margin-top:4mm; border-left:2.2pt solid var(--neg); padding:1.4mm 0 1.4mm 3mm;'
+      + ' font-size:7.4pt; }\n'
+    + '.ts-foot{ margin-top:4mm; padding-top:2mm; border-top:0.5pt solid var(--line);'
+      + ' font-size:6.2pt; color:var(--mut); line-height:1.35; }\n'
+    + '.ir-tear{ padding:0; }\n'
     /* The scenario banner is the one block on the page that must not be
        skimmed past, so it is ruled on all four sides rather than on one. */
     + '.scnban{ border:1.4pt solid var(--gold); padding:2.4mm 3mm; margin:0 0 3.5mm;'
@@ -5987,6 +6351,54 @@ function packDoc(p, lang, cfg){
        white space beside prose but not beside exhibits. That changes the look
        of every report, so it is a decision to be taken deliberately rather
        than slipped in under a layout pass. */
+    /* measurePass — give continuous prose a readable line length.
+
+       Measured on the finished documents, the prose ran at a median of 125
+       characters per line and reached 149. Typography has settled on 55 to 75
+       for continuous text, and past about 90 the eye starts losing its return
+       to the left margin — you finish a line and re-read the one you just
+       finished. At 173mm and 7.4pt this report was half again past that.
+
+       Two columns was the obvious fix and was measured and rejected four
+       different ways: prose is only 7-10% of these documents by height, the
+       other 90% is tables that need the full measure, individual paragraphs
+       are three lines tall so they split into stubs, and larger type moves the
+       median only from 125 to 103 because the cause is the measure and not the
+       size. What is left is to narrow the measure itself — white space beside
+       prose, never beside an exhibit, which is what institutional reports
+       actually do.
+
+       It runs over the finished DOM rather than in each function that emits
+       prose, because a per-emitter rule has to be remembered by every future
+       emitter and was already missing the whole sector report. And it measures
+       rather than guesses: a block is narrowed only if it is genuinely wider
+       than the readable measure and genuinely carries prose.
+
+       It runs BEFORE pairPass, because narrowing a block changes its height
+       and therefore what can be paired beside it. */
+    + 'var PROSE_MM=112;'   /* about 80 characters a line at 7.4pt */
+    + '(function measurePass(){'
+      + 'var MM=3.7795275591;'
+      + 'var sel="p.storyp,.sayt,.note,.rec,.mut,.fig-n,blockquote,li,p";'
+      + 'var hit=[];'
+      + '[].slice.call(document.querySelectorAll(sel)).forEach(function(el){'
+        /* Prose only: never a container of blocks, never anything holding an
+           exhibit, and never inside the rail or the tear sheet, both of which
+           are already narrow by construction. */
+        + 'if(el.querySelector("table,.fig,svg,div,p,ul,ol")) return;'
+        + 'if(el.closest(".ir-rail,.tearsheet,.scnban,table,figure")) return;'
+        /* Short runs are labels and captions, not prose. Narrowing a two-line
+           note gains nothing and leaves a ragged page. */
+        + 'if(((el.textContent||"").trim().length) < 200) return;'
+        + 'var w=el.getBoundingClientRect().width/MM;'
+        + 'if(w <= PROSE_MM + 6) return;'
+        + 'hit.push(el);'
+      + '});'
+      /* Applied after measuring: setting a width reflows the page, and a
+         second element measured mid-reflow reports a width that is already
+         out of date. */
+      + 'hit.forEach(function(el){ el.style.maxWidth=PROSE_MM+"mm"; });'
+    + '})();'
     + 'var PAIR_MAX_MM=118;'   /* neither half may be taller than this        */
     + 'var PAIR_MIN_MM=16;'    /* below this, stacking wastes nothing anyway  */
     + '(function pairPass(){'
@@ -6547,6 +6959,12 @@ function buildSector(p, lang){
       + e(S(run.horizon)) + '. The Indian listed universe was screened for this sector; '
       + (cts.universe || 0) + ' companies were taken to full analysis and '
       + (cts.top3Eligible || 0) + ' cleared the kill switch.</p></div>'
+    /* The funnel, and what was screened out with the reason beside it.
+       This existed and was only ever rendered in the executive summary — the
+       sector study itself, which is the document about the screening, never
+       showed which companies were dropped or why. A shortlist whose rejects
+       are invisible is an assertion. */
+    + S2('What was screened, and what was dropped') + eqFunnel(p, lang)
     + (S(run.researchNotes) ? '<div class="note">' + e(S(run.researchNotes)) + '</div>' : '')
     + tbl(['Measure','Value'], [
         { cells:['Methodology version', e(S(run.methodologyVersion))] },
@@ -6586,7 +7004,7 @@ function buildSector(p, lang){
   var coverage = eqCovered(rep);
   top = coverage.list;
   if(top.length) out += S2(coverage.allBarred ? 'The leading companies' : 'The Top 3')
-    + eqBarredBanner(coverage);
+    + eqBarredBanner(coverage, rep);
   top.forEach(function(c){
     out += S2((S(c.name) || S(c.symbol)) + ' — snapshot') + eqSnapshot(c, lang);
     out += S2((S(c.name) || S(c.symbol)) + ' — the case');

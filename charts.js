@@ -257,8 +257,16 @@
         pts.push([pad.l + step * (i + 0.5), f.y(v)]);
       });
       if (!pts.length) return;
-      body += '<polyline fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round"'
+      /* A reference line — a mean, a band edge, a threshold — is not data and
+         must not look like it. Dashed, thinner, and with no point markers,
+         because a marker on every week of a flat line is 105 dots saying the
+         same thing. Without this the standard-deviation bands were drawn
+         identically to the series they bound. */
+      var ref = s.dashed === true;
+      body += '<polyline fill="none" stroke="' + col + '" stroke-width="' + (ref ? '1.2' : '2') + '"'
+        + (ref ? ' stroke-dasharray="4 3"' : '') + ' stroke-linejoin="round"'
         + ' points="' + pts.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') + '"/>';
+      if (ref) return;
       pts.forEach(function (p) {
         body += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.4" fill="' + col + '"/>';
       });

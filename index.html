@@ -226,6 +226,9 @@ details .in{padding:0 14px 14px;}
 .rvsrow .dot.part{background:var(--yellow);}
 .rvsrow .dot.none{background:var(--red);}
 .rvgap{font-size:11px;color:var(--ink3);margin:0 0 4px 16px;line-height:1.4;}
+/* A section that is empty because there was nothing to put in it. Dimmer than
+   a gap, because it is not one. */
+.rvnote{font-size:11px;color:var(--mut);margin:0 0 4px 16px;line-height:1.4;font-style:italic;}
 .rvdocs{margin-top:11px;border-top:1px solid var(--line);padding-top:8px;}
 .rvdh{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink3);margin-bottom:5px;}
@@ -516,7 +519,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="21-09-2026.10";</script>
+<script>window.APP_BUILD="21-09-2026.14";</script>
 </head>
 <body>
 
@@ -778,6 +781,18 @@ body.previewing{overflow:hidden;}
     <div class="hint" id="instMeta" style="margin:6px 0 8px"></div>
     <button class="btn sm pri" id="btnInstRefresh">Update library</button>
     <div class="hint" id="instMsg" style="margin-top:8px"></div>
+
+    <!-- Own the source. The app reads public mirrors by default, and a mirror
+         can stop being maintained without ever failing a fetch. A repository
+         you control, refreshed by the workflow shipped in .github/workflows,
+         cannot go stale without you deciding it should. -->
+    <label class="tg-label" for="instUrl" style="margin-top:12px;display:block">Your own list (optional)</label>
+    <input id="instUrl" type="url" inputmode="url" spellcheck="false"
+           placeholder="https://raw.githubusercontent.com/you/repo/main/data/nse-instruments.json"
+           style="width:100%;margin:6px 0">
+    <div class="hint" style="margin-top:0">Leave blank to use the public lists. The repository
+    ships a weekly GitHub Action that rebuilds this file, so your own copy stays current
+    whatever happens to anyone else's.</div>
 
     <label class="tg-label" for="instSearch" style="margin-top:10px;display:block">Find a company</label>
     <input id="instSearch" type="text" placeholder="RELIANCE, PNB, INE002A01018"
@@ -2644,6 +2659,54 @@ var pendingImport = null;
    evaluated for every shortlisted company and counts as present only when all
    of them carry it — a section four companies have and eight do not is a gap,
    not a section. */
+/* Some sections are legitimately empty, and an audit that cannot tell "nothing
+   to report" from "did not report" tells the reader to go and fix research that
+   is already correct.
+
+   Three were doing exactly that on the PNB run. Nothing was screened out, so
+   the exclusions list is empty and right. A domestic bank has no trade data, so
+   that array is empty and right. And the price history is fetched by the app
+   after import, so demanding it from the research was asking the model to
+   transcribe 105 weekly closes by hand — which is the very thing prices.js
+   exists to stop.
+
+   A rule here has to reason from data the payload already carries. It may never
+   just excuse an empty section, or the audit stops meaning anything. Each
+   returns a sentence for the reader when it fires, so a satisfied row still
+   says why it was satisfied. */
+var AUDIT_EXCUSES = {
+  'universe.exclusions': function(d){
+    var u = d && d.universe;
+    if(!u || typeof u.identified !== 'number' || typeof u.screened !== 'number') return null;
+    if(u.identified !== u.screened) return null;
+    return 'nothing was screened out — all ' + u.identified
+      + ' identified compan' + (u.identified === 1 ? 'y' : 'ies') + ' went through';
+  },
+  'geopolitics.tradeData': function(d){
+    var g = d && d.geopolitics;
+    if(!g) return null;
+    /* Only where the block itself argues there is no material exposure. A
+       payload that leaves geopolitics blank gets no excuse. */
+    var lowish = /^(low|none|negligible|nil|minimal)\b/i;
+    if(lowish.test(String(g.importDependence || '')) && lowish.test(String(g.exportExposure || ''))
+       && lowish.test(String(g.tariffRisk || '')) && lowish.test(String(g.sanctionRisk || ''))){
+      return 'the payload states import, export, tariff and sanction exposure are all low, '
+        + 'so there is no trade to tabulate';
+    }
+    return null;
+  },
+  'companies[].priceHistory.closes': function(d){
+    var cos = (d && d.companies) || [];
+    if(!cos.length) return null;
+    /* An ISIN is all the app needs: the series is fetched from it. */
+    var withIsin = cos.filter(function(c){
+      return typeof c.isin === 'string' && /^IN[A-Z0-9]{10}$/.test(c.isin.trim()); }).length;
+    if(withIsin !== cos.length) return null;
+    return 'the ISIN is stated, so the app fetches the weekly series itself — '
+      + 'the research is not asked to transcribe it';
+  }
+};
+
 var AUDIT_SPEC = [
   ['run','Sector and horizon','run.sector','v'],
   ['run','Number of searches recorded','run.searchesRun','v'],
@@ -2766,15 +2829,27 @@ function auditCount(v, kind){
 /* Evaluate one spec row. Returns { have, of, note } so a per-company row can
    say "8 of 12 companies" instead of a bare tick or cross. */
 function auditRow(d, path, kind){
+  /* An excuse is consulted only when the section is actually empty, so a
+     payload that fills it is still judged on what it filled. */
+  var excuse = function(){
+    var fn = AUDIT_EXCUSES[path];
+    if(typeof fn !== 'function') return null;
+    try{ return fn(d); }catch(e){ return null; }
+  };
   if(path.indexOf('companies[].') !== 0){
-    return { have: auditCount(atPath(d, path), kind) > 0 ? 1 : 0, of: 1, note: '' };
+    if(auditCount(atPath(d, path), kind) > 0) return { have: 1, of: 1, note: '' };
+    var why = excuse();
+    return why ? { have: 1, of: 1, note: why, excused: true } : { have: 0, of: 1, note: '' };
   }
   var rest = path.slice('companies[].'.length);
   var cos = (d && d.companies) || [];
   if(!cos.length) return { have: 0, of: 0, note: 'no companies' };
   var n = cos.filter(function(c){ return auditCount(atPath(c, rest), kind) > 0; }).length;
-  return { have: n === cos.length ? 1 : 0, of: 1,
-           note: n + ' of ' + cos.length + ' companies' , partial: n > 0 && n < cos.length };
+  if(n === cos.length) return { have: 1, of: 1, note: n + ' of ' + cos.length + ' companies' };
+  var why2 = excuse();
+  if(why2) return { have: 1, of: 1, note: why2, excused: true };
+  return { have: 0, of: 1, note: n + ' of ' + cos.length + ' companies',
+           partial: n > 0 && n < cos.length };
 }
 /* A run is judged against the sections it was asked for. A company payload was
    never meant to carry the world, the Budget or the value chain, so counting
@@ -2793,11 +2868,16 @@ function auditPayload(d){
     if(isCompanyRun && SECTOR_ONLY.indexOf(e[0]) >= 0) return;
     if(isSectorRun && COMPANY_ONLY.indexOf(e[0]) >= 0) return;
     var r = auditRow(d, e[2], e[3]);
-    if(!groups[e[0]]){ groups[e[0]] = { key:e[0], name:AUDIT_GROUPS[e[0]], have:0, total:0, gaps:[] };
+    if(!groups[e[0]]){ groups[e[0]] = { key:e[0], name:AUDIT_GROUPS[e[0]], have:0, total:0, gaps:[], noted:[] };
                        order.push(groups[e[0]]); }
     var g = groups[e[0]];
     g.total++;
-    if(r.have){ g.have++; filled++; }
+    if(r.have){
+      g.have++; filled++;
+      /* An excused row still says why. A section that silently counts as
+         present is how an audit quietly stops auditing. */
+      if(r.excused) g.noted.push(e[1] + ' \u2014 ' + r.note);
+    }
     else { g.gaps.push(e[1] + (r.note ? ' \u2014 ' + r.note : '')); }
   });
   var total = order.reduce(function(a, g){ return a + g.total; }, 0);
@@ -2971,6 +3051,9 @@ function showReview(res, raw){
       var full = g.have === g.total;
       html += '<div class="rvsrow"><i class="' + (full ? 'dot ok' : g.have ? 'dot part' : 'dot none')
             + '"></i><span>' + esc(g.name) + '</span><b>' + g.have + '/' + g.total + '</b></div>';
+      if(g.noted && g.noted.length){
+        html += '<div class="rvnote">nothing to report: ' + esc(g.noted.join(' · ')) + '</div>';
+      }
       if(g.gaps.length){
         html += '<div class="rvgap">missing: ' + esc(g.gaps.join(' · ')) + '</div>';
       }
@@ -3120,9 +3203,30 @@ $('#btnDoImport').addEventListener('click', function(){
   function draw(){
     if(!window.EQ || !EQ.instruments){ meta.textContent = 'The engine has not finished loading.'; return; }
     var m = EQ.instruments.libraryMeta();
-    meta.innerHTML = m.count
-      ? '<b>' + m.count + '</b> companies · updated ' + (m.at ? dmyTime(m.at) : 'unknown')
-      : 'Empty. Tap <b>Update library</b> to fetch it from the exchange.';
+    /* What is shown is how current the DATA is, not when it was fetched.
+       "Updated 3 minutes ago" is true of a file built three years ago, and
+       that is precisely the failure this needs to make visible: companies
+       list, merge, demerge and get renamed, and a stale map does not error —
+       it returns another company's price history. */
+    var bits = [];
+    if(m.total){
+      bits.push('<b>' + m.total + '</b> companies'
+        + (m.manualCount ? ' (' + m.manualCount + ' entered by hand)' : ''));
+    }
+    if(m.count){
+      bits.push(m.dataDate
+        ? ('data current to <b>' + dmy(m.dataDate) + '</b>'
+           + (m.ageDays != null ? ' \u00b7 ' + m.ageDays + ' day' + (m.ageDays === 1 ? '' : 's') + ' old' : ''))
+        : 'the source did not say how current it is');
+      bits.push('from ' + str(m.sourceName || m.source || 'an unnamed source'));
+    }
+    meta.innerHTML = bits.length
+      ? bits.join(' \u00b7 ') + (m.stale
+          ? '<div class="note warn" style="margin-top:6px">' + str(m.staleReason)
+            + ' Tap <b>Update library</b>.</div>'
+          : '')
+      : 'Using the map bundled with this build. Tap <b>Update library</b> to pick up '
+        + 'companies listed since it was made.';
     render();
   }
   function render(){
@@ -3138,16 +3242,87 @@ $('#btnDoImport').addEventListener('click', function(){
 
   btn.addEventListener('click', function(){
     if(!window.EQ || !EQ.instruments){ msg.textContent = 'The engine has not finished loading.'; return; }
-    btn.disabled = true; msg.textContent = 'Fetching the exchange master…';
-    EQ.instruments.refresh().then(function(r){
+    btn.disabled = true; msg.textContent = 'Updating…';
+    EQ.instruments.refresh({ url: ownUrl() || null }).then(function(r){
       btn.disabled = false;
-      if(r.ok){ msg.textContent = 'Updated — ' + r.count + ' companies.'; }
-      else {
-        msg.innerHTML = '<b>Could not update.</b> ' + str(r.error)
-          + (r.likelyCors ? ' Add the companies you research by hand below; each one only has to be entered once.' : '');
+      if(r.ok){
+        msg.innerHTML = 'Updated \u2014 <b>' + r.count + '</b> companies'
+          + (r.dataDate ? ', current to ' + dmy(r.dataDate) : '')
+          + '. <span class="mut">From ' + str(r.source) + '.</span>';
+      } else {
+        /* Every source that was tried, and why each one refused. A single
+           "could not update" taught nothing about which part was broken. */
+        msg.innerHTML = '<b>Could not update.</b> Every source was tried:<br>'
+          + (r.attempts || []).map(function(a){
+              return '\u00b7 ' + str(a.source) + ' \u2014 ' + str(a.error); }).join('<br>')
+          + '<br>The map bundled with this build is still in use, and you can add '
+          + 'companies by hand below \u2014 those are kept when the library next updates.';
       }
       draw();
     });
+  });
+
+  /* Keeping the library current without anyone having to remember.
+
+     A person will not think about ISINs until one is wrong, and by then they
+     have a report built on another company's price history. So the app checks
+     its own data age when the Setup page is opened and refreshes quietly if it
+     has fallen behind — once a day at most, never blocking anything, and
+     silent unless it changes something. A failure here is not reported: the
+     bundled map still works, and an error the person did not ask for is noise.
+
+     It refreshes only when the page is opened rather than on every launch,
+     because that is the one moment they are already thinking about setup. */
+  /* A list of the person's own, if they have named one. Remembered on the
+     device, and tried ahead of the public mirrors. */
+  var URL_KEY = 'eq.instruments.url';
+  var urlBox = $('#instUrl');
+  function ownUrl(){
+    var v = urlBox ? urlBox.value.trim() : '';
+    if(v && !/^https:\/\//i.test(v)) return '';
+    return v;
+  }
+  if(urlBox){
+    try{ urlBox.value = localStorage.getItem(URL_KEY) || ''; }catch(e){}
+    urlBox.addEventListener('change', function(){
+      var v = ownUrl();
+      try{ v ? localStorage.setItem(URL_KEY, v) : localStorage.removeItem(URL_KEY); }catch(e){}
+      if(msg) msg.textContent = v
+        ? 'Saved. Tap Update library to read from it.'
+        : 'Cleared — the public lists will be used.';
+    });
+  }
+
+  var LAST_TRY = 'eq.instruments.lastAutoTry';
+  function autoRefreshIfStale(){
+    if(!window.EQ || !EQ.instruments) return;
+    if(!navigator.onLine) return;
+    var m = EQ.instruments.libraryMeta();
+    if(m.count && !m.stale) return;
+    try{
+      var last = Number(localStorage.getItem(LAST_TRY) || 0);
+      if(Date.now() - last < 20 * 60 * 60 * 1000) return;   // once a day is plenty
+      localStorage.setItem(LAST_TRY, String(Date.now()));
+    }catch(e){}
+    if(msg) msg.textContent = m.count
+      ? 'Library is out of date \u2014 updating in the background\u2026'
+      : 'Fetching the company list\u2026';
+    EQ.instruments.refresh({ url: ownUrl() || null }).then(function(r){
+      if(r.ok){
+        if(msg) msg.innerHTML = 'Library updated \u2014 <b>' + r.count + '</b> companies'
+          + (r.dataDate ? ', current to ' + dmy(r.dataDate) : '') + '.';
+      } else if(msg && !m.count){
+        msg.innerHTML = 'Could not reach a company list, so the map bundled with this build '
+          + 'is in use. Companies listed very recently may need adding by hand.';
+      } else if(msg){ msg.textContent = ''; }
+      draw();
+    });
+  }
+  /* Run it when the Setup tab is opened, not on load: nothing else needs it,
+     and a fetch on every cold start is rude on a phone. */
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('nav button[data-tab="setup"]');
+    if(b) setTimeout(autoRefreshIfStale, 250);
   });
 
   var add = $('#btnInstAdd');
@@ -4228,16 +4403,10 @@ function renderCompanyPage(){
   if(cur) SEL.company = cur.id;
   fillPicker('#coPick', recs, SEL.company, '\u2014 none imported \u2014');
 
-  var host = $('#coDocs');
-  if(host){
-    host.innerHTML = cur
-      ? ('<div class="doc-row">'
-         + '<span class="doc-name">Company Research Report<small>' + esc(cur.company || '') + ' &middot; A4 PDF</small></span>'
-         + '<button class="ico ico-pdf" data-doc="co' + rankOfCompany(cur) + '" data-act="make" aria-label="Generate report">PDF</button>'
-         + '<button class="ico ico-sh" data-doc="co' + rankOfCompany(cur) + '" data-act="share" aria-label="Share report">&#8682;</button>'
-         + '</div>')
-      : '<p class="hint">Research a company above, or import one of the Top 3, and its report appears here.</p>';
-  }
+  /* A #coDocs block used to be built here. There is no #coDocs in the markup —
+     the guard meant it silently built HTML and threw it away on every render.
+     The report buttons a reader actually presses are the docRows on the Top 3
+     slot boxes below, and on the independent-company box above. */
 
   var slots = $('#coBoxes'); if(!slots) return;
   var seg = segRecord();
