@@ -29,6 +29,14 @@ import * as report from './core/report.js';
 import * as compare from './core/compare.js';
 import * as store from './data/store.js';
 import * as prices from './core/prices.js';
+import * as instruments from './core/instruments.js';
+import * as commentary from './core/commentary.js';
+import * as scenario from './core/scenario.js';
+
+/* The price layer looks companies up in the library the app keeps on the
+   device. Wiring it here keeps prices.js free of storage, so it still runs
+   under Node in the tests. */
+prices.useInstrumentLibrary((symbol) => instruments.isinFor(symbol));
 
 const EQ = Object.freeze({
   version: {
@@ -37,7 +45,7 @@ const EQ = Object.freeze({
   },
   scoring, rubrics, ranking, model, valuation, metrics, technicals,
   forensic, litigation, multibagger, integrity, schema, prompt, report,
-  compare, store, repair, compose, screen, indicators, models, prices,
+  compare, store, repair, compose, screen, indicators, models, prices, instruments, commentary, scenario,
 
   // The three calls the shell actually makes.
   buildPrompt: prompt.buildResearchPrompt,
