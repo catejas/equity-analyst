@@ -47,12 +47,22 @@ console.log('  picker :', [...d.querySelectorAll('#coPick option')].map(o=>o.tex
 console.log('  slots  :', [...d.querySelectorAll('#coBoxes .runbox h2')].map(h=>h.textContent.replace(/\s+/g,' ').trim()).join(' | '));
 console.log('  doc btn:', [...d.querySelectorAll('#coDocs [data-doc]')].map(b=>b.dataset.doc).join(' '));
 
-// switch company and confirm the report button follows
+/* Switch company and confirm the report button follows.
+
+   This indexed opts[1] unconditionally and crashed on any fixture carrying a
+   single company — which is every fixture that imports one Top 3 slot. The
+   switch is only meaningful with two to switch between. */
 const opts=[...d.querySelectorAll('#coPick option')];
-d.getElementById('coPick').value=opts[1].value;
-d.getElementById('coPick').dispatchEvent(new w.Event('change',{bubbles:true}));
-await new Promise(r=>setTimeout(r,150));
-console.log('  after switching to', opts[1].textContent.split('  ·')[0], '-> doc', d.querySelector('#coDocs [data-doc]').dataset.doc);
+if(opts.length>1){
+  d.getElementById('coPick').value=opts[1].value;
+  d.getElementById('coPick').dispatchEvent(new w.Event('change',{bubbles:true}));
+  await new Promise(r=>setTimeout(r,150));
+  const btn=d.querySelector('#coBoxes [data-doc]');
+  console.log('  after switching to', opts[1].textContent.split('  ·')[0],
+    '-> doc', btn?btn.dataset.doc:'(none)');
+} else {
+  console.log('  only one company imported, so there is nothing to switch to');
+}
 
 go('score');
 w.renderScoreTab(); await new Promise(r=>setTimeout(r,150));

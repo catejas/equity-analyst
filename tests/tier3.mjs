@@ -87,9 +87,10 @@ async function build(file) {
   return { html, errs };
 }
 
-const HEADINGS = ['Return on capital, deconstructed', 'The capital cycle',
-  'Revenue by operating line', 'Pay and alignment', 'How the discount rate is built',
-  'Sum of the parts', 'What the price already assumes'];
+/* Title Case, as every heading in the report now is. */
+const HEADINGS = ['Return on Capital, Deconstructed', 'The Capital Cycle',
+  'Revenue by Operating Line', 'Pay and Alignment', 'How the Discount Rate Is Built',
+  'Sum of the Parts', 'What the Price Already Assumes'];
 
 const r = await build('/tmp/ril-rich.json');
 ok('a company reached the report', r.html !== 'NOCOMPANY');
@@ -99,7 +100,7 @@ ok('peer matrix uses named columns', r.html.includes('EV/EBITDA') && r.html.incl
 ok('peer matrix no longer says "Metric 1"', !r.html.includes('Metric 1'));
 ok('ROIC minus WACC spread is shown', r.html.includes('ROIC − WACC'));
 ok('a negative spread is called out', /consumes value/.test(r.html));
-ok('SOTP totals', r.html.includes('Sum of the parts') && /Total/.test(r.html));
+ok('SOTP totals', r.html.includes('Sum of the Parts') && /Total/.test(r.html));
 /* The charts the new data enables. Assert on the figure captions, which is
    what a reader sees, not on SVG internals. */
 ok('ROIC vs cost-of-capital chart drawn', /Return on invested capital against its cost/.test(r.html));

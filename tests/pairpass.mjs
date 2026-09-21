@@ -12,9 +12,36 @@ import fs from 'node:fs';
 const b = await chromium.launch({ executablePath: '/opt/google/chrome/chrome', args: ['--no-sandbox'] });
 let fail = 0;
 
-for (const name of ['co1', 'sector', 'exec']) {
+/* A missing fixture used to `continue`, silently. With all three absent this
+   file printed its PASS line having measured nothing at all — and the "0
+   pairs, 99% fill" reading that closed the two-column question came from here,
+   so the one test standing between a layout decision and a wrong one could
+   have been reporting on an empty room. It now refuses to run.
+
+   The fixtures also go stale: they are written by an earlier run against the
+   build of that moment, so a measurement taken against yesterday's HTML says
+   nothing about today's. Anything older than the renderer is rejected. */
+const DOCS = ['co1', 'sector', 'exec'];
+{
+  const missing = DOCS.filter((n) => !fs.existsSync(`/tmp/doc-${n}.html`));
+  if (missing.length) {
+    console.log('FAIL  no fixture for: ' + missing.join(', ')
+      + ' — run tests/gen-fixtures.mjs first. Passing here would be vacuous.');
+    await b.close();
+    process.exit(1);
+  }
+  const renderer = fs.statSync('/home/claude/eqapp/render.js').mtimeMs;
+  const stale = DOCS.filter((n) => fs.statSync(`/tmp/doc-${n}.html`).mtimeMs < renderer);
+  if (stale.length) {
+    console.log('FAIL  fixture older than render.js: ' + stale.join(', ')
+      + ' — it measures a build that no longer exists. Regenerate first.');
+    await b.close();
+    process.exit(1);
+  }
+}
+
+for (const name of DOCS) {
   const file = `/tmp/doc-${name}.html`;
-  if (!fs.existsSync(file)) continue;
   const page = await b.newPage({ viewport: { width: 1000, height: 1400 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]));
@@ -57,6 +84,7 @@ for (const name of ['co1', 'sector', 'exec']) {
     return {
       pages: pages.length,
       pairs: pairs.length,
+      stats: window.__pairStats || null,
       fills: boxes.map(fillOf),
       colOver, boxOver,
       /* every block must still be a direct child of a box — if the pair pass
@@ -77,6 +105,17 @@ for (const name of ['co1', 'sector', 'exec']) {
     `orphans ${r.orphanBlocks}` + (errs.length ? ` | ERR ${errs[0]}` : '')
   );
   console.log('        fills:', r.fills.join(' '));
+  /* "0 pairs" on its own is ambiguous — it reads as "nothing to gain" and was
+     read that way for a whole review cycle. The counters say which physical
+     constraint refused each candidate. */
+  if (r.stats) {
+    const t = r.stats;
+    console.log(`        pairing: ${t.candidates} candidates | kept ${t.kept} | `
+      + `exhibit spilled when narrowed ${t.spill} | taller paired than stacked ${t.taller} | `
+      + `no room on page ${t.noRoom}`);
+  } else {
+    console.log('        pairing: no candidates reached the pair stage');
+  }
   if (r.colOver.length) console.log('        col overflow:', JSON.stringify(r.colOver.slice(0, 4)));
   if (r.boxOver.length) console.log('        box overflow:', JSON.stringify(r.boxOver.slice(0, 4)));
 }
