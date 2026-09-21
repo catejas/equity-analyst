@@ -157,7 +157,7 @@ export function multibaggerModel(c, { technicalPanel = null } = {}) {
  */
 export function sectorRotation(runs) {
   const rows = (Array.isArray(runs) ? runs : [])
-    .filter((r) => isObj(r) && r.segment)
+    .filter((r) => isObj(r) && r.sector)
     .map((r) => {
       const panelOf = (co) => (co && co.technicalPanel) || null;
       const companies = Array.isArray(r.companies) ? r.companies : [];
@@ -169,8 +169,8 @@ export function sectorRotation(runs) {
       const median = moms.length
         ? moms.slice().sort((a, b) => a - b)[Math.floor(moms.length / 2)] : null;
       return {
-        segment: r.segment,
-        subsegment: r.subsegment || null,
+        sector: r.sector,
+        subSector: r.subSector || null,
         researchedAt: r.ts || null,
         companies: companies.length,
         withMomentum: moms.length,

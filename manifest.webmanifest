@@ -2,7 +2,7 @@
   "version": "v0.1.0",
   "name": "Equity Analyst \u2014 Institutional Research",
   "short_name": "Equity Analyst",
-  "description": "Institutional-grade Indian Equity research assistant on the Indian listed universe, by segment and subsegment.",
+  "description": "Institutional-grade Indian Equity research assistant on the Indian listed universe, by sector and subSector.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

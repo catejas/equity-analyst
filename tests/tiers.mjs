@@ -7,7 +7,7 @@ closes[closes.length-1]=Math.max(...closes)+9;
 const series={spacing:'weekly',closes,highs:closes.map(c=>c*1.015),lows:closes.map(c=>c*0.985),
   volumes:closes.map((_,i)=>i===closes.length-1?3.3e6:1.05e6),adjusted:true,asOf:'2026-09-12'};
 function seg(name,tool){ const s=JSON.parse(JSON.stringify(raw));
-  s.run.segment=name; s.run.tool=tool; s.run.schemaVersion='4.0.0';
+  s.run.sector=name; s.run.tool=tool; s.run.schemaVersion='4.0.0';
   s.run.top3=raw.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named'}));
   s.companies=[]; return s; }
 const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
@@ -19,7 +19,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
 w.console.error=(...a)=>errors.push('console.error '+a.join(' '));
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -41,7 +41,11 @@ console.log('versions:', JSON.stringify(w.EQ.version));
 
 go('sector'); await imp(seg('Banking','Claude'), ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
-for(let i=0;i<3;i++){
+/* However many companies this fixture actually has. Hard-coding three meant
+   any smaller payload produced JSON.parse(undefined) rather than a readable
+   failure. */
+const N=Math.min(3, (raw.companies||[]).length);
+for(let i=0;i<N;i++){
   const co=JSON.parse(JSON.stringify(raw.companies[i]));
   if(i===0) co.priceHistory=series;
   await imp({run:{...seg('Banking','Claude').run},companies:[co]},

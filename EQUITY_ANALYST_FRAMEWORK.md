@@ -6,7 +6,7 @@ Generated from the application itself. The rubric anchors, the register battery,
 the source tiers and the payload contract below are the same constants the app
 scores against, so this file cannot drift from the software.
 
-The app builds the prompt for you on the Analyse page with the segment already
+The app builds the prompt for you on the Analyse page with the sector already
 filled in. This is the reference copy, for reading and for running by hand.
 
 ## Use null freely
@@ -32,7 +32,7 @@ discussed.
 
 ---
 
-## 1. Segment research prompt
+## 1. Sector research prompt
 
 BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
 now, as your first action, before writing a single line of the payload.
@@ -668,8 +668,8 @@ including pledged shares.
 {
   "run": {
     "schemaVersion": "4.0.0",
-    "segment": "[SECTOR]",
-    "subsegment": "[SUB-SECTOR, or leave out]",
+    "sector": "[SECTOR]",
+    "subSector": "[SUB-SECTOR, or leave out]",
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
     "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
@@ -711,10 +711,10 @@ including pledged shares.
 
   "budget": { "economicSurvey": "the Survey's own reading of this sector",
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
-      "ministry": "", "reachesSegment": "" } ] },
+      "ministry": "", "reachesSector": "" } ] },
 
   "policy": [ { "name": "", "ministry": "", "announced": "", "objective": "",
-    "funding": "", "outcomes": "", "challenges": "", "reachesSegment": "" } ],
+    "funding": "", "outcomes": "", "challenges": "", "reachesSector": "" } ],
   "policyEvolution": [ { "era": "1991 to 2001", "what": "" } ],
   "regulation": { "regulator": "", "rules": "", "underReview": "", "costOfChange": "" },
 
@@ -1626,8 +1626,8 @@ including pledged shares.
 {
   "run": {
     "schemaVersion": "4.0.0",
-    "segment": "[SECTOR]",
-    "subsegment": null,
+    "sector": "[SECTOR]",
+    "subSector": null,
     "horizon": "3-5",
     "generatedAt": "ISO 8601 timestamp",
     "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
@@ -1669,10 +1669,10 @@ including pledged shares.
 
   "budget": { "economicSurvey": "the Survey's own reading of this sector",
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
-      "ministry": "", "reachesSegment": "" } ] },
+      "ministry": "", "reachesSector": "" } ] },
 
   "policy": [ { "name": "", "ministry": "", "announced": "", "objective": "",
-    "funding": "", "outcomes": "", "challenges": "", "reachesSegment": "" } ],
+    "funding": "", "outcomes": "", "challenges": "", "reachesSector": "" } ],
   "policyEvolution": [ { "era": "1991 to 2001", "what": "" } ],
   "regulation": { "regulator": "", "rules": "", "underReview": "", "costOfChange": "" },
 

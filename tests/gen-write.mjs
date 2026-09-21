@@ -34,7 +34,7 @@ try{
   console.log('currentPayload ->', cp ? ('report with '+cp.report.counts.universe+' companies, meta '+cp.meta.sector) : 'NULL');
   for(const kind of ['sector','co1','co2','co3','exec','score']){
     try{
-      const html = w.EQDocTools.buildHTML(cp, kind, 'en');
+      const html = w.EQDocTools.buildHTML(cp, kind, "en"); fs.writeFileSync("/tmp/doc-"+kind+".html", html);
       const body = html.replace(/<script[\s\S]*?<\/script>/g,'');
       console.log('  '+kind.padEnd(7), String(html.length).padStart(7)+' chars',
         '| pages', (html.match(/class="page"/g)||[]).length,

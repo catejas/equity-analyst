@@ -27,7 +27,7 @@ const built=eng.report.buildReport(parsed.payload);
 /* the report reorders by rank, so find where the company with the series landed */
 const idx=built.report.full.findIndex(c=>c.symbol===raw.companies[0].symbol);
 console.log('series company is at ranked index', idx, '-', built.report.full[idx].name);
-const p={meta:{segment:'Banking',analysis_datetime:new Date().toISOString()},
+const p={meta:{sector:'Banking',analysis_datetime:new Date().toISOString()},
   report:built.report, warnings:built.warnings, companyIndex:idx};
 const html=sandbox.window.EQDocs.buildCompany(p,'en');
 fs.writeFileSync('/tmp/tech.html',html);

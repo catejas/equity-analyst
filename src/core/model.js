@@ -34,7 +34,7 @@ function check(name, expected, actual, detail) {
 /**
  * Build a driver-based forecast.
  *
- * segments[]        { name, baseVolume, volumeCagr, baseRealisation, realisationCagr, grossMargin }
+ * sectors[]        { name, baseVolume, volumeCagr, baseRealisation, realisationCagr, grossMargin }
  * opex              { fixedBase, fixedGrowth, variablePctOfRevenue }
  * depreciation      { openingNetBlock, rate }
  * capex             { maintenancePctOfRevenue, growthSchedule[] }
@@ -43,10 +43,10 @@ function check(name, expected, actual, detail) {
  * shares            { basic, esop, warrants, convertibles }
  */
 export function buildModel({
-  years, segments, opex, depreciation, capex, workingCapital, financing, shares,
+  years, sectors, opex, depreciation, capex, workingCapital, financing, shares,
 }) {
   if (!isNum(years) || years < 1 || years > 15) return refuse('years must be between 1 and 15.');
-  if (!Array.isArray(segments) || segments.length === 0) return refuse('At least one segment is required.');
+  if (!Array.isArray(sectors) || sectors.length === 0) return refuse('At least one sector is required.');
   for (const block of [['opex', opex], ['depreciation', depreciation], ['capex', capex],
     ['workingCapital', workingCapital], ['financing', financing], ['shares', shares]]) {
     if (!block[1] || typeof block[1] !== 'object') return refuse(`The ${block[0]} block is required.`);
@@ -54,8 +54,8 @@ export function buildModel({
 
   let seg;
   try {
-    seg = segments.map((s, i) => {
-      const name = s.name || `Segment ${i + 1}`;
+    seg = sectors.map((s, i) => {
+      const name = s.name || `Sector ${i + 1}`;
       for (const k of ['baseVolume', 'volumeCagr', 'baseRealisation', 'realisationCagr']) {
         if (!isNum(s[k])) throw new Error(`${name}: ${k} is required and must be a number.`);
       }
@@ -145,7 +145,7 @@ export function buildModel({
     const closingCash = openingCash + cfo + cfi + cff;
 
     // Reconciliation. These are the checks no LLM report performs on itself.
-    checks.push(check(`Year ${t + 1}: segment revenue sums to total`, revenue, segRows.reduce((x, s) => x + s.revenue, 0)));
+    checks.push(check(`Year ${t + 1}: sector revenue sums to total`, revenue, segRows.reduce((x, s) => x + s.revenue, 0)));
     checks.push(check(`Year ${t + 1}: fixed asset roll-forward`, closingNetBlock, netBlock + capexTotal - dep));
     checks.push(check(`Year ${t + 1}: debt roll-forward`, closingDebt, debt + draw[t] - repay[t]));
     checks.push(check(`Year ${t + 1}: cash movement ties to the cash flow statement`, closingCash - openingCash, cfo + cfi + cff));
@@ -153,7 +153,7 @@ export function buildModel({
 
     rows.push({
       year: t + 1,
-      segments: segRows,
+      sectors: segRows,
       revenue: r2(revenue), grossProfit: r2(grossProfit), cogs: r2(cogs),
       fixedCost: r2(fixed), variableCost: r2(variable),
       ebitda: r2(ebitda), ebitdaMargin: r2(revenue > 0 ? (ebitda / revenue) * 100 : null),
@@ -246,17 +246,17 @@ export function driverSensitivity(base, flexes) {
 /** Convenience flexes for the standard grid. */
 export const STANDARD_FLEXES = [
   { driver: 'Volume growth', change: '-300bp',
-    apply: (b) => { b.segments.forEach((s) => { s.volumeCagr -= 0.03; }); return b; } },
+    apply: (b) => { b.sectors.forEach((s) => { s.volumeCagr -= 0.03; }); return b; } },
   { driver: 'Volume growth', change: '+300bp',
-    apply: (b) => { b.segments.forEach((s) => { s.volumeCagr += 0.03; }); return b; } },
+    apply: (b) => { b.sectors.forEach((s) => { s.volumeCagr += 0.03; }); return b; } },
   { driver: 'Realisation', change: '-200bp',
-    apply: (b) => { b.segments.forEach((s) => { s.realisationCagr -= 0.02; }); return b; } },
+    apply: (b) => { b.sectors.forEach((s) => { s.realisationCagr -= 0.02; }); return b; } },
   { driver: 'Gross margin', change: '-200bp',
-    apply: (b) => { b.segments.forEach((s) => {
+    apply: (b) => { b.sectors.forEach((s) => {
       s.grossMargin = Array.isArray(s.grossMargin) ? s.grossMargin.map((m) => m - 0.02) : s.grossMargin - 0.02;
     }); return b; } },
   { driver: 'Gross margin', change: '+200bp',
-    apply: (b) => { b.segments.forEach((s) => {
+    apply: (b) => { b.sectors.forEach((s) => {
       s.grossMargin = Array.isArray(s.grossMargin) ? s.grossMargin.map((m) => m + 0.02) : s.grossMargin + 0.02;
     }); return b; } },
   { driver: 'Capex intensity', change: '+200bp of revenue',

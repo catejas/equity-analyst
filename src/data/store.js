@@ -66,8 +66,8 @@ export function writeJson(key, value) {
 const RUNS_INDEX = 'runs:index';
 const runKey = (id) => `runs:${id}`;
 
-export function makeRunId(segment, at = new Date()) {
-  const slug = String(segment).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+export function makeRunId(sector, at = new Date()) {
+  const slug = String(sector).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
   return `${slug || 'run'}-${at.toISOString().replace(/[:.]/g, '-')}`;
 }
 
@@ -75,11 +75,11 @@ export function makeRunId(segment, at = new Date()) {
 export function saveRun(built, { at = new Date() } = {}) {
   if (!built?.ok || !built.report) throw new Error('Only a successfully built report can be saved.');
   const r = built.report;
-  const id = makeRunId(r.run.segment, at);
+  const id = makeRunId(r.run.sector, at);
   const entry = {
     id,
-    segment: r.run.segment,
-    subsegment: r.run.subsegment,
+    sector: r.run.sector,
+    subSector: r.run.subSector,
     horizon: r.run.horizon,
     savedAt: at.toISOString(),
     methodologyVersion: r.run.methodologyVersion,
@@ -106,10 +106,10 @@ export function deleteRun(id) {
   writeJson(RUNS_INDEX, listRuns().filter((e) => e.id !== id));
 }
 
-/** Most recent earlier run for the same segment and subsegment. */
-export function previousRunFor(segment, subsegment = null, excludeId = null) {
+/** Most recent earlier run for the same sector and subSector. */
+export function previousRunFor(sector, subSector = null, excludeId = null) {
   const match = listRuns().filter((e) =>
-    e.segment === segment && (e.subsegment ?? null) === (subsegment ?? null) && e.id !== excludeId);
+    e.sector === sector && (e.subSector ?? null) === (subSector ?? null) && e.id !== excludeId);
   return match.length ? loadRun(match[0].id) : null;
 }
 

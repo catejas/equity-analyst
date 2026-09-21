@@ -13,7 +13,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -39,8 +39,8 @@ const probe=(label)=>{
   console.log('   exec   : '+ex.length+' chars | companies named: '+names.filter(n=>ex.includes(n)).length+'/3');
 };
 
-go('segment'); await imp(mk(), ()=>d.getElementById('btnImport').click());
-probe('SEGMENT ONLY, no company imported yet');
+go('sector'); await imp(mk(), ()=>d.getElementById('btnImport').click());
+probe('SECTOR ONLY, no company imported yet');
 
 go('company'); await pause();
 await imp({run:{...full.run,tool:'Claude'},companies:[full.companies[0]]},

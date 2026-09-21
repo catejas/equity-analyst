@@ -1,12 +1,12 @@
 // screen.js — the engine chooses the Top 3, not the model.
 //
-// The segment run used to name three companies directly, with one line each on
+// The sector run used to name three companies directly, with one line each on
 // why. That was the single judgement in the whole system with no rubric behind
 // it: no anchors, no weights, no evidence requirement. Two tools given the same
 // facts returned different threes, because the choice was opinion and nothing
 // downstream checked it.
 //
-// Now the segment run rates every shortlisted company on the four pillars, with
+// Now the sector run rates every shortlisted company on the four pillars, with
 // a sentence of evidence for each rating, and this file ranks them. The same
 // payload always yields the same three, and the reason each one is there can be
 // read off the numbers.

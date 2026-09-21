@@ -10,7 +10,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.addEventListener('error',e=>errors.push('ERROR: '+(e.error?e.error.stack.split('\n').slice(0,3).join(' | '):e.message))); }});
 const w=dom.window, d=w.document;
 w.console.error=(...a)=>errors.push('console.error: '+a.join(' '));
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],
@@ -35,11 +35,11 @@ for(const tab of ['analyse','report','score','setup']){
   if(b){ b.click(); await new Promise(r=>setTimeout(r,150)); }
   console.log('tab', tab, '->', d.getElementById('tab-'+tab)?.classList.contains('hidden')?'HIDDEN':'shown');
 }
-// segment picker
-d.getElementById('segment').value='defence';
-d.getElementById('segment').dispatchEvent(new w.Event('input',{bubbles:true}));
+// sector picker
+d.getElementById('sector').value='defence';
+d.getElementById('sector').dispatchEvent(new w.Event('input',{bubbles:true}));
 await new Promise(r=>setTimeout(r,120));
-console.log('segment picker rows:', d.querySelectorAll('#segPanel .pk').length);
+console.log('sector picker rows:', d.querySelectorAll('#segPanel .pk').length);
 // company mode
 d.getElementById('company').value='Bharat Electronics';
 d.getElementById('company').dispatchEvent(new w.Event('input',{bubbles:true}));

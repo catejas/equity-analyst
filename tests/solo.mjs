@@ -13,7 +13,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -30,7 +30,7 @@ const imp=async(payload,click)=>{ click();
   d.getElementById('btnDoImport').click(); await pause();
   d.getElementById('btnSaveImport').click(); await new Promise(r=>setTimeout(r,280)); };
 
-go('segment'); await imp(seg, ()=>d.getElementById('btnImport').click());
+go('sector'); await imp(seg, ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 for(let i=0;i<3;i++) await imp({run:seg.run,companies:[full.companies[i]]},
   ()=>d.querySelector('.co-import[data-rank="'+(i+1)+'"]').click());
@@ -41,7 +41,7 @@ const solo={run:{...seg.run,top3:undefined},
 await imp(solo, ()=>d.getElementById('btnSoloImport').click());
 
 console.log('library:', JSON.parse(w.localStorage.getItem('eq.library')||'[]')
-  .map(r=>r.kind+(r.standalone?'/solo':'')+':'+(r.company||r.segment)).join('\n         '));
+  .map(r=>r.kind+(r.standalone?'/solo':'')+':'+(r.company||r.sector)).join('\n         '));
 console.log('\ncoPick options:', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent.split('  ·')[0]).join(' | '));
 w.renderScoreTab(); await pause();
 console.log('scCompany options:', [...d.querySelectorAll('#scCompany option')].map(o=>o.textContent.split('  ·')[0]).join(' | '));

@@ -22,10 +22,10 @@ const dom = new JSDOM(fs.readFileSync(dir + '/index.html', 'utf8'), {
 const w = dom.window;
 w.console.error = (...a) => errors.push('console.error: ' + a.join(' '));
 
-// The page loads charts.js, render.js, docs.js and segments.js as separate
+// The page loads charts.js, render.js, docs.js and sectors.js as separate
 // files; jsdom will not fetch them, so inject them in the same order the page
 // does, then the engine bridge's exports.
-for (const f of ['segments.js', 'charts.js', 'render.js', 'docs.js']) {
+for (const f of ['sectors.js', 'charts.js', 'render.js', 'docs.js']) {
   try {
     const el = w.document.createElement('script');
     el.textContent = fs.readFileSync(dir + '/' + f, 'utf8');

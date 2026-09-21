@@ -95,15 +95,15 @@ function compareCompany(before, after) {
 }
 
 /**
- * Compare two reports for the same segment.
+ * Compare two reports for the same sector.
  * Returns entered, exited and changed companies, plus a plain summary.
  */
 export function compareReports(previous, current) {
   if (!previous || !current) {
     return { available: false, reason: 'Two reports are required to compare.' };
   }
-  if (previous.run.segment !== current.run.segment) {
-    return { available: false, reason: 'The two reports cover different segments and are not comparable.' };
+  if (previous.run.sector !== current.run.sector) {
+    return { available: false, reason: 'The two reports cover different sectors and are not comparable.' };
   }
 
   const before = new Map(previous.full.map((c) => [c.symbol, c]));
@@ -142,7 +142,7 @@ export function compareReports(previous, current) {
     available: true,
     from: previous.run.payloadGeneratedAt,
     to: current.run.payloadGeneratedAt,
-    segment: current.run.segment,
+    sector: current.run.sector,
     methodologyChanged,
     top3Changed,
     previousTop3: beforeTop3,

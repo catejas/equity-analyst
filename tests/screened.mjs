@@ -7,7 +7,7 @@ const mkco=(n,a,b,c,d)=>({symbol:n.split(' ').map(w=>w[0]).join('').toUpperCase(
     valuationOpportunity:{score:c,evidence:'0.9x book'},riskQuality:{score:d,evidence:'GNPA 1.5%'}}});
 function segRun(tool, shortlist){
   const s=JSON.parse(JSON.stringify(full));
-  s.run.segment='Banking'; s.run.subsegment='Public sector banks'; s.run.tool=tool;
+  s.run.sector='Banking'; s.run.subSector='Public sector banks'; s.run.tool=tool;
   delete s.run.top3; s.companies=[]; s.shortlist=shortlist; return s;
 }
 const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
@@ -18,7 +18,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -42,13 +42,13 @@ const twelve=[mkco('State Bank of India',74,68,67,68), mkco('Bank of Baroda',64,
   mkco('UCO Bank',49,58,61,47), mkco('Bank of Maharashtra',68,75,63,64),
   mkco('Punjab and Sind Bank',45,55,59,44), mkco('Indian Overseas Bank',47,57,62,46)];
 
-go('segment');
+go('sector');
 await imp(segRun('Claude', twelve), ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 const slotNames=()=>[...d.querySelectorAll('#coBoxes .runbox h2 span:nth-child(2)')].map(s=>s.textContent);
 console.log('Claude, order A  ->', slotNames().join(' | '));
 
-go('segment');
+go('sector');
 await imp(segRun('Gemini', [...twelve].reverse()), ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 console.log('Gemini, order B  ->', slotNames().join(' | '));
@@ -57,7 +57,7 @@ console.log('\nthe reason shown on each box:');
 [...d.querySelectorAll('#coBoxes .slotwhy')].forEach(x=>console.log('   ', x.textContent.replace(/\s+/g,' ').trim().slice(0,86)));
 
 // an older run that named its own three still works
-go('segment');
+go('sector');
 const legacy=JSON.parse(JSON.stringify(full));
 legacy.run.tool='Perplexity'; legacy.companies=[];
 legacy.run.top3=[{symbol:'X',name:'Legacy Bank',why:'named by the model'}];

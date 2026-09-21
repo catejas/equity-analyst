@@ -62,7 +62,7 @@ Never fabricate missing data.
 - OQ-004 Confirm 15 years as the modelling horizon for "10+ years".
 
 ## Research Workflow (v0.2.0)
-1. Enter a segment in Research and generate the prompt.
+1. Enter a sector in Research and generate the prompt.
 2. Run that prompt in an assistant that can search the web.
 3. Save its reply as a .json file.
 4. Import the file. The app validates it, scores it, ranks it and renders a

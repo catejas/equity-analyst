@@ -45,7 +45,7 @@ the measured rating noise are reported as tied, not ranked. Until noise is
 measured, treat 3 points as the floor. Ranking to one decimal implies a
 precision that does not exist.
 
-**Fix — stability test.** Re-running the same segment should not move a rating
+**Fix — stability test.** Re-running the same sector should not move a rating
 more than 10 points without a stated cause. The comparison engine already
 computes this; it should flag unexplained drift as a data-quality warning rather
 than reporting it as news.
@@ -59,7 +59,7 @@ sensitivity on WACC and terminal growth, which is where amateur DCFs put it.
 Top-tier research does not hand over cash flows. It builds:
 
 ```
-volume or units  ×  realisation or ASP        →  revenue by segment
+volume or units  ×  realisation or ASP        →  revenue by sector
 revenue  −  cost structure (fixed / variable) →  EBITDA
                                               →  D&A, interest, tax  → PAT
                                               →  working capital, capex → FCF
@@ -69,7 +69,7 @@ revenue  −  cost structure (fixed / variable) →  EBITDA
 `dcf` block with a `model` block:
 
 ```
-segments[]: { name, base_volume, volume_cagr, base_realisation, realisation_cagr,
+sectors[]: { name, base_volume, volume_cagr, base_realisation, realisation_cagr,
               gross_margin_path[], evidence, source }
 opex: { fixed_base, fixed_growth, variable_pct_of_revenue }
 capex: { maintenance_pct_of_revenue, growth_capex_schedule[], asset_turn }
@@ -87,7 +87,7 @@ This is the single largest upgrade available and it is entirely within the app's
 control, because it is arithmetic.
 
 **Fix — three-statement consistency is machine-testable.** The app should
-verify: segment revenue sums to total; the balance sheet balances; the change in
+verify: sector revenue sums to total; the balance sheet balances; the change in
 cash equals CFO + CFI + CFF; PAT flows to reserves net of dividend; debt roll-
 forward ties. No LLM report on the market does this. It is a decisive
 differentiator and it is a few hundred lines of code.
@@ -274,7 +274,7 @@ reveals a cycle; three years is what a promoter shows you.
 
 ### F2. What is missing from the metric set
 
-- **Segment-level revenue, EBIT and capital employed**, with segment ROCE.
+- **Sector-level revenue, EBIT and capital employed**, with sector ROCE.
   Group averages hide the business that matters.
 - **DuPont decomposition** of ROE into margin, turnover and leverage, over ten
   years — the honest way to see whether returns come from operations or debt.
@@ -373,7 +373,7 @@ Keep the five documents and the same generator. Map them to the run:
 | Investment Summary | Two pages, Top 3, for circulation |
 
 The Company Research Report and Score Card need a company picker within the run.
-That is the one interface addition the switch from IPO to segment forces.
+That is the one interface addition the switch from IPO to sector forces.
 
 ---
 
@@ -382,7 +382,7 @@ That is the one interface addition the switch from IPO to segment forces.
 1. **A separate bear pass.** Run the thesis, then run a second prompt whose only
    job is to destroy it, and merge. One pass produces confirmation bias by
    construction.
-2. **Automated reconciliation** at import: segments sum to total, balance sheet
+2. **Automated reconciliation** at import: sectors sum to total, balance sheet
    balances, cash movement ties, debt rolls forward, per-share figures tie to
    the share count. Reject or flag on failure. No competing tool does this.
 3. **Peer table measured by filled cells**, not by columns present — ported from

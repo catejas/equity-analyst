@@ -8,7 +8,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],
@@ -21,7 +21,7 @@ await new Promise(r=>setTimeout(r,150));
 
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 
-// --- Block 1: segment work only, exactly as a split reply sends it
+// --- Block 1: sector work only, exactly as a split reply sends it
 const block1=JSON.parse(JSON.stringify(full)); block1.companies=[];
 d.getElementById('importText').value=JSON.stringify(block1);
 d.getElementById('btnDoImport').click(); await new Promise(r=>setTimeout(r,200));

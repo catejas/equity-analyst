@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Equity Analyst — Institutional Research</title>
-<meta name="description" content="Institutional-grade research on the Indian listed universe, by segment and company.">
+<meta name="description" content="Institutional-grade research on the Indian listed universe, by sector and company.">
 <meta name="theme-color" content="#0B1F3B" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#F1F4F9" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -498,7 +498,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="17-09-2026.6";</script>
+<script>window.APP_BUILD="21-09-2026.3";</script>
 </head>
 <body>
 
@@ -512,7 +512,7 @@ body.previewing{overflow:hidden;}
     </div>
   </div>
   <nav>
-    <button class="on" data-tab="segment">Sector</button>
+    <button class="on" data-tab="sector">Sector</button>
     <button data-tab="company">Company</button>
     <button data-tab="score">Score Card</button>
     <button data-tab="setup">Setup</button>
@@ -524,8 +524,8 @@ body.previewing{overflow:hidden;}
 <div id="engineWarn" class="note hidden" style="margin-bottom:10px;"></div>
 
 
-<!-- ============ SEGMENT ============ -->
-<section id="tab-segment">
+<!-- ============ SECTOR ============ -->
+<section id="tab-sector">
   <div class="card runbox" id="segBox">
     <h2><span id="segBoxName">Sector / Sub-sector Research</span>
         <span class="tag" id="segBoxTag">empty</span></h2>
@@ -587,7 +587,7 @@ body.previewing{overflow:hidden;}
     <pre id="out" hidden></pre><span id="status" hidden></span>
     <button id="btnRepPick" hidden></button><span id="scDocs" hidden></span>
     <button id="btnAddMore" hidden></button>
-    <input id="segment" hidden><input id="subsegment" hidden><input id="company" hidden>
+    <input id="sector" hidden><input id="subSector" hidden><input id="company" hidden>
     <span id="modeNote" hidden></span><button id="btnSearch" hidden></button>
     <button id="btnRun" hidden></button>
     <div id="addMoreBox" class="hidden"><textarea id="addMoreText"></textarea>
@@ -719,6 +719,18 @@ body.previewing{overflow:hidden;}
 <!-- ============ SETUP ============ -->
 <section id="tab-setup" class="hidden">
   <div class="card">
+    <h2>Price Data</h2>
+    <p class="hint">Two years of weekly closes are fetched when a payload arrives with a short
+    price history, so the technical panel has something to work with. Upstox needs no key.
+    BharatStock is optional and only used if Upstox cannot be reached.</p>
+    <label class="tg-label" for="bharatKey">BharatStock API key — optional</label>
+    <input id="bharatKey" type="text" placeholder="bsk_live_…" autocapitalize="off"
+           autocorrect="off" spellcheck="false" style="width:100%;margin:6px 0 10px">
+    <button class="btn sm" id="btnPriceTest">Test price providers</button>
+    <div class="hint" id="priceTestOut" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
     <h2>Install Application</h2>
     <p class="hint" id="installHint">Add this page to your home screen to get an app icon and a full-screen, address-bar-free experience.</p>
     <button class="btn sm" id="btnInstall" style="display:none;">Install app</button>
@@ -813,7 +825,7 @@ body.previewing{overflow:hidden;}
      could only drift out of step with the scoring it is meant to feed. -->
 
 
-<script src="segments.js"></script>
+<script src="sectors.js"></script>
 <script>
 /* ============================== state ============================== */
 var LS = {
@@ -830,7 +842,7 @@ $$('nav button').forEach(function(b){
   b.addEventListener('click', function(){
     $$('nav button').forEach(function(x){ x.classList.remove('on'); });
     b.classList.add('on');
-    ['segment','company','score','setup'].forEach(function(t){
+    ['sector','company','score','setup'].forEach(function(t){
       var el = $('#tab-'+t); if(!el) return;
       el.classList.toggle('hidden', t !== b.dataset.tab);
       /* The import card is shared by every page, so it is put away on a tab
@@ -907,7 +919,7 @@ var SEL = { sector:null, company:null, solo:'' };
 function refresh(){
   var pv = $('#preview'); if(pv) pv.value = buildPrompt() || '';
   try{ set(LS.form, JSON.stringify(formVals())); }catch(e){}
-  renderSegmentPage();
+  renderSectorPage();
 }
 ['#segSel','#subSel','#horizon','#soloCo'].forEach(function(sel){
   var el = $(sel); if(el) el.addEventListener('change', refresh);
@@ -947,8 +959,8 @@ $$('.seg input').forEach(function(i){ i.addEventListener('change', refresh); });
   try{
     var f = JSON.parse(get(LS.form,'null'));
     if(f){
-      if($('#segment'))    $('#segment').value    = f.segment    || '';
-      if($('#subsegment')) $('#subsegment').value = f.subsegment || '';
+      if($('#sector'))    $('#sector').value    = f.sector    || '';
+      if($('#subSector')) $('#subSector').value = f.subSector || '';
       if($('#horizon') && f.horizon) $('#horizon').value = f.horizon;
       ['type','horizon','investor'].forEach(function(k){
         if(!f[k]) return;
@@ -1228,8 +1240,8 @@ function runAnalysis(key, fresh){
   goTab(IMPORT_TARGET && IMPORT_TARGET.kind === 'company' ? 'company' : 'sector');
   var v = formVals();
   $('#repTag').textContent='live';
-  $('#repMeta').textContent = (v.mode === 'company' ? v.company : v.segment)
-    + (v.subsegment ? ' · ' + v.subsegment : '')
+  $('#repMeta').textContent = (v.mode === 'company' ? v.company : v.sector)
+    + (v.subSector ? ' · ' + v.subSector : '')
     + ' · ' + v.horizon
     + ' · started ' + new Date().toLocaleTimeString('en-IN');
   if(fresh){ $('#out').textContent=''; } else { $('#out').textContent += '\n\n'; }
@@ -1339,10 +1351,10 @@ if($('#btnPrint')) if($('#btnPrint')) $('#btnPrint').addEventListener('click', f
   if(!w){ alert('Allow pop-ups to use this.'); return; }
   var stack = '-apple-system,Helvetica,Arial';
   var lead = '12px/1.55';
-  w.document.write('<!DOCTYPE html><meta charset="utf-8"><title>'+esc(formVals().segment||'Equity Report')
+  w.document.write('<!DOCTYPE html><meta charset="utf-8"><title>'+esc(formVals().sector||'Equity Report')
    +'</title><style>body{font:'+lead+' '+stack+';margin:22mm 16mm;white-space:pre-wrap;}'
    +'h1{font:700 18px/1.25 '+stack+';margin:0 0 4px}small{color:#666}</style>'
-   +'<h1>'+esc(formVals().segment||'Equity Report')+'</h1><small>Generated by Equity Analyst · '
+   +'<h1>'+esc(formVals().sector||'Equity Report')+'</h1><small>Generated by Equity Analyst · '
    +dmyTime(Date.now())+' · Research only, not investment advice</small><hr>'+esc(t));
   w.document.close();
   setTimeout(function(){ w.print(); }, 400);
@@ -2155,7 +2167,7 @@ function parseImport(raw){
           j.meta.company = str(j.meta.company) || (typeof j.company === 'string' ? j.company : '');
           j.meta.short_name = str(j.meta.short_name) || j.meta.company;
           /* j.company is the Block 1 company OBJECT — what the business does,
-             how it earns, its segments, products, operating metrics, industry
+             how it earns, its sectors, products, operating metrics, industry
              and moat. Overwriting it with the company NAME, as this line used
              to, silently emptied the business, products, operating-metrics and
              industry sections of every report. The name lives in meta. */
@@ -2282,7 +2294,44 @@ function sumLines(l){ var t=0; Object.keys(l||{}).forEach(function(k){ t += (par
   return Math.round(t*10)/10; }
 
 /* ---------------- library ---------------- */
-function libRead(){ try{ return JSON.parse(get(LIB,'[]')) || []; }catch(e){ return []; } }
+/* Records saved before the rename.
+
+   The scope and the driver model's array were keyed "segment", "subsegment"
+   and "segments". Everything now says sector, subSector and sectors. A run
+   already in the library is research the user paid for and waited for, so it
+   is migrated on the way out of storage rather than being left unreadable.
+
+   Every old name here is a string literal in brackets, never a property
+   written with a dot. A repo-wide rename rewrites identifiers, and it would
+   happily rewrite the very legacy names this migration exists to recognise —
+   which is exactly what happened to the first version of the payload repair.
+
+   Migrating on read, at the one point every record passes through, means a
+   record written by an older build is understood without a migration pass
+   that has to run once and be remembered. */
+function migrateRecord(r){
+  if(!r || typeof r !== 'object') return r;
+  if(r.sector == null && r['segment'] != null){ r.sector = r['segment']; delete r['segment']; }
+  if(r.subSector == null && r['subsegment'] != null){ r.subSector = r['subsegment']; delete r['subsegment']; }
+  var d = r.data;
+  if(d && typeof d === 'object'){
+    if(d.run && typeof d.run === 'object'){
+      if(d.run.sector == null && d.run['segment'] != null){ d.run.sector = d.run['segment']; delete d.run['segment']; }
+      if(d.run.subSector == null && d.run['subsegment'] != null){ d.run.subSector = d.run['subsegment']; delete d.run['subsegment']; }
+    }
+    if(Array.isArray(d.companies)){
+      d.companies.forEach(function(c){
+        if(c && c.model && !Array.isArray(c.model.sectors) && Array.isArray(c.model['segments'])){
+          c.model.sectors = c.model['segments']; delete c.model['segments'];
+        }
+      });
+    }
+  }
+  return r;
+}
+function libRead(){
+  try{ return (JSON.parse(get(LIB,'[]')) || []).map(migrateRecord); }catch(e){ return []; }
+}
 function libWrite(a){ set(LIB, JSON.stringify(a.slice(0,40))); }
 function saveToLibrary(rec){
   var lib = libRead().filter(function(x){ return x.id !== rec.id; });
@@ -2311,7 +2360,7 @@ function dmyTs(ts){
 
 function drawLibrary(selectId){
   var lib = libRead(), sel = $('#libSel');
-  /* The hidden select the older record code reads. The Segment and Company
+  /* The hidden select the older record code reads. The Sector and Company
      pages have their own pickers now, so this may not exist at all. */
   if(!sel){ renderReportPage(); renderScoreTab(); return; }
   sel.innerHTML = '<option value="">— none saved —</option>' + lib.map(function(r){
@@ -2514,7 +2563,7 @@ var pendingImport = null;
    of them carry it — a section four companies have and eight do not is a gap,
    not a section. */
 var AUDIT_SPEC = [
-  ['run','Sector and horizon','run.segment','v'],
+  ['run','Sector and horizon','run.sector','v'],
   ['run','Number of searches recorded','run.searchesRun','v'],
   ['run','Screening funnel','universe.identified','v'],
   ['run','What was screened out, and why','universe.exclusions','n'],
@@ -2566,7 +2615,7 @@ var AUDIT_SPEC = [
 
   ['lit','Registers searched','companies[].litigation.searched','n'],
 
-  ['mod','Sector drivers','companies[].model.segments','n'],
+  ['mod','Sector drivers','companies[].model.sectors','n'],
   ['mod','Cost structure','companies[].model.opex','k'],
   ['mod','Capex and depreciation','companies[].model.capex','k'],
   ['mod','Working-capital days','companies[].model.workingCapital','k'],
@@ -2648,19 +2697,19 @@ function auditRow(d, path, kind){
 /* A run is judged against the sections it was asked for. A company payload was
    never meant to carry the world, the Budget or the value chain, so counting
    those against it produced "28 of 67" on a complete company run and made good
-   research look thin. The four segment-only groups are set aside for a company
-   run, and the company groups for a segment run. */
+   research look thin. The four sector-only groups are set aside for a company
+   run, and the company groups for a sector run. */
 function auditPayload(d){
   var groups = {}, order = [], filled = 0;
   var cos = (d && Array.isArray(d.companies)) ? d.companies : [];
   var isCompanyRun = cos.length === 1 && !(d.macro || d.budget || d.policy || d.programs);
-  var isSegmentRun = !!(d && d.run) && !cos.length;
-  var SEGMENT_ONLY = ['world', 'macro', 'ind'];
+  var isSectorRun = !!(d && d.run) && !cos.length;
+  var SECTOR_ONLY = ['world', 'macro', 'ind'];
   var COMPANY_ONLY = ['rate', 'arg', 'for', 'lit', 'mod', 'val', 'mkt', 'nar'];
 
   AUDIT_SPEC.forEach(function(e){
-    if(isCompanyRun && SEGMENT_ONLY.indexOf(e[0]) >= 0) return;
-    if(isSegmentRun && COMPANY_ONLY.indexOf(e[0]) >= 0) return;
+    if(isCompanyRun && SECTOR_ONLY.indexOf(e[0]) >= 0) return;
+    if(isSectorRun && COMPANY_ONLY.indexOf(e[0]) >= 0) return;
     var r = auditRow(d, e[2], e[3]);
     if(!groups[e[0]]){ groups[e[0]] = { key:e[0], name:AUDIT_GROUPS[e[0]], have:0, total:0, gaps:[] };
                        order.push(groups[e[0]]); }
@@ -2671,12 +2720,12 @@ function auditPayload(d){
   });
   var total = order.reduce(function(a, g){ return a + g.total; }, 0);
   return { groups:order, filled:filled, total:total,
-           scope: isCompanyRun ? 'this company' : (isSegmentRun ? 'this sector' : 'the whole run') };
+           scope: isCompanyRun ? 'this company' : (isSectorRun ? 'this sector' : 'the whole run') };
 }
 /* What the app could build if this payload were saved, judged against the whole
    run rather than the block sitting in the paste box. Reading only the incoming
    payload is what made rank 2 and rank 3 say they had too few companies while
-   all three were already imported, and what made a segment-only block report
+   all three were already imported, and what made a sector-only block report
    every company section as missing. */
 
 /* The three documents any saved record can build, as rows with working
@@ -2721,7 +2770,7 @@ function docReadiness(d, kind){
 }
 function docReadinessRun(d){
   var incoming = (d && Array.isArray(d.companies)) ? d.companies : [];
-  var isSegmentBlock = !!(d && d.run && !incoming.length);
+  var isSectorBlock = !!(d && d.run && !incoming.length);
 
   /* Companies already on file, plus whatever is arriving now. */
   var have = [];
@@ -2739,9 +2788,9 @@ function docReadinessRun(d){
 
   var seg = null;
   try{ seg = segRecord(); }catch(e){}
-  var segData = isSegmentBlock ? d : (seg && seg.data);
+  var segData = isSectorBlock ? d : (seg && seg.data);
   var top3 = (segData && segData.run && Array.isArray(segData.run.top3)) ? segData.run.top3 : [];
-  var segmentDone = !!(segData && (segData.macro || segData.policy || segData.programs || segData.industry));
+  var sectorDone = !!(segData && (segData.macro || segData.policy || segData.programs || segData.industry));
 
   function coRow(rank){
     var nom = top3[rank - 1];
@@ -2759,7 +2808,7 @@ function docReadinessRun(d){
   return [
     { name:'Sector Research Report',
       ok: !!segData,
-      why: segmentDone ? 'macro, policy and industry present'
+      why: sectorDone ? 'macro, policy and industry present'
                        : 'import the sector research first' },
     coRow(1), coRow(2), coRow(3),
     { name:'Executive Summary',
@@ -2802,13 +2851,13 @@ function showReview(res, raw){
       ? (IMPORT_TARGET.rank ? 'top3' : 'solo')
       : (nCo ? 'company' : 'sector');
     var coName = nCo ? ((d.companies[0].name || d.companies[0].symbol)) : null;
-    var segName = (d.run && d.run.segment) || null;
+    var segName = (d.run && d.run.sector) || null;
     var headline, subline;
 
     if(kind === 'sector'){
       headline = 'Sector research \u2014 ' + (segName || 'sector not named');
       subline = (segName || '')
-        + ((d.run && d.run.subsegment) ? ' \u00b7 ' + d.run.subsegment : '')
+        + ((d.run && d.run.subSector) ? ' \u00b7 ' + d.run.subSector : '')
         + ' \u00b7 ' + au.filled + ' of ' + au.total + ' sector sections'
         + ((d.shortlist && d.shortlist.length)
             ? ' \u00b7 ' + d.shortlist.length + ' companies screened' : ' \u00b7 no shortlist');
@@ -2873,10 +2922,10 @@ function showReview(res, raw){
           + 'the reply — the fenced json block — using its copy button. '
           + 'If that block shows as an empty box in your chat app, reply <b>SPLIT</b> to the model and '
           + 'paste the smaller blocks one after another.</div>';
-    var runSeg = (d.run && d.run.segment) || '(sector not detected)';
+    var runSeg = (d.run && d.run.sector) || '(sector not detected)';
     var nCo = (d.companies && d.companies.length) || 0;
     html += '<div class="rvm">' + esc(runSeg)
-          + ((d.run && d.run.subsegment) ? ' · ' + esc(d.run.subsegment) : '')
+          + ((d.run && d.run.subSector) ? ' · ' + esc(d.run.subSector) : '')
           + ' · ' + nCo + ' companies</div>';
     var sum2 = sumLines(d.score_lines);
     html += ' · they total <b>' + sum2.toFixed(1) + '</b>';
@@ -2974,11 +3023,107 @@ $('#btnDoImport').addEventListener('click', function(){
       + ' \u2014 if the paste looks complete, send this message and it can be fixed.';
   }
 });
+/* The price-provider diagnostic, run from inside the app.
+
+   Whether either API sends the CORS header a browser needs cannot be settled
+   anywhere but a real browser on the real origin. curl, Node and Postman do
+   not enforce CORS at all, so a success in any of them proves nothing — and a
+   sandboxed preview blocks everything, so a failure there proves nothing
+   either. Hence a control request first, against an endpoint known to allow
+   browsers: if the control fails, this environment blocks outbound requests
+   wholesale and no other result on the page means anything. */
+(function(){
+  var keyBox = $('#bharatKey'), btn = $('#btnPriceTest'), out = $('#priceTestOut');
+  if(!keyBox || !btn || !out) return;
+  try{ keyBox.value = localStorage.getItem('eq.bharatKey') || ''; }catch(e){}
+  keyBox.addEventListener('change', function(){
+    try{ localStorage.setItem('eq.bharatKey', keyBox.value.trim()); }catch(e){}
+  });
+  btn.addEventListener('click', function(){
+    if(!window.EQ || !EQ.prices){ out.textContent = 'The engine has not finished loading.'; return; }
+    btn.disabled = true; out.textContent = 'Testing…';
+    var lines = [];
+    fetch('https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore')
+      .then(function(r){ return r.ok; }).catch(function(){ return false; })
+      .then(function(controlOk){
+        lines.push(controlOk
+          ? 'Control: passed — outbound requests work here, so the results below are meaningful.'
+          : 'Control: FAILED — this environment blocks outbound requests, so nothing below can be trusted.');
+        return EQ.prices.diagnose('RELIANCE', { bharatKey: keyBox.value.trim() || null });
+      })
+      .then(function(r){
+        (r.results || []).forEach(function(x){
+          lines.push(x.ok
+            ? x.provider + ': works — ' + x.bars + ' bars returned.'
+            : x.provider + ': ' + (x.likelyCors ? 'blocked by the browser (CORS)' : 'failed — ' + x.error));
+        });
+        out.innerHTML = lines.map(function(l){ return '<div>' + str(l) + '</div>'; }).join('');
+        btn.disabled = false;
+      })
+      .catch(function(e){ out.textContent = 'Test failed: ' + e.message; btn.disabled = false; });
+  });
+})();
+
+/* How short a series has to be before it is worth fetching a real one. Two
+   years of weekly closes is 104 points; the indicators need roughly 60 to say
+   anything at all. Anything under that and the panel is mostly withheld. */
+var PRICE_MIN_POINTS = 60;
+
+function thinPrices(d){
+  if(!d || !Array.isArray(d.companies)) return [];
+  return d.companies.filter(function(c){
+    var n = (c && c.priceHistory && Array.isArray(c.priceHistory.closes))
+      ? c.priceHistory.closes.length : 0;
+    return n < PRICE_MIN_POINTS;
+  });
+}
+
+/* Transcribing 104 weekly closes by hand is not work a language model does
+   reliably — the Reliance run asked for two years and returned a single week,
+   and every indicator downstream is gated on that series, so the whole panel
+   vanished without a word. The series is fetched here instead. If no provider
+   answers, the payload keeps whatever it came with and the report says the
+   history was short; it is never blocked on this. */
+function enrichPrices(d){
+  var thin = thinPrices(d);
+  if(!thin.length || !window.EQ || !EQ.prices) return Promise.resolve(null);
+  var key = null;
+  try{ key = localStorage.getItem('eq.bharatKey') || null; }catch(e){}
+  var done = 0, got = 0, notes = [];
+  return Promise.all(thin.map(function(c){
+    return EQ.prices.fetchHistoricalPrices(c, { years: 2, bharatKey: key })
+      .then(function(r){
+        done++;
+        if(r && r.priceHistory){ c.priceHistory = r.priceHistory; got++; }
+        else if(r && r.attempts && r.attempts.length){
+          notes.push((c.symbol || c.name) + ': ' + r.attempts.map(function(a){
+            return a.provider + (a.ok ? ' ok' : ' — ' + (a.likelyCors ? 'blocked by the browser' : a.error));
+          }).join('; '));
+        }
+      })
+      .catch(function(){ done++; });
+  })).then(function(){ return { asked: thin.length, got: got, notes: notes }; });
+}
+
 $('#btnSaveImport').addEventListener('click', function(){
   if(!pendingImport) return;
   if(!window.EQ){ alert('The research engine has not finished loading. Try again in a moment.'); return; }
 
   var d = pendingImport.res.data;
+  /* Fetch first, then save, so the record is stored with its history rather
+     than being written twice. */
+  if(thinPrices(d).length && !pendingImport.pricesTried){
+    pendingImport.pricesTried = true;
+    var btn = this, was = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Fetching price history…';
+    enrichPrices(d).then(function(r){
+      btn.disabled = false; btn.textContent = was;
+      if(r && r.got) console.log('price history fetched for ' + r.got + ' of ' + r.asked);
+      if(r && r.notes && r.notes.length) console.warn('price history unavailable:\n' + r.notes.join('\n'));
+      btn.click();
+    });
+    return;
+  }
 
   /* Validation happens here, not at paste time, so the review card can show
      what arrived before anything is committed. A payload that fails is not
@@ -3005,13 +3150,13 @@ $('#btnSaveImport').addEventListener('click', function(){
   }
   if(built.partial){
     var pr = { id:'r' + Date.now(), ts:Date.now(), source:(detectTool(pendingImport.raw, d)||{}).name || 'unknown',
-      kind:'segment', rank:0, parentId:null,
-      segment:(d.run && d.run.segment) || 'Untitled run',
-      subsegment:(d.run && d.run.subsegment) || '',
-      company:((d.run && d.run.segment) || 'Untitled run')
-        + ((d.run && d.run.subsegment) ? ' \u2014 ' + d.run.subsegment : ''),
+      kind:'sector', rank:0, parentId:null,
+      sector:(d.run && d.run.sector) || 'Untitled run',
+      subSector:(d.run && d.run.subSector) || '',
+      company:((d.run && d.run.sector) || 'Untitled run')
+        + ((d.run && d.run.subSector) ? ' \u2014 ' + d.run.subSector : ''),
       data:d, report:built.report, warnings:built.warnings, partial:true, text:pendingImport.raw };
-    /* Every segment run is kept. The same segment researched again on another
+    /* Every sector run is kept. The same sector researched again on another
        date, or with another tool, is a different run with its own Top 3 — not a
        replacement for the first. Only an identical run from the same tool on the
        same day is treated as a re-import of that one. */
@@ -3021,8 +3166,8 @@ $('#btnSaveImport').addEventListener('click', function(){
         && x.getDate() === y.getDate();
     };
     var dup = sectorRecords().filter(function(r){
-      return (r.segment || '') === (pr.segment || '')
-        && (r.subsegment || '') === (pr.subsegment || '')
+      return (r.sector || '') === (pr.sector || '')
+        && (r.subSector || '') === (pr.subSector || '')
         && (r.source || '') === (pr.source || '')
         && sameDay(r.ts, pr.ts);
     })[0];
@@ -3031,7 +3176,7 @@ $('#btnSaveImport').addEventListener('click', function(){
     }
     saveToLibrary(pr);
     SEL.sector = pr.id;
-    IMPORT_TARGET = { kind:'segment', rank:0 };
+    IMPORT_TARGET = { kind:'sector', rank:0 };
     renderReportPage();
     $('#importCard').classList.add('hidden'); $('#importText').value='';
     $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
@@ -3045,21 +3190,21 @@ $('#btnSaveImport').addEventListener('click', function(){
 
   var det = detectTool(pendingImport.raw, d);
   var src = (det && det.name) || $('#importSrc').value || 'unknown';
-  var seg = (d.run && d.run.segment) || formVals().segment || 'Untitled run';
-  var sub = (d.run && d.run.subsegment) || formVals().subsegment || '';
+  var seg = (d.run && d.run.sector) || formVals().sector || 'Untitled run';
+  var sub = (d.run && d.run.subSector) || formVals().subSector || '';
 
   var isCompanyRun = (IMPORT_TARGET && IMPORT_TARGET.kind === 'company');
   var firstCo = (d.companies && d.companies[0]) || null;
   var rec = { id:'r' + Date.now(), ts:Date.now(), source:src,
-              kind: isCompanyRun ? 'company' : 'segment',
+              kind: isCompanyRun ? 'company' : 'sector',
               rank: isCompanyRun ? IMPORT_TARGET.rank : 0,
               /* Rank 0 means the person researched this company on its own. It
-                 belongs to no segment study and must never fill a Top 3 slot,
+                 belongs to no sector study and must never fill a Top 3 slot,
                  however closely the names happen to match. */
               standalone: isCompanyRun && !IMPORT_TARGET.rank,
               parentId: (isCompanyRun && IMPORT_TARGET.rank && segRecord())
                 ? segRecord().id : null,
-              segment:seg, subsegment:sub,
+              sector:seg, subSector:sub,
               company: isCompanyRun
                 ? ((firstCo && (firstCo.name || firstCo.symbol)) || ('Company ' + IMPORT_TARGET.rank))
                 : (seg + (sub ? ' — ' + sub : '')),
@@ -3080,7 +3225,7 @@ $('#btnSaveImport').addEventListener('click', function(){
     libWrite(keep);
   }
   saveToLibrary(rec);
-  IMPORT_TARGET = { kind:'segment', rank:0 };
+  IMPORT_TARGET = { kind:'sector', rank:0 };
   renderReportPage();
 
   /* An import is the one moment the Score Card should move on its own: this is
@@ -3215,8 +3360,8 @@ function fmtIn(v){
    Score Card has its own picker; this one serves the Report page. */
 function recName(r){
   if(!r) return '';
-  return (r.segment || r.company || 'Untitled run')
-       + (r.subsegment ? ' \u2014 ' + r.subsegment : '');
+  return (r.sector || r.company || 'Untitled run')
+       + (r.subSector ? ' \u2014 ' + r.subSector : '');
 }
 function drawAnalysisPanel(sel, currentId){
   var host = $(sel); if(!host) return;
@@ -3234,8 +3379,8 @@ function drawAnalysisPanel(sel, currentId){
 }
 
 /* The fetched-list workflow and its handlers were removed with the IPO
-   product. There is no list to fetch here: the user names a segment, and the
-   segment picker in the block below does that job. */
+   product. There is no list to fetch here: the user names a sector, and the
+   sector picker in the block below does that job. */
 /* ============================== version stamp =================== */
 /* A stale service worker is invisible unless the page says which build it is
    running, so print the build id and the cache actually serving these files. */
@@ -3360,7 +3505,7 @@ drawLibrary();
 try{ scSelect(SC_ID); }catch(e){}
 
 
-/* Text fitting for the picker rows. General, not IPO: the segment picker and
+/* Text fitting for the picker rows. General, not IPO: the sector picker and
    the run picker both use it. */
 var PK_MIN_PX = 9.5, PK_BASE_PX = 11.5, PK_MIN_TRACK = -0.35;
 function pkFitLine(el, avail){
@@ -3624,7 +3769,7 @@ function renderScoreTab(){
   if(dn){
     var segNow = segRecord();
     dn.textContent = (co.name || co.symbol)
-      + (segNow ? ' \u00b7 ' + (segNow.segment || '') : '') + ' \u00b7 A4 PDF';
+      + (segNow ? ' \u00b7 ' + (segNow.sector || '') : '') + ' \u00b7 A4 PDF';
   }
   sheet.innerHTML = html;
 }
@@ -3652,8 +3797,8 @@ if($('#btnScPick')) $('#btnScPick').addEventListener('click', function(){
   var runs = scRuns();
   p.innerHTML = runs.length ? runs.map(function(r){
     return '<button type="button" class="pk" data-run="' + esc(r.id) + '">'
-      + '<span class="pk1">' + esc(r.segment || 'Untitled run') + '</span>'
-      + '<span class="pk2">' + esc((r.subsegment ? r.subsegment + ' · ' : '')
+      + '<span class="pk1">' + esc(r.sector || 'Untitled run') + '</span>'
+      + '<span class="pk2">' + esc((r.subSector ? r.subSector + ' · ' : '')
         + ((r.report && r.report.counts ? r.report.counts.universe : 0) + ' companies')
         + (r.ts ? ' · ' + dmyTs(r.ts) : '')) + '</span></button>';
   }).join('') : '<div class="pkempty">No runs imported yet.</div>';
@@ -3661,13 +3806,13 @@ if($('#btnScPick')) $('#btnScPick').addEventListener('click', function(){
 });
 window.addEventListener('eq:ready', renderScoreTab);
 
-/* ================= segment and subsegment picker ==================
+/* ================= sector and subSector picker ==================
    The list is a navigation aid, not a constraint: both fields stay free text,
-   so a segment the taxonomy has never heard of can still be typed and used.
-   Typing filters; the caret browses. Choosing a segment narrows the subsegment
-   list to that segment's own, which is the point of having two boxes. */
-/* The segment and subsegment typeahead panels were replaced by real select
-   dropdowns on the Segment page, so the picker that drove them is gone. */
+   so a sector the taxonomy has never heard of can still be typed and used.
+   Typing filters; the caret browses. Choosing a sector narrows the subSector
+   list to that sector's own, which is the point of having two boxes. */
+/* The sector and subSector typeahead panels were replaced by real select
+   dropdowns on the Sector page, so the picker that drove them is gone. */
 
 /* The Search button copies the prompt without opening anything, for pasting
    into a tool that is already open, or somewhere else entirely. */
@@ -3683,7 +3828,7 @@ if($('#btnSearch')) $('#btnSearch').addEventListener('click', function(){
   });
 });
 
-/* ============ Segment and Company pages =============================
+/* ============ Sector and Company pages =============================
    Two pages, each self-contained: pick what to research, research it, import the
    reply, get the documents. There is no separate Analyse step — the choosing
    and the researching happen where the results land. */
@@ -3698,7 +3843,7 @@ function segRecord(){
   var l = sectorRecords(); if(!l.length) return null;
   return l.filter(function(r){ return r.id === SEL.sector; })[0] || l[0];
 }
-/* The companies belonging to a segment study. A standalone run is deliberately
+/* The companies belonging to a sector study. A standalone run is deliberately
    not here: it exists to research something outside the Top 3 so the two can be
    compared, and folding it in would overwrite a slot it has nothing to do with. */
 function coRecords(){
@@ -3727,24 +3872,24 @@ function formVals(){
   var seg = ($('#segSel') && $('#segSel').value) || '';
   var sub = ($('#subSel') && $('#subSel').value) || '';
   var co  = ($('#soloCo') && $('#soloCo').value ? $('#soloCo').value.trim() : '');
-  if($('#segment')) $('#segment').value = seg;
-  if($('#subsegment')) $('#subsegment').value = sub;
+  if($('#sector')) $('#sector').value = seg;
+  if($('#subSector')) $('#subSector').value = sub;
   if($('#company')) $('#company').value = co;
-  return { segment: seg, subsegment: sub, company: co,
-           mode: co ? 'company' : 'segment',
+  return { sector: seg, subSector: sub, company: co,
+           mode: co ? 'company' : 'sector',
            horizon: ($('#horizon') && $('#horizon').value) || '3-5' };
 }
 function requireCompany(){ return true; }
 
 /* ---------- the two taxonomy dropdowns ---------- */
-function fillSegmentSelect(){
-  var el = $('#segSel'); if(!el || !window.EQSegments) return;
+function fillSectorSelect(){
+  var el = $('#segSel'); if(!el || !window.EQSectors) return;
   var names = [];
-  (EQSegments.index || []).forEach(function(e){
-    if(e.kind === 'segment' && names.indexOf(e.segment) < 0) names.push(e.segment);
+  (EQSectors.index || []).forEach(function(e){
+    if(e.kind === 'sector' && names.indexOf(e.sector) < 0) names.push(e.sector);
   });
-  if(!names.length) (EQSegments.search('') || []).forEach(function(e){
-    if(names.indexOf(e.segment) < 0) names.push(e.segment);
+  if(!names.length) (EQSectors.search('') || []).forEach(function(e){
+    if(names.indexOf(e.sector) < 0) names.push(e.sector);
   });
   names.sort();
   var keep = el.value;
@@ -3752,12 +3897,12 @@ function fillSegmentSelect(){
     + names.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
   if(keep) el.value = keep;
 }
-/* The subsegment list is whatever belongs to the segment chosen, and nothing
+/* The subSector list is whatever belongs to the sector chosen, and nothing
    else. It was previously a free-text box that never filtered. */
 function fillSubSelect(){
   var el = $('#subSel'); if(!el) return;
   var seg = ($('#segSel') && $('#segSel').value) || '';
-  var subs = (seg && window.EQSegments) ? (EQSegments.subsOf(seg) || []).slice() : [];
+  var subs = (seg && window.EQSectors) ? (EQSectors.subsOf(seg) || []).slice() : [];
   /* Alphabetical, so a name can be found rather than hunted for. The taxonomy
      stores them in the order they were written, which is no order at all to a
      reader. */
@@ -3772,7 +3917,7 @@ function fillSubSelect(){
 function runLabel(r){
   if(!r) return '';
   var name = r.kind === 'company' ? (r.company || 'Company')
-    : ((r.segment || 'Segment') + (r.subsegment ? ' \u2014 ' + r.subsegment : ''));
+    : ((r.sector || 'Sector') + (r.subSector ? ' \u2014 ' + r.subSector : ''));
   var when = r.ts ? dmyTs(r.ts) : '';
   var via = (r.source && r.source !== 'unknown') ? r.source : null;
   return name + (when ? '  \u00b7  ' + when : '') + (via ? '  \u00b7  ' + via : '');
@@ -3788,7 +3933,7 @@ function fillPicker(sel, records, current, empty){
 
 /* What the documents and the score card are built from. A company researched on
    its own is a run in its own right: it is scored from its own payload, never
-   merged into a segment study it has nothing to do with. */
+   merged into a sector study it has nothing to do with. */
 function composedPayload(){
   if(!window.EQ || !window.EQ.compose) return null;
   var co = coRecord();
@@ -3812,7 +3957,7 @@ function composedReport(){
           try{ built = EQ.buildReport(EQ.compose.composePayload(r.data,
             companyRecords().filter(function(x){ return x.parentId === r.id; })
               .map(function(x){ return x.data; }))); }catch(e){}
-          return { segment: r.segment, subsegment: r.subsegment, ts: r.ts,
+          return { sector: r.sector, subSector: r.subSector, ts: r.ts,
                    companies: (built && built.ok && built.report.full) || [] };
         }));
       }catch(e){}
@@ -3821,7 +3966,7 @@ function composedReport(){
   }catch(e){ return null; }
 }
 
-var IMPORT_TARGET = { kind:'segment', rank:0 };
+var IMPORT_TARGET = { kind:'sector', rank:0 };
 var LAST_PROMPT = '';
 
 /* The prompt, or nothing. It used to fall back to a placeholder string when the
@@ -3832,14 +3977,14 @@ function buildPromptFor(opts){
   if(!window.EQ || !EQ.buildPrompt) return null;
   var v = formVals();
   var seg = opts.useSaved ? segRecord() : null;
-  var segment = opts.segment || v.segment || (seg && seg.segment) || '';
-  if(!segment && !opts.company) return null;
+  var sector = opts.sector || v.sector || (seg && seg.sector) || '';
+  if(!sector && !opts.company) return null;
   try{
     return EQ.buildPrompt({
-      segment: segment,
-      subsegment: opts.subsegment != null ? opts.subsegment : (v.subsegment || (seg && seg.subsegment) || ''),
+      sector: sector,
+      subSector: opts.subSector != null ? opts.subSector : (v.subSector || (seg && seg.subSector) || ''),
       company: opts.company || '',
-      mode: opts.company ? 'company' : 'segment',
+      mode: opts.company ? 'company' : 'sector',
       horizon: v.horizon
     });
   }catch(e){ return null; }
@@ -3884,15 +4029,15 @@ function researchNow(opts, what){
 }
 
 /* ---------- rendering ---------- */
-function renderSegmentPage(){
+function renderSectorPage(){
   if(!SEL) SEL = { sector:null, company:null, solo:'' };
-  fillSegmentSelect(); fillSubSelect();
+  fillSectorSelect(); fillSubSelect();
   var recs = sectorRecords(), seg = segRecord();
   if(seg) SEL.sector = seg.id;
   fillPicker('#segPick', recs, SEL.sector, '\u2014 none imported \u2014');
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
-    ? ((seg.segment || 'Segment') + (seg.subsegment ? ' \u2014 ' + seg.subsegment : ''))
+    ? ((seg.sector || 'Sector') + (seg.subSector ? ' \u2014 ' + seg.subSector : ''))
     : 'Sector / Sub-sector Research';
   var tag = $('#segBoxTag');
   if(tag){ tag.textContent = seg ? 'imported' : 'empty'; tag.className = 'tag' + (seg ? ' ok' : ''); }
@@ -3915,8 +4060,8 @@ function rankOfCompany(rec){
     return String(c.symbol).toUpperCase() === String(sym).toUpperCase(); });
   return Math.max(1, Math.min(3, ix + 1));
 }
-/* The three slots belong to the segment run on screen. Companies are tied to it
-   by the record they were imported under, so researching the same segment again
+/* The three slots belong to the sector run on screen. Companies are tied to it
+   by the record they were imported under, so researching the same sector again
    on another date, or with another tool, builds its own Top 3 beside the first
    rather than overwriting it. */
 function runSlots(){
@@ -3958,7 +4103,7 @@ function renderCompanyPage(){
   var seg = segRecord();
   if(!seg){ slots.innerHTML = ''; return; }
   slots.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 from '
-      + esc(seg.segment || 'the sector study') + '</h2>'
+      + esc(seg.sector || 'the sector study') + '</h2>'
     + runSlots().map(function(s){
       var named = !!s.name, done = s.state === 'imported';
       return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
@@ -3985,7 +4130,7 @@ function renderCompanyPage(){
         + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
 }
-function renderReportPage(){ renderSegmentPage(); renderCompanyPage(); }
+function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
 
 function openImport(target){
   IMPORT_TARGET = target;
@@ -4007,23 +4152,23 @@ document.addEventListener('change', function(ev){
 document.addEventListener('click', function(ev){
   if(!ev.target.closest) return;
 
-  /* --- segment page --- */
+  /* --- sector page --- */
   if(ev.target.closest('#btnSegSearch')){
     var v = formVals();
     /* The dropdown is empty every time the app reopens on an imported run, so
        the saved research is the fallback rather than a dead button. */
     var rec = segRecord();
-    var segName = v.segment || (rec && rec.segment) || '';
-    var subName = v.segment ? v.subsegment : ((rec && rec.subsegment) || '');
+    var segName = v.sector || (rec && rec.sector) || '';
+    var subName = v.sector ? v.subSector : ((rec && rec.subSector) || '');
     if(!segName){ alert('Choose a sector first.'); return; }
-    researchNow({ segment: segName, subsegment: subName },
+    researchNow({ sector: segName, subSector: subName },
       'the ' + segName + (subName ? ' \u2014 ' + subName : '') + ' sector study');
     return;
   }
-  if(ev.target.closest('#btnImport')){ openImport({ kind:'segment', rank:0 }); return; }
+  if(ev.target.closest('#btnImport')){ openImport({ kind:'sector', rank:0 }); return; }
   if(ev.target.closest('#btnDelRep')){
     var s = segRecord(); if(!s) return;
-    if(!confirm('Delete the ' + (s.segment || 'segment') + ' research?\n\n'
+    if(!confirm('Delete the ' + (s.sector || 'sector') + ' research?\n\n'
       + 'Its companies go with it, so nothing is left orphaned.')) return;
     libWrite(libRead().filter(function(r){ return r.id !== s.id && r.parentId !== s.id; }));
     SEL.sector = null; renderReportPage(); renderScoreTab();
@@ -4138,6 +4283,7 @@ document.addEventListener('click', function(ev){
   <div class="pvbar">
     <button type="button" class="pvback" id="pvBack">&#8592;&nbsp;Back</button>
     <div class="pvttl" id="pvTitle"></div>
+    <button type="button" class="pvsave" id="pvShare">Share</button>
     <button type="button" class="pvsave" id="pvSave">Save as PDF</button>
   </div>
   <div class="pvbody"><iframe id="pvFrame" title="Document preview"></iframe></div>

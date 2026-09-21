@@ -240,7 +240,7 @@ function runModel(c) {
   const implied = (isNum(rate) && isNum(g) && isNum(v.currentPrice) && built.fcff[0] > 0)
     ? impliedGrowth({
         currentEquityValue: v.currentPrice * built.dilutedShares,
-        baseFcff: built.fcff[0] / (1 + (c.model.segments?.[0]?.volumeCagr ?? 0)),
+        baseFcff: built.fcff[0] / (1 + (c.model.sectors?.[0]?.volumeCagr ?? 0)),
         years: c.model.years, discountRate: rate, terminalGrowth: g,
         netDebt: c.model.financing?.openingDebt ?? 0,
       })
@@ -389,6 +389,14 @@ function scoreCompany(c, horizonKey) {
       currentPrice: price, priceAsOf: v.priceAsOf ?? null, currency: v.currency ?? 'INR',
       method: v.method ?? null, discountRate: v.discountRate ?? null, terminalGrowth: v.terminalGrowth ?? null,
       scenarios, marginOfSafety: marginOfSafety(scenarios[1].fairValue, price), asymmetry,
+      /* Stated by the analyst, alongside the scenarios the engine computes.
+         This object is the engine's valuation, so anything the payload stated
+         about how the discount rate was built, how the parts sum, or what the
+         current price already assumes has to be attached here or it never
+         leaves the payload. */
+      waccBuildup: v.waccBuildup ?? null,
+      sotp: Array.isArray(v.sotp) ? v.sotp : null,
+      impliedExpectations: v.impliedExpectations ?? null,
     },
     multibagger: {
       required: multibaggerGrid({ plausibility: c.multibagger?.plausibility || {} }),
@@ -405,6 +413,15 @@ function scoreCompany(c, horizonKey) {
     mispricing: c.mispricing ?? null,
     peers: c.peers ?? null,
     esg: c.esg ?? null,
+    /* The institutional analysis blocks. Carried through to the documents as
+       the model supplied them: these are stated figures with a stated basis,
+       not something the engine derives, so recomputing them here would only
+       introduce a second answer to the same question. The renderer decides
+       what to show; the report's job is not to lose it on the way. */
+    dupont: c.dupont ?? null,
+    capitalCycle: c.capitalCycle ?? null,
+    historicalSectors: c.historicalSectors ?? null,
+    compensation: c.compensation ?? null,
     timeline: c.timeline ?? null,
     technicals: c.priceHistory?.closes
       ? { ...entryContext({ closes: c.priceHistory.closes, volumes: c.priceHistory.volumes ?? null,
@@ -463,7 +480,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   const check = validatePayload(payload);
   if (!check.valid) return { ok: false, errors: check.errors, warnings: check.warnings, report: null };
 
-  /* A partial run carries the segment work and no companies. It is saved so the
+  /* A partial run carries the sector work and no companies. It is saved so the
      rest of a split reply can be merged into it; the documents it can build say
      so plainly rather than coming out empty without explanation. */
   if (check.partial) {
@@ -472,7 +489,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
       warnings: [...check.warnings,
         'This run has no companies yet. Paste the rest of the reply with Add To This Analysis.'],
       report: {
-        run: { segment: payload.run.segment, subsegment: payload.run.subsegment ?? null,
+        run: { sector: payload.run.sector, subSector: payload.run.subSector ?? null,
           horizon: (HORIZONS.find((h) => h.key === (payload.run.horizon || '3-5')) || HORIZONS[1]).label,
           horizonKey: payload.run.horizon || '3-5',
           payloadGeneratedAt: payload.run.generatedAt, reportBuiltAt: asOf.toISOString(),
@@ -524,8 +541,8 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
     warnings: [...check.warnings, ...gaps, ...ranked.ties],
     report: {
       run: {
-        segment: payload.run.segment,
-        subsegment: payload.run.subsegment ?? null,
+        sector: payload.run.sector,
+        subSector: payload.run.subSector ?? null,
         horizon: horizon.label,
         horizonKey,
         payloadGeneratedAt: payload.run.generatedAt,

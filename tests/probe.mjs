@@ -7,7 +7,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.scrollTo=()=>{}; w.alert=()=>{}; w.navigator.clipboard={writeText:async()=>{}};
     w.HTMLCanvasElement.prototype.getContext=()=>null; }});
 const w=dom.window;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=w.document.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); w.document.body.appendChild(el);
 }
 const raw=fs.readFileSync('/tmp/psu.json','utf8');

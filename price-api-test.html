@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Price API Test</title>
+<style>
+  :root{
+    --bg:#f7f7f5; --card:#fff; --ink:#1a1a18; --muted:#6b6b66;
+    --line:#e3e3df; --ok:#1b7f4b; --bad:#b3261e; --warn:#8a6100;
+    --accent:#1f3a5f;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#131312; --card:#1c1c1a; --ink:#ececea; --muted:#9a9a94;
+      --line:#2e2e2b; --ok:#5cc98c; --bad:#ff8a80; --warn:#e0b350;
+      --accent:#8fb3dd;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    max-width:720px;margin-inline:auto}
+  h1{font-size:19px;margin:8px 0 4px}
+  p.sub{color:var(--muted);margin:0 0 18px;font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:14px;margin-bottom:12px}
+  .card h2{font-size:14px;margin:0 0 8px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+  .verdict{font-weight:600;font-size:15px;margin:6px 0}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+    padding:10px;overflow-x:auto;font-size:11.5px;margin:8px 0 0;
+    white-space:pre-wrap;word-break:break-word}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;
+    padding:12px 18px;font-size:15px;font-weight:600;width:100%;cursor:pointer}
+  button:disabled{opacity:.5}
+  input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;
+    background:var(--bg);color:var(--ink);font-size:15px;margin-top:6px}
+  label{font-size:12px;color:var(--muted)}
+  .summary{border-left:3px solid var(--accent);padding-left:12px;margin:14px 0}
+</style>
+</head>
+<body>
+
+<h1>Price API Test</h1>
+<p class="sub">Settles one question that cannot be answered anywhere but a real browser:
+does each API send the CORS header a static PWA needs? curl, Node and Postman
+do not enforce CORS, so a success in any of them proves nothing.</p>
+
+<div class="card">
+  <label>BharatStock API key — optional, leave blank to skip that provider</label>
+  <input id="bkey" type="text" placeholder="bsk_live_..." autocapitalize="off" autocorrect="off" spellcheck="false">
+</div>
+
+<button id="run">Run the test</button>
+
+<div id="out"></div>
+
+<script>
+const out = document.getElementById('out');
+const card = (title, body) => {
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = '<h2>' + title + '</h2>' + body;
+  out.appendChild(d);
+  return d;
+};
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+async function timed(url, opts, ms){
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms || 15000);
+  try { return await fetch(url, Object.assign({}, opts, {signal: ctl.signal})); }
+  finally { clearTimeout(t); }
+}
+
+/* A cross-origin request that is known to carry Access-Control-Allow-Origin: *.
+   If this fails, the page is running somewhere that blocks outbound requests
+   wholesale and every other result on the page is meaningless. Without this
+   control a sandbox would look exactly like an API with no CORS header. */
+async function control(){
+  const url = 'https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore';
+  try {
+    const r = await timed(url, {}, 12000);
+    if (!r.ok) return {ok:false, why:'HTTP ' + r.status};
+    await r.text();
+    return {ok:true};
+  } catch (e) {
+    return {ok:false, why:String(e && e.message || e)};
+  }
+}
+
+async function upstox(){
+  // Reliance Industries. to_date comes BEFORE from_date. Unit is plural.
+  const to = new Date().toISOString().slice(0,10);
+  const f = new Date(); f.setFullYear(f.getFullYear()-2);
+  const from = f.toISOString().slice(0,10);
+  const url = 'https://api.upstox.com/v3/historical-candle/'
+            + encodeURIComponent('NSE_EQ|INE002A01018')
+            + '/weeks/1/' + to + '/' + from;
+  try {
+    const r = await timed(url, {headers:{'Accept':'application/json'}}, 15000);
+    if (!r.ok) return {ok:false, cors:false, why:'HTTP ' + r.status, url:url};
+    const b = await r.json();
+    const c = b && b.data && b.data.candles;
+    if (!Array.isArray(c) || !c.length) return {ok:false, cors:false, why:'no candles in response', url:url};
+    return {ok:true, bars:c.length, newest:c[0], oldest:c[c.length-1], url:url};
+  } catch (e) {
+    const msg = String(e && e.message || e);
+    return {ok:false, cors:true, why:msg, url:url};
+  }
+}
+
+async function bharat(key){
+  const to = new Date().toISOString().slice(0,10);
+  const f = new Date(); f.setFullYear(f.getFullYear()-1);
+  const u = new URL('https://bharatstockapi.com/v1/stocks/RELIANCE/prices');
+  u.searchParams.set('from', f.toISOString().slice(0,10));
+  u.searchParams.set('to', to);
+  u.searchParams.set('page_size','100');
+  try {
+    // X-API-Key is not CORS-safelisted, so this sends an OPTIONS preflight first.
+    const r = await timed(u, {headers:{'X-API-Key':key,'Accept':'application/json'}}, 15000);
+    if (r.status === 429) return {ok:false, cors:false, why:'429 — free tier is 50 calls/day'};
+    if (!r.ok) return {ok:false, cors:false, why:'HTTP ' + r.status};
+    const b = await r.json();
+    const rows = b && b.data;
+    if (!Array.isArray(rows) || !rows.length) return {ok:false, cors:false, why:'no rows in response'};
+    return {ok:true, bars:rows.length, sample:rows[0]};
+  } catch (e) {
+    return {ok:false, cors:true, why:String(e && e.message || e)};
+  }
+}
+
+document.getElementById('run').onclick = async function(){
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Running…';
+  out.innerHTML = '';
+
+  card('Where this is running', '<pre>origin: ' + esc(location.origin || 'null (opened as a local file)') + '</pre>');
+
+  const ctl = await control();
+  card('Control — an endpoint known to allow browsers',
+    ctl.ok
+      ? '<div class="verdict ok">Passed. Outbound requests work here, so the results below are meaningful.</div>'
+      : '<div class="verdict bad">Failed: ' + esc(ctl.why) + '</div>'
+        + '<p class="sub">This environment blocks outbound requests wholesale, so it cannot tell a missing '
+        + 'CORS header apart from a blocked request. <b>Ignore the results below</b> and re-run this page from '
+        + 'the origin the PWA is actually served from.</p>');
+
+  const u = await upstox();
+  card('Upstox V3 — no API key, weekly candles',
+    u.ok
+      ? '<div class="verdict ok">Works. ' + u.bars + ' weekly candles returned.</div>'
+        + '<p class="sub">This is the answer we wanted: full NSE history, no key, no backend.</p>'
+        + '<pre>newest: ' + esc(JSON.stringify(u.newest)) + '\noldest: ' + esc(JSON.stringify(u.oldest)) + '</pre>'
+      : '<div class="verdict ' + (u.cors ? 'bad' : 'warn') + '">'
+        + (u.cors ? 'Blocked — almost certainly CORS.' : 'Reachable, but no data: ' + esc(u.why))
+        + '</div>'
+        + (u.cors ? '<p class="sub">The browser refused to hand the response to the script. A browser never says why, '
+            + 'so this reads as a bare network error. If the control above passed, Upstox is not sending '
+            + 'Access-Control-Allow-Origin and we fall back to the nightly GitHub Actions snapshot.</p>' : '')
+        + '<pre>' + esc(u.why) + '</pre>');
+
+  const key = document.getElementById('bkey').value.trim();
+  if (key) {
+    const b = await bharat(key);
+    card('BharatStock — key required, daily bars',
+      b.ok
+        ? '<div class="verdict ok">Works. ' + b.bars + ' daily bars on the first page.</div>'
+          + '<pre>' + esc(JSON.stringify(b.sample)) + '</pre>'
+        : '<div class="verdict ' + (b.cors ? 'bad' : 'warn') + '">'
+          + (b.cors ? 'Blocked — the X-API-Key header forces a preflight, and it was not answered.' : esc(b.why))
+          + '</div><pre>' + esc(b.why) + '</pre>');
+  } else {
+    card('BharatStock', '<p class="sub">Skipped — no key entered.</p>');
+  }
+
+  const verdict = ctl.ok
+    ? (u.ok ? 'Upstox works from the browser. Price history is solved with no key, no backend and no rate limit.'
+            : 'Upstox is blocked from the browser. We use the nightly GitHub Actions snapshot instead — verified to work, but it needs about 40 minutes of setup once.')
+    : 'Inconclusive — the control failed, so nothing here can be trusted. Re-run from the real PWA origin.';
+  card('Verdict', '<div class="summary">' + esc(verdict) + '</div>');
+
+  btn.disabled = false; btn.textContent = 'Run again';
+};
+</script>
+</body>
+</html>

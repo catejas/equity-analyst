@@ -13,7 +13,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -27,7 +27,7 @@ const orig=w.copyText; w.copyText=function(t){ clip=t; return orig.call(this,t);
 const pause=()=>new Promise(r=>setTimeout(r,220));
 const go=(t)=>{[...d.querySelectorAll('nav button')].find(x=>x.dataset.tab===t)?.click();};
 
-go('segment');
+go('sector');
 d.getElementById('btnImport').click();
 d.getElementById('importText').value=JSON.stringify(seg);
 d.getElementById('btnDoImport').click(); await pause();
@@ -40,9 +40,9 @@ go('company'); await pause();
 function subject(text){
   if(!text) return '(nothing copied)';
   const m = /^Company:\s*(.+)$/m.exec(text);
-  const s = /^Segment:\s*(.+)$/m.exec(text);
+  const s = /^Sector:\s*(.+)$/m.exec(text);
   return 'Company line: ' + (m ? JSON.stringify(m[1].trim()) : '(absent)')
-       + '   |   Segment line: ' + (s ? JSON.stringify(s[1].trim()) : '(absent)');
+       + '   |   Sector line: ' + (s ? JSON.stringify(s[1].trim()) : '(absent)');
 }
 
 console.log('=== standalone box EMPTY ===');
@@ -72,10 +72,10 @@ clip=null; d.getElementById('btnSoloSearch').click(); await pause();
 clip=null; d.querySelector('#toolRowCo [data-tool="claude"]').click(); await pause();
 console.log('  after standalone Research, tool tap ->', subject(clip));
 
-console.log('\n=== segment page tool row ===');
-go('segment'); await pause();
+console.log('\n=== sector page tool row ===');
+go('sector'); await pause();
 clip=null; d.getElementById('btnSegSearch').click(); await pause();
-console.log('  after segment Research ->', subject(clip));
+console.log('  after sector Research ->', subject(clip));
 clip=null; d.querySelector('#toolRow [data-tool="chatgpt"]').click(); await pause();
 console.log('  tool tap             ->', subject(clip));
 

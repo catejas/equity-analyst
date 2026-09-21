@@ -17,7 +17,7 @@ const raw=JSON.parse(fs.readFileSync('/mnt/user-data/uploads/Anlon.json','utf8')
 const parsed=parsePayload(JSON.stringify(raw));
 console.log('payload valid:', parsed.valid, '| errors:', parsed.errors.length);
 const b=buildReport(parsed.payload);
-const p={meta:{segment:raw.run.segment,analysis_datetime:new Date().toISOString()},
+const p={meta:{sector:raw.run.sector,analysis_datetime:new Date().toISOString()},
   report:b.report, warnings:b.warnings, companyIndex:0, standalone:true};
 
 const html=sb.window.EQDocs.buildCompanyExec(p,'en');

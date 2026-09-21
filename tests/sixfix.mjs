@@ -18,7 +18,7 @@ async function boot(storage){
       if(storage) for(const k in storage) w.localStorage.setItem(k, storage[k]); }});
   const w=dom.window,d=w.document;
   w.console.error=(...a)=>errors.push('console.error '+a.join(' '));
-  for(const f of ['segments.js','charts.js','render.js','docs.js']){
+  for(const f of ['sectors.js','charts.js','render.js','docs.js']){
     const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
   const eng={};
   for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -42,7 +42,7 @@ const imp=async(payload,click,tool)=>{ click();
   d.getElementById('btnSaveImport').click(); await new Promise(r=>setTimeout(r,280)); };
 
 const go=(t)=>{ [...d.querySelectorAll('nav button')].find(x=>x.dataset.tab===t)?.click(); };
-go('segment');
+go('sector');
 await imp(seg, ()=>d.getElementById('btnImport').click(), 'Claude');
 console.log('--- 2. tool name ---');
 console.log('  saved as:', [...d.querySelectorAll('#segPick option')].map(o=>o.textContent).join(''));

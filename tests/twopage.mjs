@@ -11,7 +11,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
 w.console.error=(...a)=>errors.push('console.error '+a.join(' '));
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -29,22 +29,22 @@ const pause=()=>new Promise(r=>setTimeout(r,180));
 
 console.log('TABS:', [...d.querySelectorAll('nav button')].map(b=>b.dataset.tab).join(' '));
 
-console.log('\n--- 1. segment dropdown ---');
+console.log('\n--- 1. sector dropdown ---');
 const segSel=d.getElementById('segSel');
-console.log('  segments listed:', segSel.options.length-1);
+console.log('  sectors listed:', segSel.options.length-1);
 segSel.value='Defence and aerospace'; segSel.dispatchEvent(new w.Event('change',{bubbles:true}));
 await pause();
 const subSel=d.getElementById('subSel');
-console.log('  subsegments for Defence:', subSel.options.length-1, '| disabled:', subSel.disabled);
+console.log('  subSectors for Defence:', subSel.options.length-1, '| disabled:', subSel.disabled);
 console.log('  e.g.', [...subSel.options].slice(1,4).map(o=>o.value).join(', '));
 subSel.value='Avionics and electronic warfare'; subSel.dispatchEvent(new w.Event('change',{bubbles:true}));
 await pause();
 
-console.log('\n--- 2. segment research ---');
+console.log('\n--- 2. sector research ---');
 clip=null; d.getElementById('btnSegSearch').click(); await pause();
 console.log('  copied:', clip?clip.length+' chars':'NOTHING');
 console.log('  is placeholder:', clip? clip.includes('Loading the research engine') : '-');
-console.log('  names subsegment:', clip? clip.includes('Avionics and electronic warfare') : '-');
+console.log('  names subSector:', clip? clip.includes('Avionics and electronic warfare') : '-');
 console.log('  alert:', alerts.at(-1));
 d.querySelector('#toolRow [data-tool="claude"]').click(); await pause();
 console.log('  tool opened:', opened.at(-1));
@@ -61,7 +61,7 @@ console.log('  alert:', alerts.at(-1));
 d.querySelector('#toolRowCo [data-tool="gemini"]').click(); await pause();
 console.log('  tool opened:', opened.at(-1));
 
-console.log('\n--- 4. import segment, then Top 3 ---');
+console.log('\n--- 4. import sector, then Top 3 ---');
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const seg=JSON.parse(JSON.stringify(full));
 seg.run.top3=full.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named by the study'}));
@@ -70,9 +70,9 @@ const imp=async(payload,click)=>{ click();
   d.getElementById('importText').value=JSON.stringify(payload);
   d.getElementById('btnDoImport').click(); await pause();
   d.getElementById('btnSaveImport').click(); await new Promise(r=>setTimeout(r,260)); };
-[...d.querySelectorAll('nav button')].find(b=>b.dataset.tab==='segment').click(); await pause();
+[...d.querySelectorAll('nav button')].find(b=>b.dataset.tab==='sector').click(); await pause();
 await imp(seg, ()=>d.getElementById('btnImport').click());
-console.log('  segment saved  :', d.getElementById('segBoxName').textContent);
+console.log('  sector saved  :', d.getElementById('segBoxName').textContent);
 console.log('  saved picker   :', [...d.querySelectorAll('#segPick option')].map(o=>o.textContent).join(''));
 [...d.querySelectorAll('nav button')].find(b=>b.dataset.tab==='company').click(); await pause();
 console.log('  top3 boxes     :', d.querySelectorAll('#coBoxes .runbox').length);

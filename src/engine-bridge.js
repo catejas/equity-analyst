@@ -28,6 +28,7 @@ import * as prompt from './core/prompt-builder.js';
 import * as report from './core/report.js';
 import * as compare from './core/compare.js';
 import * as store from './data/store.js';
+import * as prices from './core/prices.js';
 
 const EQ = Object.freeze({
   version: {
@@ -36,7 +37,7 @@ const EQ = Object.freeze({
   },
   scoring, rubrics, ranking, model, valuation, metrics, technicals,
   forensic, litigation, multibagger, integrity, schema, prompt, report,
-  compare, store, repair, compose, screen, indicators, models,
+  compare, store, repair, compose, screen, indicators, models, prices,
 
   // The three calls the shell actually makes.
   buildPrompt: prompt.buildResearchPrompt,

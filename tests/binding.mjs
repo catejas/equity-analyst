@@ -2,9 +2,9 @@ import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
 const dir='/home/claude/eqapp'; const errors=[];
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
-function segRun(segment, sub, tool, names){
+function segRun(sector, sub, tool, names){
   const s=JSON.parse(JSON.stringify(full));
-  s.run.segment=segment; s.run.subsegment=sub; s.run.tool=tool;
+  s.run.sector=sector; s.run.subSector=sub; s.run.tool=tool;
   s.run.top3=names.map((n,i)=>({symbol:'S'+i+n.slice(0,3).toUpperCase(),name:n,why:'named'}));
   s.companies=[]; return s;
 }
@@ -16,7 +16,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.HTMLCanvasElement.prototype.getContext=()=>null;
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -33,29 +33,29 @@ const imp=async(payload,click)=>{ click();
   d.getElementById('btnSaveImport').click(); await new Promise(r=>setTimeout(r,280)); };
 const slots=()=>[...d.querySelectorAll('#coBoxes .runbox h2 span:nth-child(2)')].map(s=>s.textContent);
 
-go('segment');
+go('sector');
 await imp(segRun('Banking','Public sector banks','Claude',
   ['State Bank of India','Bank of Baroda','Union Bank of India']),
   ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 console.log('Banking/Claude   ->', slots().join(' | '));
 
-go('segment');
+go('sector');
 await imp(segRun('Defence and aerospace','Drones','Claude',
   ['Data Patterns','Ideaforge','Zen Technologies']),
   ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 console.log('Defence/Claude   ->', slots().join(' | '));
 
-// same segment again, different tool
-go('segment');
+// same sector again, different tool
+go('sector');
 await imp(segRun('Banking','Public sector banks','Gemini',
   ['Indian Bank','Canara Bank','Bank of India']),
   ()=>d.getElementById('btnImport').click());
 go('company'); await pause();
 console.log('Banking/Gemini   ->', slots().join(' | '));
 
-console.log('\nsaved segment runs:');
+console.log('\nsaved sector runs:');
 [...d.querySelectorAll('#segPick option')].forEach(o=>console.log('   ', o.textContent));
 
 // switch back to each and confirm its own Top 3 loads

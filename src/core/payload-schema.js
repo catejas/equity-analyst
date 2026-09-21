@@ -66,7 +66,7 @@ export function validatePayload(payload, { repair = true } = {}) {
   const run = payload.run;
   if (!isObj(run)) e('Missing "run" section.');
   else {
-    if (!isStr(run.segment)) e('run.segment is required.');
+    if (!isStr(run.sector)) e('run.sector is required.');
     if (!isStr(run.generatedAt)) e('run.generatedAt is required (ISO date).');
     else if (Number.isNaN(Date.parse(run.generatedAt))) {
       run.generatedAt = null;
@@ -90,7 +90,7 @@ export function validatePayload(payload, { repair = true } = {}) {
     if (!isNum(run.searchesRun)) w('run.searchesRun not stated, so the depth of the search cannot be reported.');
     if (!isStr(run.tool)) w('run.tool not stated, so the run is filed without the tool that produced it.');
 
-    /* A segment run rates its shortlist; the application ranks them and takes
+    /* A sector run rates its shortlist; the application ranks them and takes
        the three. run.top3 is still read from older runs and from a model that
        would not supply a shortlist, but it is no longer how the three are
        chosen. */
@@ -122,7 +122,7 @@ export function validatePayload(payload, { repair = true } = {}) {
   }
 
   // ---------------------------------------------------------- companies
-  /* The shortlist the segment run screened. Every entry needs a name and the
+  /* The shortlist the sector run screened. Every entry needs a name and the
      four pillar ratings with a line of evidence each; that is what lets the
      application choose the three instead of taking three on trust. */
   if (given(payload.shortlist)) {
@@ -162,7 +162,7 @@ export function validatePayload(payload, { repair = true } = {}) {
 
   const companies = payload.companies;
 
-  /* A reply split across messages sends the segment work first and the
+  /* A reply split across messages sends the sector work first and the
      companies after. That first block is not broken, it is incomplete, and
      saying "must be a non-empty array" sends the reader looking for a fault
      that is not there. It is accepted and reported as partial, so the rest can
@@ -302,29 +302,34 @@ export function validatePayload(payload, { repair = true } = {}) {
 
     // --- driver model
     const model = c.model;
-    const modelUsable = isObj(model) && isArr(model.segments) && model.segments.length > 0;
+    const modelUsable = isObj(model) && isArr(model.sectors) && model.sectors.length > 0;
     if (!isObj(model)) {
       w(`${at}: no driver model; the forecast and intrinsic value will be omitted.`);
     } else if (!modelUsable) {
-      /* Without segments there is nothing to drive, so the block is set aside
+      /* Without sectors there is nothing to drive, so the block is set aside
          whole and the remaining model checks are skipped — running them would
          report six more "required" fields for a model that is no longer there. */
-      w(`${at}: the driver model has no segments, so the forecast and intrinsic value are omitted.`);
+      w(`${at}: the driver model has no sectors, so the forecast and intrinsic value are omitted.`);
       delete c.model;
     } else {
       if (!isNum(model.years)) w(`${at}: model.years not stated, so the forecast horizon is unknown.`);
-      model.segments.forEach((sg, j) => {
+      model.sectors.forEach((sg, j) => {
         for (const k of ['baseVolume', 'volumeCagr', 'baseRealisation', 'realisationCagr']) {
-          if (!isNum(sg?.[k])) e(`${at}: model.segments[${j}].${k} is required and must be a number.`);
+          if (!isNum(sg?.[k])) w(`${at}: model.sectors[${j}].${k} is missing, so this sector is not forecast.`);
         }
-        if (sg?.grossMargin === undefined) e(`${at}: model.segments[${j}].grossMargin is required.`);
-        if (!isStr(sg?.evidence)) w(`${at}: model.segments[${j}] states drivers with no evidence behind them.`);
+        if (sg?.grossMargin === undefined) w(`${at}: model.sectors[${j}].grossMargin is missing, so this sector is not forecast.`);
+        if (!isStr(sg?.evidence)) w(`${at}: model.sectors[${j}] states drivers with no evidence behind them.`);
       });
+      /* A missing sub-block used to reject the payload outright. That is far
+         too strong: the research is good, one branch of the forecast is not,
+         and throwing away the entire import over it is what left a user with
+         no report at all for days. Say what is missing and forecast what can
+         be forecast. */
       for (const k of ['opex', 'depreciation', 'capex', 'workingCapital', 'financing', 'shares']) {
-        if (!isObj(model[k])) e(`${at}: model.${k} is required. A partial model is rejected; omit the whole block instead.`);
+        if (!isObj(model[k])) w(`${at}: model.${k} is missing, so that part of the forecast is omitted.`);
       }
       if (isObj(model.shares)) {
-        if (!isNum(model.shares.basic)) e(`${at}: model.shares.basic is required.`);
+        if (!isNum(model.shares.basic)) w(`${at}: model.shares.basic is missing, so per-share values are omitted.`);
         if (model.shares.esop === undefined && model.shares.warrants === undefined) {
           w(`${at}: no ESOP or warrant overhang stated. If there is genuinely none, state zero.`);
         }
@@ -566,12 +571,12 @@ function validateRunResearch(payload, e, w) {
     else payload.policy.forEach((s, i) => {
       if (!isObj(s)) { e(`policy[${i}] is not an object.`); return; }
       if (!isStr(s.name)) e(`policy[${i}]: name is required.`);
-      for (const k of ['objective', 'funding', 'outcomes', 'challenges', 'reachesSegment']) {
+      for (const k of ['objective', 'funding', 'outcomes', 'challenges', 'reachesSector']) {
         if (!isStr(s[k])) w(`policy[${i}] (${s.name || 'unnamed'}): ${k} not stated.`);
       }
       if (!isStr(s.ministry)) w(`policy[${i}]: no ministry named, so the scheme cannot be verified.`);
     });
-  } else w('No policy schemes. A segment thesis that never mentions policy is not an Indian equity thesis.');
+  } else w('No policy schemes. A sector thesis that never mentions policy is not an Indian equity thesis.');
 
   if (given(payload.policyEvolution) && !isArr(payload.policyEvolution)) {
     e('policyEvolution must be an array of eras.');
@@ -635,7 +640,7 @@ function validateRunResearch(payload, e, w) {
       });
       if (!isStr(pr.timeline)) w(`programs[${i}]: no timeline.`);
     });
-  } else w('No programmes or contracts. This is how a segment thesis becomes a company forecast.');
+  } else w('No programmes or contracts. This is how a sector thesis becomes a company forecast.');
 
   const comp = payload.competition;
   if (!isObj(comp)) w('No competition block; market share has nowhere to go.');

@@ -1,24 +1,24 @@
 # Equity Analyst
 
-Institutional-grade research on the Indian listed universe, by segment or by
+Institutional-grade research on the Indian listed universe, by sector or by
 company. A progressive web app: static files, no build step, no server, no
 account. Everything stays on the device.
 
 ## What it does
 
-Enter a segment. The app generates a research prompt from its own scoring
+Enter a sector. The app generates a research prompt from its own scoring
 constants. You run that prompt in an assistant that can search the web, bring
 the JSON back, and the app validates it, scores it, ranks it and produces six
 documents.
 
 | Document | Scope |
 |---|---|
-| Sector Research Report | The segment: the world, macro, Budget, policy, industry, programmes, competition, then the ranking and the Top 3 |
+| Sector Research Report | The sector: the world, macro, Budget, policy, industry, programmes, competition, then the ranking and the Top 3 |
 | Company Research Report, one per Top 3 rank | One company in full |
 | Executive Summary | Both, at a level that reads in one sitting |
 | Score Card | Every rating with its anchor and the evidence behind it |
 
-Naming a company instead switches to company mode: one report, a segment
+Naming a company instead switches to company mode: one report, a sector
 backdrop rather than a sector study, nothing screened and nothing ranked.
 
 ## What makes it different from a chat transcript
@@ -51,7 +51,7 @@ index.html            the app
 charts.js             the figures
 render.js             the document builders
 docs.js               the PDF and image pipeline
-segments.js           the segment taxonomy
+sectors.js           the sector taxonomy
 sw.js                 the service worker
 manifest.webmanifest  the install manifest
 icons/                the icon set

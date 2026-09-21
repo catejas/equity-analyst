@@ -44,43 +44,23 @@ function registerSection() {
 }
 
 
-/* The vocabulary the reader sees is sector and sub-sector. The payload keys stay
-   "segment" and "subsegment", because renaming them would invalidate every
-   payload already imported and every run already saved. So the rename happens
-   once, here, on the finished text — where there are no identifiers to damage.
-   Renaming the source was tried and it rewrote ${subsegment.trim()} into
-   something that did not parse. */
-function sectorVocabulary(text) {
-  const KEYS = /"(segment|subsegment)"/g;
-  const held = [];
-  let t = String(text).replace(KEYS, (m) => { held.push(m); return `\u0000${held.length - 1}\u0000`; });
-  t = t
-    .replace(/\bSUB-?SEGMENTS\b/g, 'SUB-SECTORS').replace(/\bSUB-?SEGMENT\b/g, 'SUB-SECTOR')
-    .replace(/\bSEGMENTS\b/g, 'SECTORS').replace(/\bSEGMENT\b/g, 'SECTOR')
-    .replace(/\bSub-?segments\b/g, 'Sub-sectors').replace(/\bsub-?segments\b/g, 'sub-sectors')
-    .replace(/\bSub-?segment\b/g, 'Sub-sector').replace(/\bsub-?segment\b/g, 'sub-sector')
-    .replace(/\bSegments\b/g, 'Sectors').replace(/\bsegments\b/g, 'sectors')
-    .replace(/\bSegment\b/g, 'Sector').replace(/\bsegment\b/g, 'sector');
-  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => held[Number(i)]);
-}
-
-export function buildResearchPrompt({ segment, subsegment = '', company = '', mode = null,
+export function buildResearchPrompt({ sector, subSector = '', company = '', mode = null,
   horizon = '3-5', shortlistSize = 12 } = {}) {
   const single = (mode === 'company') || Boolean(company && company.trim());
-  /* A company can be researched without naming its segment. Only a segment run
+  /* A company can be researched without naming its sector. Only a sector run
      genuinely needs one, because there is nothing else to screen. */
-  if (!single && (!segment || !segment.trim())) {
-    throw new Error('A segment is required to build a segment prompt.');
+  if (!single && (!sector || !sector.trim())) {
+    throw new Error('A sector is required to build a sector prompt.');
   }
-  if (single && (!segment || !segment.trim())) segment = 'the segment this company operates in';
+  if (single && (!sector || !sector.trim())) sector = 'the sector this company operates in';
   const h = HORIZONS.find((x) => x.key === horizon) || HORIZONS[1];
-  const scope = subsegment.trim()
-    ? `${segment.trim()}, specifically the ${subsegment.trim()} subsegment`
-    : segment.trim();
+  const scope = subSector.trim()
+    ? `${sector.trim()}, specifically the ${subSector.trim()} subSector`
+    : sector.trim();
 
   const componentKeys = (k) => Object.keys(PILLARS[k].weights).map((c) => `"${c}"`).join(', ');
 
-  return sectorVocabulary(`BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
+  return (`BEFORE ANYTHING ELSE: run a web search. Not later, not conditionally —
 now, as your first action, before writing a single line of the payload.
 
 You have a search tool. If you find yourself about to say that search is
@@ -99,19 +79,19 @@ it looks like research and is not.
 You are producing an institutional-grade equity research payload on the Indian listed universe.
 
 SCOPE
-Segment: ${segment.trim()}
-${subsegment.trim() ? `Subsegment: ${subsegment.trim()}` : 'Subsegment: not specified'}
+Sector: ${sector.trim()}
+${subSector.trim() ? `SubSector: ${subSector.trim()}` : 'SubSector: not specified'}
 Holding horizon: ${h.label}
 ${single
   ? `Company: ${company.trim()}
 Research this one company in full. Do not screen a universe and do not rank
-anything: there is nothing to rank. Still cover the segment, because a company
+anything: there is nothing to rank. Still cover the sector, because a company
 cannot be judged without its industry, its policy regime and its peers — but
 cover it at the depth of a two-page backdrop rather than a sector study.`
-  : `Work on ${scope}. Screen the Indian listed universe for this segment and
+  : `Work on ${scope}. Screen the Indian listed universe for this sector and
 shortlist roughly ${shortlistSize} companies.
 
-THIS RUN IS THE SEGMENT ONLY. Do the whole segment study — the world, macro, the
+THIS RUN IS THE SECTOR ONLY. Do the whole sector study — the world, macro, the
 Budget, policy, regulation, geopolitics, industry, value chain, market sizing,
 programmes, competition — and then rate every company on your shortlist.
 
@@ -129,7 +109,7 @@ quality control — each with one sentence of evidence carrying a figure. Rate a
 four. A company rated on fewer than three ranks below every fully rated one,
 however good it looks, because it cannot be compared.
 
-Rate honestly and comparably: 50 is average for the segment, not a polite
+Rate honestly and comparably: 50 is average for the sector, not a polite
 default. If two companies genuinely deserve the same number, give them the same
 number — the application reports a tie rather than inventing an order.
 
@@ -174,7 +154,7 @@ A full run on three companies comes to roughly 150,000 characters, which is
 past what most chat interfaces will emit in one reply. So plan the split rather
 than being cut off mid-object:
 
-  Block 1   the run, and everything about the segment
+  Block 1   the run, and everything about the sector
   Block 2   the first company
   Block 3   the second company
   Block 4   the third company
@@ -187,8 +167,20 @@ is overwritten, so the order does not matter.
 If the whole thing genuinely fits in one reply, send it in one. One company at
 full depth fits comfortably; three does not.
 
-Keep every evidence sentence to one line, about 160 characters. They are read
-in a table on a phone, and a paragraph in that column helps nobody.
+EVIDENCE LENGTH. Two different things are wanted, and the difference matters.
+
+The evidence on a RATING is a single line, about 200 characters, carrying a
+figure. Those are read in a table on a phone, one after another, and a
+paragraph in that column helps nobody.
+
+Everything that is read as prose — the investment theses, the moat, margin
+expansion, the variant perception, the bear case and its answer, the
+mispricing, and the evidence field on each model sector — is a cohesive
+paragraph of three or four sentences. Say what is happening, the mechanism by
+which it happens, the figure that shows it, and what would have to be true for
+it to continue. A clipped fragment states a conclusion and hides the reasoning;
+these fields exist to carry the reasoning. Do not pad them to reach a length,
+and do not repeat the rating evidence back in different words.
 
 You do not produce scores, ratios, intrinsic values or rankings. The application
 computes all of those from what you supply. You produce three things: ratings
@@ -284,7 +276,7 @@ Include the model block only if you can source its drivers. A partial block is
 rejected outright. An omitted block costs a section of the report; an invented
 one corrupts everything downstream of it.
 
-Every segment needs volume, realisation and a gross margin, each with evidence.
+Every sector needs volume, realisation and a gross margin, each with evidence.
 Share count must be fully diluted: state ESOPs outstanding, warrants and
 convertibles, and state zero if there genuinely are none. Omitting the overhang
 is the commonest error on Indian small caps and it moves per-share value.
@@ -369,9 +361,9 @@ A company that has not had every essential register searched cannot enter the
 Top 3, however well it scores.
 
 ═══════════════════════════════════════════════════════════════════
-7. THE SEGMENT
+7. THE SECTOR
 ═══════════════════════════════════════════════════════════════════
-${single ? `This is a company run, so the segment work is a BACKDROP, not a study.
+${single ? `This is a company run, so the sector work is a BACKDROP, not a study.
 Two pages at most, and only what is needed to judge this one company:
 
   where the industry sits in its cycle, and the two or three demand drivers
@@ -381,13 +373,13 @@ Two pages at most, and only what is needed to judge this one company:
   anything in the macro picture that changes its earnings — the policy rate for
   a lender, the currency for an exporter, input costs for a manufacturer
 
-Do NOT research the whole segment. No global market sizing, no Budget history,
+Do NOT research the whole sector. No global market sizing, no Budget history,
 no value chain, no programme-by-programme treatment, no TAM. Those belong to a
-segment run and the application already has them if one was done. Every search
-you spend on segment breadth here is a search not spent on the company, and the
+sector run and the application already has them if one was done. Every search
+you spend on sector breadth here is a search not spent on the company, and the
 company is what this run is for.` : `The reference standard for this document is a sector thematic that spends fifty
 pages establishing why an industry will compound before it names a company. The
-segment is the argument; the companies are how it is expressed. Work in that
+sector is the argument; the companies are how it is expressed. Work in that
 order.
 
 **The world.** Global market size and its compound growth over fifteen, ten,
@@ -400,13 +392,13 @@ Then where India sits, and the trade flowing each way.
 capacity utilisation, each with its period and source. An undated macro figure
 is not usable.
 
-**The Union Budget.** The allocations that touch this segment, over five years,
+**The Union Budget.** The allocations that touch this sector, over five years,
 each with what was announced and what was actually spent. The gap between the
-two is usually the story. Add the Economic Survey's own reading of the segment.
+two is usually the story. Add the Economic Survey's own reading of the sector.
 
 **Policy.** Each scheme to the same template: name, ministry, objective,
 funding and scope, outcomes to date, challenges, and how it reaches this
-segment. Then the evolution of the regime by era, with dates. A segment thesis
+sector. Then the evolution of the regime by era, with dates. A sector thesis
 that never mentions policy is not an Indian equity thesis.
 
 **Regulation.** The regulator, the rules, what is under review, and what a
@@ -434,7 +426,7 @@ that is not traced to a listed supplier is background, not research.
 value share are different numbers. Concentration, entry barriers, substitution
 and pricing behaviour.
 
-**Key monitorables.** What would confirm or break the segment thesis. This is
+**Key monitorables.** What would confirm or break the sector thesis. This is
 the sector-level equivalent of a thesis breaker.
 
 **Glossary.** Every sector has its own vocabulary. A reader who does not know
@@ -479,8 +471,8 @@ including pledged shares.
 {
   "run": {
     "schemaVersion": "${PAYLOAD_SCHEMA_VERSION}",
-    "segment": "${segment.trim()}",
-    "subsegment": ${subsegment.trim() ? `"${subsegment.trim()}"` : 'null'},
+    "sector": "${sector.trim()}",
+    "subSector": ${subSector.trim() ? `"${subSector.trim()}"` : 'null'},
     "horizon": "${h.key}",
     "generatedAt": "ISO 8601 timestamp",
     "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
@@ -520,12 +512,12 @@ including pledged shares.
     "creditGrowth":       { "value": 0, "period": "", "source": "" },
     "capacityUtilisation":{ "value": 0, "period": "", "source": "" } },
 
-  "budget": { "economicSurvey": "the Survey's own reading of this segment",
+  "budget": { "economicSurvey": "the Survey's own reading of this sector",
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
-      "ministry": "", "reachesSegment": "" } ] },
+      "ministry": "", "reachesSector": "" } ] },
 
   "policy": [ { "name": "", "ministry": "", "announced": "", "objective": "",
-    "funding": "", "outcomes": "", "challenges": "", "reachesSegment": "" } ],
+    "funding": "", "outcomes": "", "challenges": "", "reachesSector": "" } ],
   "policyEvolution": [ { "era": "1991 to 2001", "what": "" } ],
   "regulation": { "regulator": "", "rules": "", "underReview": "", "costOfChange": "" },
 
@@ -557,7 +549,7 @@ including pledged shares.
   "sectorValuation": { "currentMultiple": 0, "metric": "", "tenYearMedian": 0,
     "tenYearHigh": 0, "tenYearLow": 0, "source": "" },
 
-  "monitorables": ["what would confirm or break the segment thesis"],
+  "monitorables": ["what would confirm or break the sector thesis"],
   "glossary": [ { "term": "", "meaning": "" } ],
   "companies": [
     {
@@ -583,7 +575,22 @@ including pledged shares.
           "dividends": 0, "buyback": 0, "debtRepaid": 0, "returnEarned": 0 } ] },
       "mispricing": [ { "concern": "the bear's argument, in the bear's own words",
         "answer": "why it is wrong, or why it is priced in twice over" } ],
-      "peers": [ { "name": "", "listed": true, "metric1": 0, "metric2": 0, "note": "" } ],
+      "peers": [ { "name": "", "listed": true, "marketCap": 0, "pe": 0.0,
+        "evEbitda": 0.0, "roe": 0.0, "revGrowth": 0.0, "ebitdaMargin": 0.0,
+        "asOf": "", "note": "" } ],
+
+      "historicalSectors": [ { "period": "FY25",
+        "lines": [ { "name": "", "revenue": 0, "ebit": 0, "marginPct": 0.0 } ] } ],
+
+      "dupont": [ { "period": "FY25", "netProfitMargin": 0.0, "assetTurnover": 0.0,
+        "financialLeverage": 0.0, "roe": 0.0, "roic": 0.0, "waccSpreadPct": 0.0 } ],
+
+      "capitalCycle": [ { "period": "FY25", "cwip": 0, "grossBlock": 0,
+        "cwipPctOfGrossBlock": 0.0, "note": "" } ],
+      "compensation": { "period": "", "fixedPct": 0.0, "variablePct": 0.0,
+        "tiedTo": "ROIC, TSR, revenue, or none stated",
+        "ceoPayToMedian": 0, "source": "" },
+
       "esg": { "environment": "", "social": "", "governance": "",
         "versusPeers": "", "score": null },
       "timeline": [ { "when": "", "event": "" } ],
@@ -620,16 +627,37 @@ including pledged shares.
 
       "model": {
         "years": 5,
-        "segments": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
+        "sectors": [ { "name": "", "baseVolume": 0, "volumeCagr": 0.0, "baseRealisation": 0,
           "realisationCagr": 0.0, "grossMargin": 0.0, "evidence": "" } ],
         "opex": { "fixedBase": 0, "fixedGrowth": 0.0, "variablePctOfRevenue": 0.0 },
         "depreciation": { "openingNetBlock": 0, "rate": 0.0 },
         "capex": { "maintenancePctOfRevenue": 0.0, "growthSchedule": [0, 0, 0, 0, 0] },
         "workingCapital": { "receivableDays": 0, "inventoryDays": 0, "payableDays": 0 },
-        "financing": { "openingDebt": 0, "repaymentSchedule": [0, 0, 0, 0, 0], "drawdownSchedule": 0,
+        "financing": { "openingDebt": 0, "repaymentSchedule": [0, 0, 0, 0, 0], "drawdownSchedule": [0, 0, 0, 0, 0],
           "interestRate": 0.0, "taxRate": 0.25, "openingCash": 0, "cashYield": 0.0 },
         "shares": { "basic": 0, "esop": 0, "warrants": 0, "convertibles": 0 }
       },
+
+      "_model_rules": "THE RECONCILIATION RULE, and it is the one rule in this
+      schema that is checked arithmetically. For each entry in sectors,
+      baseVolume x baseRealisation is that sector's revenue in the base year.
+      Summed across every sector, that total MUST equal the base-year revenue
+      you reported in financials.annual for the same period, within 2%. Work
+      backwards from the reported figure to get there: take the revenue you
+      found, split it across the operating sectors the company itself
+      discloses, and only then choose a volume and a realisation whose product
+      is that sector's revenue. Use the company's own units — tonnes and price
+      per tonne, subscribers and ARPU, stores and revenue per store — never an
+      index, never a normalised 1.0, never a placeholder. A model whose base
+      year does not tie to reported revenue forecasts a company that does not
+      exist, and every number downstream of it — the forecast, the intrinsic
+      value, the target price — is then wrong in a way that looks plausible.
+      State the arithmetic in each sector's evidence field: the volume, the
+      realisation, the product, and the reported figure it ties to.
+      All three schedules — capex.growthSchedule, financing.repaymentSchedule,
+      financing.drawdownSchedule — are arrays of exactly 5 numbers, one per
+      forecast year, even where the number is the same every year and even
+      where it is zero. A bare number is not acceptable.",
 
       "valuation": {
         "currentPrice": 0, "priceAsOf": "", "currency": "INR",
@@ -637,7 +665,19 @@ including pledged shares.
         "method": "which methods and why they suit this sector",
         "bear": { "fairValue": 0, "assumptions": "", "probability": 0.25 },
         "base": { "fairValue": 0, "assumptions": "", "probability": 0.50 },
-        "bull": { "fairValue": 0, "assumptions": "", "probability": 0.25 }
+        "bull": { "fairValue": 0, "assumptions": "", "probability": 0.25 },
+
+        "waccBuildup": { "riskFreeRate": 0.0, "equityRiskPremium": 0.0,
+          "leveredBeta": 0.0, "costOfEquity": 0.0, "pretaxCostOfDebt": 0.0,
+          "taxRate": 0.0, "afterTaxCostOfDebt": 0.0, "equityWeight": 0.0,
+          "debtWeight": 0.0, "wacc": 0.0, "source": "" },
+
+        "sotp": [ { "name": "", "metric": "EBITDA or EV/Sales or book value",
+          "metricValue": 0, "multiple": 0.0, "enterpriseValue": 0,
+          "stakePct": 100, "perShare": 0, "basis": "why this multiple" } ],
+
+        "impliedExpectations": { "impliedRevenueCagr": 0.0, "impliedEbitMargin": 0.0,
+          "impliedYears": 0, "reading": "what the current price is assuming, in one sentence" }
       },
 
       "consensus": { "source": "", "asOf": "", "estimateCount": 0,
@@ -723,7 +763,7 @@ including pledged shares.
 8. Shortlist roughly ${shortlistSize} companies for full treatment, and list what
    you screened out and why.
 
-9. The segment blocks are not optional decoration. A report with scores and no
+9. The sector blocks are not optional decoration. A report with scores and no
    macro, no Budget, no policy and no programmes is a scoring appendix, not
    research. Where something genuinely cannot be established, omit the block and
    say so in run.researchNotes — the application prints the gap.
@@ -760,17 +800,17 @@ something in it:
   litigation       every register, with the clean ones recorded as clean
   financials       two full years of the annual series, every field named in
                    the schema, one basis, so the metrics section computes
-  model            segment drivers, costs, capex, working capital, debt, shares
+  model            sector drivers, costs, capex, working capital, debt, shares
   valuation        price with its date, discount rate, and three scenarios
   market           consensus, shareholding by quarter, liquidity, price history
   peers            the sector's own metrics
   narrative        catalysts, risks with sizes, thesis breakers, questions
 
-Roughly twenty-five searches. The segment backdrop should take two or three of
+Roughly twenty-five searches. The sector backdrop should take two or three of
 them, no more.
 
 THE FINANCIAL MODEL IS NOT OPTIONAL. A run that returns zero of the six model
-blocks is not a research payload, it is a summary. Segment drivers, cost
+blocks is not a research payload, it is a summary. Sector drivers, cost
 structure, capex and depreciation, working-capital days, the debt schedule and
 the fully diluted share count are all in the annual report and the latest
 quarterly filing, and every one of them is what a valuation is built from.
@@ -789,7 +829,7 @@ can contradict the narrative.
 A COMPANY RUN STILL NEEDS ITS BACKDROP. Two pages of it: where the industry
 sits in its cycle, the policy and regulation that touch this company with the
 money attached, who it competes with and roughly what share each holds, and the
-macro readings that move its earnings. That is not a segment study and must not
+macro readings that move its earnings. That is not a sector study and must not
 become one — but returning it empty leaves every number in the report with no
 context to be read against.` : `Search until each block below has something in it. These are not optional
 extras; each one is a named section of the finished report:
@@ -797,9 +837,9 @@ extras; each one is a named section of the finished report:
   the world        global market size, its growth over 15/10/5/3 years, and a
                    handful of global peers with what each of them makes
   macro            six readings, each with its period and its source
-  budget           the allocations touching this segment over five years, with
+  budget           the allocations touching this sector over five years, with
                    what was announced AND what was actually spent
-  economic survey  the Survey's own words on this segment
+  economic survey  the Survey's own words on this sector
   policy           every scheme that touches it, each to the full template
   regulation       the regulator, the rules, what is under review
   geopolitics      import dependence and export exposure WITH the trade data

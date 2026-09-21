@@ -10,7 +10,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
     w.addEventListener('error',e=>errors.push(e.error?e.error.stack.split('\n')[0]:e.message)); }});
 const w=dom.window,d=w.document;
 w.console.error=(...a)=>errors.push('console.error '+a.join(' '));
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el); }
 const eng={};
 for(const [k,p] of [['scoring','core/scoring.js'],['schema','core/payload-schema.js'],['report','core/report.js'],
@@ -23,7 +23,7 @@ await new Promise(r=>setTimeout(r,200));
 
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const seg=JSON.parse(JSON.stringify(full));
-seg.run.top3=full.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named by the segment study'}));
+seg.run.top3=full.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named by the sector study'}));
 seg.companies=[];
 const cos=full.companies.map(c=>({run:seg.run, companies:[c]}));
 
@@ -33,11 +33,11 @@ const importInto=async(payload, click)=>{
   d.getElementById('btnDoImport').click(); await new Promise(r=>setTimeout(r,180));
   d.getElementById('btnSaveImport').click(); await new Promise(r=>setTimeout(r,250));
 };
-// 1. segment
+// 1. sector
 [...d.querySelectorAll('nav button')].find(x=>x.dataset.tab==='report')?.click();
 await new Promise(r=>setTimeout(r,150));
 await importInto(seg, ()=>d.getElementById('btnImport').click());
-console.log('segment box name :', d.getElementById('segBoxName').textContent);
+console.log('sector box name :', d.getElementById('segBoxName').textContent);
 console.log('company boxes    :', d.querySelectorAll('#coBoxes .runbox').length);
 [...d.querySelectorAll('#coBoxes .runbox h2')].forEach(h=>console.log('   ', h.textContent.replace(/\s+/g,' ').trim()));
 

@@ -13,7 +13,7 @@ vm.runInContext(fs.readFileSync(dir+'/charts.js','utf8'),sb);
 vm.runInContext(fs.readFileSync(dir+'/render.js','utf8'),sb);
 const raw=JSON.parse(fs.readFileSync('/mnt/user-data/uploads/Anlon.json','utf8').replace(/\uFFFD/g,'-'));
 const b0=buildReport(parsePayload(JSON.stringify(raw)).payload);
-const p={meta:{segment:raw.run.segment,analysis_datetime:new Date().toISOString()},
+const p={meta:{sector:raw.run.sector,analysis_datetime:new Date().toISOString()},
   report:b0.report, warnings:b0.warnings, companyIndex:0, standalone:true};
 fs.writeFileSync('/tmp/sc.html', sb.window.EQDocs.buildScorecard(p,'en'));
 fs.writeFileSync('/tmp/ex.html', sb.window.EQDocs.buildCompanyExec(p,'en'));

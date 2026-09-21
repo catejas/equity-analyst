@@ -113,6 +113,22 @@ export function repairPayload(payload) {
     });
   }
 
+  /* The run's scope, under its old names. Same rule as the model block below:
+     the legacy keys are string literals, because a repo-wide rename would
+     otherwise rewrite the very names this migration exists to recognise. */
+  if (isObj(payload.run)) {
+    if (payload.run.sector == null && payload.run['segment'] != null) {
+      payload.run.sector = payload.run['segment'];
+      delete payload.run['segment'];
+      say('the run scope arrived under the old key "segment" and was read as sector');
+    }
+    if (payload.run.subSector == null && payload.run['subsegment'] != null) {
+      payload.run.subSector = payload.run['subsegment'];
+      delete payload.run['subsegment'];
+      say('the run scope arrived under the old key "subsegment" and was read as subSector');
+    }
+  }
+
   if (isObj(payload.run)) {
     const n = asNumber(payload.run.searchesRun);
     if (n !== null && typeof payload.run.searchesRun === 'string') payload.run.searchesRun = n;
@@ -127,6 +143,51 @@ export function repairPayload(payload) {
 
   payload.companies.forEach((c) => {
     if (!isObj(c)) return;
+
+    /* Payloads written before the rename.
+
+       The research scope and the driver model's array used to be keyed
+       "segment", "subsegment" and "segments". They are now "sector",
+       "subSector" and "sectors" everywhere — prompt, schema, engine and
+       reports. Payloads already saved still carry the old spelling, and they
+       are research somebody paid for, so they are migrated here.
+
+       The old names appear ONLY as string literals. Writing them as
+       identifiers is what made the first version of this block compare a key
+       with itself: a repo-wide rename cannot tell a live identifier from the
+       legacy name it is supposed to recognise. A wire format that has changed
+       must be spelled out, never referenced. */
+    if (isObj(c.model) && !isArr(c.model.sectors) && isArr(c.model['segments'])) {
+      c.model.sectors = c.model['segments'];
+      delete c.model['segments'];
+      say('the driver model arrived with its sectors under the old key "segments" and was read');
+    }
+
+    /* A schedule given as one number means "this much every year". Spelling
+       that out is what the five-element array was always for, and it is a
+       repair rather than a rejection because the intent is unambiguous. */
+    if (isObj(c.model)) {
+      const years = Number.isFinite(c.model.years) ? Math.max(1, Math.round(c.model.years)) : 5;
+      const schedules = [['capex', 'growthSchedule'], ['financing', 'repaymentSchedule'],
+        ['financing', 'drawdownSchedule']];
+      for (const [host, key] of schedules) {
+        const h = c.model[host];
+        if (!isObj(h)) continue;
+        const v = h[key];
+        const n = asNumber(v);
+        if (n !== null && !isArr(v)) {
+          h[key] = new Array(years).fill(n);
+          say(`model.${host}.${key} arrived as a single number and was read as ${years} equal years`);
+        } else if (isArr(v) && v.length && v.length !== years) {
+          /* Short schedules are held at their last value, long ones cut. Both
+             beat discarding the model over an off-by-one. */
+          const out = v.slice(0, years).map((x) => asNumber(x) ?? 0);
+          while (out.length < years) out.push(out[out.length - 1] ?? 0);
+          h[key] = out;
+          say(`model.${host}.${key} had ${v.length} entries for ${years} years and was fitted to the horizon`);
+        }
+      }
+    }
 
     for (const k of ['redFlags', 'catalysts', 'risks', 'thesisBreakers', 'upgradeTriggers',
       'managementQuestions', 'sources', 'conflicts', 'theses', 'mispricing', 'peers',
@@ -158,7 +219,7 @@ export function repairPayload(payload) {
         }
       }
     }
-    if (isObj(c.model)) wrap(c.model, 'segments', 'model.segments');
+    if (isObj(c.model)) wrap(c.model, 'sectors', 'model.sectors');
     if (isObj(c.management)) {
       wrap(c.management, 'people', 'management.people');
       wrap(c.management, 'guidanceRecord', 'management.guidanceRecord');

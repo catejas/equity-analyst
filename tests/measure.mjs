@@ -18,7 +18,7 @@ sandbox.self=sandbox; sandbox.globalThis=sandbox; vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(dir+'/charts.js','utf8'), sandbox, {filename:'charts.js'});
 vm.runInContext(fs.readFileSync(dir+'/render.js','utf8'), sandbox, {filename:'render.js'});
 const built=eng.report.buildReport(eng.schema.parsePayload(fs.readFileSync('/mnt/user-data/uploads/Anlon.json','utf8')).payload);
-const p={meta:{segment:'Banking',subsegment:'Public sector banks',analysis_datetime:new Date().toISOString()},
+const p={meta:{sector:'Banking',subSector:'Public sector banks',analysis_datetime:new Date().toISOString()},
   report:built.report, warnings:built.warnings, companyIndex:0};
 for(const [fn,name] of [['buildSector','sector'],['buildCompany','company'],['buildExec','exec']]){
   const html=sandbox.window.EQDocs[fn](p,'en');

@@ -15,7 +15,7 @@ const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
 });
 const w=dom.window, d=w.document;
 w.console.error=(...a)=>errors.push('console.error: '+a.join(' '));
-for(const f of ['segments.js','charts.js','render.js','docs.js']){
+for(const f of ['sectors.js','charts.js','render.js','docs.js']){
   const el=d.createElement('script'); el.textContent=fs.readFileSync(dir+'/'+f,'utf8'); d.body.appendChild(el);
 }
 // the engine is an ES module; jsdom will not run it, so hand it over directly
@@ -55,6 +55,6 @@ await new Promise(r=>setTimeout(r,300));
 console.log('\n=== after SAVE ===');
 const lib=JSON.parse(w.localStorage.getItem('eq.library')||'[]');
 console.log('runs in library:', lib.length);
-if(lib[0]) console.log('saved run:', lib[0].segment, '| companies:', lib[0].report?.counts?.universe,
+if(lib[0]) console.log('saved run:', lib[0].sector, '| companies:', lib[0].report?.counts?.universe,
   '| top3:', (lib[0].report?.top3||[]).map(c=>c.symbol).join(',')||'(none)');
 console.log('errors:', errors.length?errors.join('\n').slice(0,900):'none');

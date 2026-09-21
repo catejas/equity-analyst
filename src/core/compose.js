@@ -1,7 +1,7 @@
 import { top3For } from './screen.js';
 // compose.js — one run assembled from separately imported pieces.
 //
-// The segment is researched on its own, then each of the three companies on its
+// The sector is researched on its own, then each of the three companies on its
 // own. Each arrives as its own payload with its own copy button, which is the
 // point: one reply, one block, one tap. This puts them back together so the
 // documents see a single run.
@@ -9,13 +9,13 @@ import { top3For } from './screen.js';
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 /**
- * Merge a segment payload and any number of company payloads into one.
- * The segment payload owns the run and all the segment research; a company
+ * Merge a sector payload and any number of company payloads into one.
+ * The sector payload owns the run and all the sector research; a company
  * payload contributes its company and nothing else, so a later company import
- * can never quietly rewrite the segment work.
+ * can never quietly rewrite the sector work.
  */
-export function composePayload(segment, companyPayloads = []) {
-  const base = segment && isObj(segment) ? JSON.parse(JSON.stringify(segment)) : { run: {} };
+export function composePayload(sector, companyPayloads = []) {
+  const base = sector && isObj(sector) ? JSON.parse(JSON.stringify(sector)) : { run: {} };
   base.companies = [];
 
   const seen = new Set();
@@ -27,8 +27,8 @@ export function composePayload(segment, companyPayloads = []) {
       seen.add(c.symbol);
       base.companies.push(c);
     }
-    /* A company run may carry segment research the segment run lacked. Fill
-       gaps, never overwrite: the segment study is the authority on the segment. */
+    /* A company run may carry sector research the sector run lacked. Fill
+       gaps, never overwrite: the sector study is the authority on the sector. */
     for (const k of ['global', 'macro', 'budget', 'policy', 'policyEvolution', 'regulation',
       'geopolitics', 'industry', 'valueChain', 'tam', 'programs', 'competition',
       'sectorValuation', 'monitorables', 'glossary', 'industryMap', 'universe']) {
@@ -36,7 +36,7 @@ export function composePayload(segment, companyPayloads = []) {
     }
   }
 
-  /* Order the companies by the segment's own shortlist, so rank 1 in the app is
+  /* Order the companies by the sector's own shortlist, so rank 1 in the app is
      rank 1 in the research even before scoring runs. */
   const nominated = top3For(base).list;
   if (nominated.length && base.companies.length > 1) {
@@ -51,10 +51,10 @@ export function composePayload(segment, companyPayloads = []) {
 }
 
 /** The three slots the Company page shows, filled or waiting. */
-export function slots(segmentPayload, companyRecords = []) {
-  /* The three come from the screen when the segment run supplied a shortlist,
+export function slots(sectorPayload, companyRecords = []) {
+  /* The three come from the screen when the sector run supplied a shortlist,
      and from run.top3 only for an older run that named them itself. */
-  const chosen = top3For(segmentPayload || {});
+  const chosen = top3For(sectorPayload || {});
   const nominated = chosen.list.slice(0, 3);
   const out = [];
   for (let i = 0; i < 3; i++) {

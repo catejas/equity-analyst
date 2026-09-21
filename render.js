@@ -239,7 +239,7 @@ var T = {
   unofficial: 'unofficial',
   exchanges: 'Exchanges',
   ir_products: 'Products and services',
-  ir_segments: 'Revenue by sector',
+  ir_sectors: 'Revenue by sector',
   irg_recommendation: 'Final Recommendation',
   irg_ipo: 'The IPO',
   irg_valuation: 'Valuation',
@@ -387,7 +387,7 @@ var T = {
   how_earns: 'How it earns',
   why_stay: 'Why customers stay',
   rev_mix: 'Revenue mix',
-  segment: 'Sector',
+  sector: 'Sector',
   share_pc: 'Share',
   growth: 'Growth',
   note: 'Note',
@@ -1060,8 +1060,8 @@ function head(p, label){
   /* The company name stays in Latin script — it is a proper noun. The page
      label does not: it is ours, and in the Gujarati edition it is Gujarati. */
   var m = (p && p.meta) || {};
-  var name = S(m.short_name) || S(m.company) || S(m.segment)
-    || (p && p.report && p.report.run && S(p.report.run.segment)) || '';
+  var name = S(m.short_name) || S(m.company) || S(m.sector)
+    || (p && p.report && p.report.run && S(p.report.run.sector)) || '';
   return '<div class="rh"><div class="l en">'+EN(e(name))+'</div>'
        + '<div class="r">'+EN(e(label))+'</div></div>';
 }
@@ -1843,23 +1843,23 @@ function safePayload(p){
   p.score_basis = p.score_basis || {};
   p.gu = p.gu || {};
   p.meta = p.meta || {};
-  if(!S(p.meta.company)) p.meta.company = S(p.meta.short_name) || S(p.meta.segment) || 'Run';
+  if(!S(p.meta.company)) p.meta.company = S(p.meta.short_name) || S(p.meta.sector) || 'Run';
   if(!S(p.meta.short_name)) p.meta.short_name = S(p.meta.company);
   escalateLitigation(p);
-  linkSegmentsAndProducts(p);
+  linkSectorsAndProducts(p);
   return p;
 }
 
 /* Many issuers publish one revenue split, not two. When only the product list
-   carries shares, the segment chart used to come out empty beside a populated
+   carries shares, the sector chart used to come out empty beside a populated
    products table — the same numbers, one of them thrown away. Either side now
    fills from the other. */
-function linkSegmentsAndProducts(p){
+function linkSectorsAndProducts(p){
   var c = p.company || {};
-  var segs = arr(c.segments), prods = arr(c.products);
+  var segs = arr(c.sectors), prods = arr(c.products);
   function hasPct(list){ return list.some(function(x){ return x && x.revenue_pct != null; }); }
   if(!hasPct(segs) && hasPct(prods)){
-    c.segments = prods.filter(function(x){ return x.revenue_pct != null; })
+    c.sectors = prods.filter(function(x){ return x.revenue_pct != null; })
       .map(function(x){ return { name:x.name, revenue_pct:x.revenue_pct,
                                  growth_pct:null, note:x.growth_note || x.margin_profile }; });
   } else if(!hasPct(prods) && hasPct(segs) && prods.length === 0){
@@ -2093,6 +2093,27 @@ function buildCompany(p, lang){
   if(mbC) out += S3('Multibagger detection') + mbC;
   var peC = eqPeers(c, lang);
   if(peC) out += S3('Peers') + peC;
+
+  /* The institutional blocks. Each prints only when the payload carried it, so
+     a run made before these were asked for still renders exactly as it did —
+     an empty heading over a gap note reads as a rendering fault. */
+  var dup = eqDupont(c);
+  if(dup) out += S3('Return on capital, deconstructed') + dup + eqRoicChart(c);
+  var psc = eqPeerScatter(c);
+  if(psc) out += psc;
+  var ccy = eqCapitalCycle(c);
+  if(ccy) out += S3('The capital cycle') + ccy;
+  var hsec = eqHistoricalSectors(c);
+  if(hsec) out += S3('Revenue by operating line') + hsec + eqSectorMixChart(c);
+  var cmp = eqCompensation(c);
+  if(cmp) out += S3('Pay and alignment') + cmp;
+  var wac = eqWacc(c);
+  if(wac) out += S3('How the discount rate is built') + wac;
+  var sot = eqSotp(c);
+  if(sot) out += S3('Sum of the parts') + sot;
+  var imp = eqImplied(c);
+  if(imp) out += S3('What the price already assumes') + imp;
+
   var esgC = eqEsg(c, lang);
   if(esgC) out += S3('ESG') + esgC;
 
@@ -2367,10 +2388,10 @@ function eqSignedPct(x){
 }
 function eqTitle(p){
   var m = eqMeta(p), r = eqRep(p).run || {};
-  return S(r.segment || m.segment || 'Sector') + (r.subsegment ? ' — ' + S(r.subsegment) : '');
+  return S(r.sector || m.sector || 'Sector') + (r.subSector ? ' — ' + S(r.subSector) : '');
 }
 
-/* The masthead. A run has no single company, so the headline is the segment and
+/* The masthead. A run has no single company, so the headline is the sector and
    the tiles carry the shape of the run rather than one company's scores. */
 function eqCover(p, lang, docLabel, titleFontPt){
   var rep = eqRep(p), run = rep.run || {}, c = rep.counts || {};
@@ -2818,7 +2839,7 @@ function focusPage(p, forCompany){
 }
 
 /* ============ version 3: the research sections =====================
-   The segment is the argument and the companies express it, so these come
+   The sector is the argument and the companies express it, so these come
    first in the document and the rankings come after. Each one refuses when its
    block is absent, returning a stated gap rather than an empty heading. */
 
@@ -2898,7 +2919,7 @@ function eqBudget(p, lang){
           eqNum(x.announced,0),
           typeof x.spent==='number'?n(x.spent,0):'<span class="mut">not stated</span>',
           gap==null?'&mdash;':eqSignedPct(gap),
-          '<span class="mut">'+e(S(x.reachesSegment))+'</span>' ]};
+          '<span class="mut">'+e(S(x.reachesSector))+'</span>' ]};
       }), { num:[2,3,4] })
       + '<div class="mut" style="margin-top:1.5mm">The gap between announced and spent is usually '
       + 'the story. An allocation that is never drawn does not reach an order book.</div>';
@@ -2919,7 +2940,7 @@ function eqPolicy(p, lang){
           { cells:['Funding and scope', e(S(s.funding))] },
           { cells:['Outcomes to date', e(S(s.outcomes))] },
           { cells:['Challenges', e(S(s.challenges))] },
-          { cells:['How it reaches this sector', e(S(s.reachesSegment))] }
+          { cells:['How it reaches this sector', e(S(s.reachesSector))] }
         ]) + '</div>';
   }).join('');
   var ev=arr(rep.policyEvolution);
@@ -3011,7 +3032,7 @@ function eqTam(p, lang){
   return tbl(['Market','Size','Year','Basis','Source'], rows, { num:[1] });
 }
 
-/* ---------- programmes: how a segment thesis becomes a forecast ---------- */
+/* ---------- programmes: how a sector thesis becomes a forecast ---------- */
 function eqPrograms(p, lang){
   var pr=arr(eqRep(p).programs);
   if(!pr.length) return gapNote('No programmes or contracts were supplied. This is the section that turns a sector view into a company forecast.');
@@ -3154,7 +3175,7 @@ function eqRotation(p, lang){
   if(!r) return '';
   if(!r.available) return '<p class="mut">' + e(S(r.caveat)) + '</p>';
   var rows = (r.ranked || []).map(function(x, i){
-    return { cells:[ String(i + 1), e(S(x.segment + (x.subsegment ? ' \u2014 ' + x.subsegment : ''))),
+    return { cells:[ String(i + 1), e(S(x.sector + (x.subSector ? ' \u2014 ' + x.subSector : ''))),
       (x.medianMomentum == null ? '\u2014' : x.medianMomentum + ' %'),
       '<span class="mut">' + x.withMomentum + ' of ' + x.companies + ' companies priced</span>' ] };
   });
@@ -3348,13 +3369,250 @@ function eqMispricing(c, lang){
   + 'A case nobody makes is not worth answering, and a case left unanswered is not research.</div>';
 }
 
+/* The peer table used to print "Metric 1" and "Metric 2" — two unnamed
+   numbers, which tell a reader nothing they can act on. The six columns a
+   comparison is actually made on are named now, and the company itself is
+   shown in the same table so the comparison is visible rather than implied.
+   Payloads written against the older schema still carry metric1/metric2, so
+   those are printed under a Note rather than dropped. */
 function eqPeers(c, lang){
   var pr=arr(c.peers);
   if(!pr.length) return gapNote('No peer comparison was supplied.');
-  return tbl(['Peer','Listed','Metric 1','Metric 2','Note'], pr.map(function(x){
-    return { cells:[ '<b>'+e(S(x.name))+'</b>', x.listed?'Yes':'No',
-      eqNum(x.metric1), eqNum(x.metric2), '<span class="mut">'+e(S(x.note))+'</span>' ]};
-  }), { num:[2,3] });
+  var rich = pr.some(function(x){
+    return x && (x.pe!=null || x.evEbitda!=null || x.roe!=null
+      || x.revGrowth!=null || x.ebitdaMargin!=null || x.marketCap!=null); });
+  if(!rich){
+    return tbl(['Peer','Listed','Metric 1','Metric 2','Note'], pr.map(function(x){
+      return { cells:[ '<b>'+e(S(x.name))+'</b>', x.listed?'Yes':'No',
+        eqNum(x.metric1), eqNum(x.metric2), '<span class="mut">'+e(S(x.note))+'</span>' ]};
+    }), { num:[2,3] })
+    + gapNote('This run predates the fuller peer matrix, so only the two unnamed metrics were supplied.');
+  }
+  var rows = pr.map(function(x){
+    return { cells:[ '<b>'+e(S(x.name))+'</b>', eqNum(x.marketCap), eqNum(x.pe),
+      eqNum(x.evEbitda), eqNum(x.roe), eqNum(x.revGrowth), eqNum(x.ebitdaMargin) ]};
+  });
+  /* The subject company, on the same axes, from what the engine already knows.
+     A peer table that omits the company being valued makes the reader do the
+     comparison in their head. */
+  var selfPe = null, selfMcap = null;
+  try{
+    selfMcap = c.snapshot && c.snapshot.marketCap;
+    var mv = c.metrics && c.metrics.values;
+    if(mv) selfPe = mv.pe != null ? mv.pe : null;
+  }catch(err){}
+  if(selfMcap != null || selfPe != null){
+    rows.unshift({ __cls:'tot', cells:[ '<b>'+e(S(c.name)||S(c.symbol))+'</b>',
+      eqNum(selfMcap), eqNum(selfPe), '—', '—', '—', '—' ] });
+  }
+  return tbl(['Company','Market cap','P/E','EV/EBITDA','ROE %','Rev growth %','EBITDA margin %'],
+    rows, { num:[1,2,3,4,5,6] });
+}
+
+/* ROIC against the hurdle rate, year by year. The gap between the two lines is
+   the whole question: above it, growth creates value; below it, growth is an
+   expensive way to stand still. A table of the same numbers makes the reader
+   do the subtraction. */
+function eqRoicChart(c){
+  if(!window.EQCharts) return '';
+  var d = arr(c.dupont).filter(function(x){ return x && x.roic != null; });
+  if(d.length < 2) return '';
+  var wacc = null;
+  try{
+    var w = c.valuation && c.valuation.waccBuildup;
+    if(w && w.wacc != null) wacc = w.wacc * 100;
+    else if(c.valuation && c.valuation.discountRate != null) wacc = c.valuation.discountRate * 100;
+  }catch(err){}
+  var series = [{ name:'ROIC', values: d.map(function(x){ return x.roic; }) }];
+  if(wacc != null){
+    series.push({ name:'Cost of capital', values: d.map(function(){ return wacc; }), dashed:true });
+  }
+  return EQCharts.figure('Return on invested capital against its cost',
+    'Company filings; cost of capital per the buildup',
+    EQCharts.lines({ categories: d.map(function(x){ return S(x.period); }), series: series }),
+    { note: wacc == null ? 'No cost of capital was stated, so only the return is shown.'
+        : 'Where the solid line sits below the dashed one, the business is earning less on new '
+          + 'capital than that capital costs.' });
+}
+
+/* How the revenue mix has shifted. In a conglomerate the mix IS the thesis,
+   and a shift is invisible in any single-year chart. */
+function eqSectorMixChart(c){
+  if(!window.EQCharts) return '';
+  var d = arr(c.historicalSectors);
+  if(d.length < 2) return '';
+  var names = [];
+  d.forEach(function(p0){ arr(p0.lines).forEach(function(l){
+    if(names.indexOf(S(l.name)) < 0) names.push(S(l.name)); }); });
+  if(names.length < 2) return '';
+  var series = names.map(function(nm){
+    return { name: nm, values: d.map(function(p0){
+      var hit = arr(p0.lines).filter(function(l){ return S(l.name)===nm; })[0];
+      return hit && hit.revenue != null ? hit.revenue : 0; }) };
+  });
+  return EQCharts.figure('Revenue by operating line',
+    'Company filings',
+    EQCharts.columns({ categories: d.map(function(p0){ return S(p0.period); }),
+      series: series, stacked: true }),
+    { note:'Each band is one operating line. What matters is how the proportions move, '
+      + 'not the total height.' });
+}
+
+/* Peers on the two axes a rating is argued on: what you pay, against what the
+   business earns. The subject company is marked, because the comparison is the
+   point and a chart that omits it makes the reader estimate. */
+function eqPeerScatter(c){
+  if(!window.EQCharts) return '';
+  var pr = arr(c.peers).filter(function(x){ return x && x.pe != null && x.roe != null; });
+  if(pr.length < 2) return '';
+  var pts = pr.map(function(x){
+    return { x: x.roe, y: x.pe, label:'', title: S(x.name) };
+  });
+  var xs = pts.map(function(p){ return p.x; }), ys = pts.map(function(p){ return p.y; });
+  var pad = function(a){ var lo=Math.min.apply(null,a), hi=Math.max.apply(null,a);
+    var g=(hi-lo)||1; return [Math.max(0, lo-g*0.2), hi+g*0.2]; };
+  return EQCharts.figure('Peers — what you pay against what the business earns',
+    'Company filings and exchange data',
+    EQCharts.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
+      xLabel:'Return on equity %', yLabel:'P/E' }),
+    { note:'Upper left is expensive for the return earned; lower right is the opposite.' });
+}
+
+/* Return on capital, taken apart. Three numbers that multiply to ROE, and the
+   spread over the hurdle rate, which is the one figure that says whether
+   growth creates value or consumes it. */
+function eqDupont(c){
+  var d = arr(c.dupont);
+  if(!d.length) return '';
+  var rows = d.map(function(x){
+    var sp = x.waccSpreadPct;
+    var spCell = sp == null ? '—'
+      : '<span class="' + (sp >= 0 ? 'pos' : 'neg') + '">' + n(sp,1) + '</span>';
+    return { cells:[ e(S(x.period)), eqNum(x.netProfitMargin), eqNum(x.assetTurnover),
+      eqNum(x.financialLeverage), eqNum(x.roe), eqNum(x.roic), spCell ]};
+  });
+  var last = d[d.length-1];
+  var note = '';
+  if(last && last.waccSpreadPct != null){
+    note = last.waccSpreadPct >= 0
+      ? '<p class="note">Return on invested capital sits ' + n(last.waccSpreadPct,1)
+        + ' points above the cost of that capital, so growth adds value.</p>'
+      : '<p class="note">Return on invested capital sits ' + n(Math.abs(last.waccSpreadPct),1)
+        + ' points below the cost of that capital. Until that reverses, growth consumes value '
+        + 'rather than creating it.</p>';
+  }
+  return tbl(['Period','Net margin %','Asset turnover','Leverage','ROE %','ROIC %','ROIC − WACC'],
+    rows, { num:[1,2,3,4,5,6] }) + note;
+}
+
+/* Capital work in progress against gross block. A rising share means money is
+   buried in assets that earn nothing yet; the turn is where free cash flow
+   inflects. */
+function eqCapitalCycle(c){
+  var d = arr(c.capitalCycle);
+  if(!d.length) return '';
+  return tbl(['Period','CWIP','Gross block','CWIP % of gross block','Reading'], d.map(function(x){
+    return { cells:[ e(S(x.period)), eqNum(x.cwip), eqNum(x.grossBlock),
+      eqNum(x.cwipPctOfGrossBlock), '<span class="mut">'+e(S(x.note))+'</span>' ]};
+  }), { num:[1,2,3] });
+}
+
+/* How the discount rate was arrived at. A WACC stated without its buildup is a
+   number the reader has to take on trust, and it is the single assumption the
+   whole valuation is most sensitive to. */
+function eqWacc(c){
+  var w = c.valuation && c.valuation.waccBuildup;
+  if(!w) return '';
+  var pct = function(v){ return v==null ? '—' : n(v*100,2); };
+  return tbl(['','%'], [
+    { cells:['Risk-free rate', pct(w.riskFreeRate)] },
+    { cells:['Equity risk premium', pct(w.equityRiskPremium)] },
+    { cells:['Levered beta', w.leveredBeta==null?'—':n(w.leveredBeta,2)] },
+    { cells:['<b>Cost of equity</b>', '<b>'+pct(w.costOfEquity)+'</b>'] },
+    { cells:['Pre-tax cost of debt', pct(w.pretaxCostOfDebt)] },
+    { cells:['Tax rate', pct(w.taxRate)] },
+    { cells:['<b>After-tax cost of debt</b>', '<b>'+pct(w.afterTaxCostOfDebt)+'</b>'] },
+    { cells:['Weight — equity', pct(w.equityWeight)] },
+    { cells:['Weight — debt', pct(w.debtWeight)] },
+    { __cls:'tot', cells:['<b>WACC</b>', '<b>'+pct(w.wacc)+'</b>'] }
+  ], { num:[1] })
+  + (S(w.source) ? '<p class="note">Source: '+e(S(w.source))+'</p>' : '');
+}
+
+/* Sum of the parts. A conglomerate valued on one multiple is valued wrongly:
+   the point of this table is that each business is worth what its own kind of
+   business is worth. */
+function eqSotp(c){
+  var d = arr(c.valuation && c.valuation.sotp);
+  if(!d.length) return '';
+  var totalEv = 0, totalPs = 0, anyEv = false, anyPs = false;
+  d.forEach(function(x){
+    if(x.enterpriseValue != null){ totalEv += Number(x.enterpriseValue)||0; anyEv = true; }
+    if(x.perShare != null){ totalPs += Number(x.perShare)||0; anyPs = true; }
+  });
+  var rows = d.map(function(x){
+    return { cells:[ '<b>'+e(S(x.name))+'</b>', e(S(x.metric)), eqNum(x.metricValue),
+      x.multiple==null?'—':n(x.multiple,1)+'x', eqNum(x.enterpriseValue),
+      x.stakePct==null?'—':n(x.stakePct,0)+'%', eqNum(x.perShare) ]};
+  });
+  if(anyEv || anyPs){
+    rows.push({ __cls:'tot', cells:['<b>Total</b>','','','',
+      anyEv?'<b>'+n(totalEv,0)+'</b>':'—','', anyPs?'<b>'+n(totalPs,0)+'</b>':'—'] });
+  }
+  return tbl(['Business','Metric','Value','Multiple','Enterprise value','Stake','Per share'],
+    rows, { num:[2,3,4,6] });
+}
+
+/* What the current price already assumes. Read backwards out of the market
+   capitalisation: if the market is paying for this much growth, the question
+   is no longer whether the company grows, but whether it grows by more. */
+function eqImplied(c){
+  var x = c.valuation && c.valuation.impliedExpectations;
+  if(!x) return '';
+  var pct = function(v){ return v==null ? '—' : n(v*100,1); };
+  return tbl(['','Baked into the price'], [
+    { cells:['Revenue growth, compounded', pct(x.impliedRevenueCagr)+'%'] },
+    { cells:['Operating margin', pct(x.impliedEbitMargin)+'%'] },
+    { cells:['Over', x.impliedYears==null?'—':n(x.impliedYears,0)+' years'] }
+  ])
+  + (S(x.reading) ? '<p class="note">'+e(S(x.reading))+'</p>' : '');
+}
+
+/* Where the revenue actually comes from, year by year. A shifting mix is the
+   thesis in most conglomerates, and a single-year pie cannot show a shift. */
+function eqHistoricalSectors(c){
+  var d = arr(c.historicalSectors);
+  if(!d.length) return '';
+  var names = [];
+  d.forEach(function(p0){ arr(p0.lines).forEach(function(l){
+    if(names.indexOf(S(l.name)) < 0) names.push(S(l.name)); }); });
+  if(!names.length) return '';
+  var rows = names.map(function(nm){
+    var cells = ['<b>'+e(nm)+'</b>'];
+    d.forEach(function(p0){
+      var hit = arr(p0.lines).filter(function(l){ return S(l.name)===nm; })[0];
+      cells.push(hit ? eqNum(hit.revenue) : '—');
+    });
+    return { cells:cells };
+  });
+  return tbl(['Operating line'].concat(d.map(function(p0){ return S(p0.period); })),
+    rows, { num: d.map(function(_,i){ return i+1; }) });
+}
+
+/* Pay, and what it is tied to. A variable component tied to ROIC or total
+   shareholder return aligns management with the reader; one tied to revenue
+   rewards growth whatever it costs. */
+function eqCompensation(c){
+  var k = c.compensation;
+  if(!k) return '';
+  return tbl(['','Reading'], [
+    { cells:['Period', e(S(k.period))] },
+    { cells:['Fixed', k.fixedPct==null?'—':n(k.fixedPct,0)+'%'] },
+    { cells:['Variable', k.variablePct==null?'—':n(k.variablePct,0)+'%'] },
+    { cells:['Variable pay tied to', e(S(k.tiedTo))] },
+    { cells:['CEO pay to median employee', k.ceoPayToMedian?n(k.ceoPayToMedian,0)+'x':'—'] }
+  ])
+  + (S(k.source) ? '<p class="note">Source: '+e(S(k.source))+'</p>' : '');
 }
 
 function eqEsg(c, lang){
@@ -3418,7 +3676,7 @@ function buildExec(p, lang){
   if(polE.length){
     out += tbl(['Scheme','Ministry','How it reaches the sector'], polE.map(function(x){
       return { cells:[ '<b>'+e(S(x.name))+'</b>', e(S(x.ministry)),
-        '<span class="mut">'+e(S(x.reachesSegment))+'</span>' ]}; }));
+        '<span class="mut">'+e(S(x.reachesSector))+'</span>' ]}; }));
   }
   if(arr(rep.programs).length){
     out += tbl(['Programme','Scale','Listed beneficiaries'], arr(rep.programs).map(function(x){
@@ -3854,7 +4112,7 @@ function buildScorecard(p, lang){
 
   var head = '<div class="sc-top"><div style="height:4mm"></div>'
     + '<div class="eyebrow">' + e(L(lang,'score_card')) + ' &nbsp;·&nbsp; '
-      + EN(e(S(m.segment) || '')) + '</div>'
+      + EN(e(S(m.sector) || '')) + '</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:10.1pt">' + EN(e(S(co.name) || S(co.symbol) || '')) + '</h1>'
     + '<div class="mut en" style="margin-top:1mm">' + e(S(co.symbol) || '')
       + (co.exchange ? ' · ' + e(S(co.exchange)) : '')
@@ -4362,7 +4620,7 @@ function buildScorecard(p, lang){
     + '}'
     + '})();<\/script>';
 
-  return shell((S(co.name)||S(co.symbol)||S(m.segment))+' — Score Card', '', pages, CSS2)
+  return shell((S(co.name)||S(co.symbol)||S(m.sector))+' — Score Card', '', pages, CSS2)
          .replace('<!--FIT-->', FIT);
 }
 
@@ -4894,7 +5152,37 @@ function packDoc(p, lang, cfg){
       lang, cfg.docName);
   }
 
-  var CSS2 = (cfg.extraCss || '') + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
+  var CSS2 = (cfg.extraCss || '')
+    /* Prose column beside a figure rail — the layout the reference reports
+       use on every body page. The rail is the narrower of the two: a chart
+       reads fine at 36% of the measure, a paragraph does not. min-width:0 on
+       both is what stops a wide table in the rail from pushing the prose
+       column off the page instead of shrinking. */
+    + '\n.ir-pair{ display:flex; gap:4.5mm; align-items:flex-start;'
+      + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
+    + '.ir-pair > .ir-prose{ flex:1 1 60%; min-width:0; }\n'
+    + '.ir-pair > .ir-sub, .ir-pair .ir-sub{ margin-bottom:0; }\n'
+    + '.ir-pair > .ir-rail{ flex:0 0 36%; min-width:0; }\n'
+    + '.ir-pair > .ir-rail > *{ max-width:100%; }\n'
+    /* A table built for the full measure does not fit 36% of it. table-layout
+       alone is not enough: one long unbroken cell value still pushes the
+       column wider than its box, which is how labels ended up outside the
+       page edge. The rail's type steps down and long values are allowed to
+       break, so the table shrinks instead of the column growing. */
+    + '.ir-pair > .ir-rail table{ width:100%; table-layout:fixed; }\n'
+    + '.ir-pair > .ir-rail table, .ir-pair > .ir-rail td, .ir-pair > .ir-rail th{'
+      + ' font-size:calc(var(--body) - 0.7pt); }\n'
+    + '.ir-pair > .ir-rail td, .ir-pair > .ir-rail th{'
+      + ' overflow-wrap:anywhere; word-break:break-word; }\n'
+    + '.ir-pair > .ir-rail svg{ max-width:100%; height:auto; }\n'
+    /* A section's own inner box was sized for the full measure and carries the
+       table that would not shrink. Nothing inside the rail may be wider than
+       the rail. */
+    + '.ir-pair > .ir-rail *{ max-width:100%; }\n'
+    + '.ir-pair > .ir-rail .ir-box{ min-width:0; width:100%; }\n'
+    + '.ir-pair > .ir-prose > *:first-child{ margin-top:0; }\n'
+    + '.ir-pair > .ir-rail > *:first-child{ margin-top:0; }\n'
+    + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
     + '.ir-blk:last-child{ margin-bottom:0; }\n'
     + '.ir-blk table{ margin-bottom:1.5mm; font-size:var(--body); }\n'
     + '.ir-blk td{ font-size:var(--body); line-height:var(--bodyline); }\n'
@@ -4997,6 +5285,110 @@ function packDoc(p, lang, cfg){
        a page that has no .ir-box at all: boxes[i].scrollHeight on null, thrown
        from drain, aborting the pack and leaving the whole report in one box.
        Finding the first page that actually has a box cannot go stale. */
+    /* ---- pair pass: prose column beside a figure rail -------------------
+       Runs before the packer and changes nothing the packer looks at. Every
+       .ir-blk stays exactly one .ir-blk in exactly the same order; some of
+       them simply become two columns inside. The packer still works on a flat
+       list of blocks in an .ir-box and never learns this happened.
+
+       This is deliberately NOT a second paginator. Writing one of those over
+       the top of the working packer is what broke pagination six times: it
+       moved blocks out of the boxes the real packer was holding and then read
+       scrollHeight off a null. A pre-pass that restructures the inside of a
+       block, finishes, and hands the same list onward cannot do that.
+
+       A full-width chart followed by a full-width paragraph wastes a third of
+       every page. Beside each other they waste nothing, and the figure sits
+       next to the sentence that argues it, which is how the reference reports
+       read. */
+    /* Each numbered section is a heading plus EITHER a table/chart OR prose,
+       never both — so there is nothing to set side by side within one block.
+       Pairing therefore joins two adjacent blocks: the prose of one beside the
+       exhibit of the next.
+
+       (Once the sections are consolidated into the five pillars, a single
+       block will carry its own prose and its own figure, and pairing inside a
+       block becomes the better seam. The CSS below serves either.) */
+    + 'var PAIR_MAX_MM=118;'   /* neither half may be taller than this        */
+    + 'var PAIR_MIN_MM=16;'    /* below this, stacking wastes nothing anyway  */
+    + '(function pairPass(){'
+      + 'var MM=3.7795275591;'
+      /* .ir-box names two different things: the page's content container, and
+         an inner box a section may use for its own content. Selecting all of
+         them paired blocks INSIDE a section — which is why this first cost a
+         page instead of saving one. The packer takes the first .ir-box in each
+         page and nothing else; match that exactly, or the two disagree about
+         what a block is. */
+      + 'var boxes=[].slice.call(document.querySelectorAll(".page"))'
+        + '.map(function(pg){ return pg.querySelector(".ir-box"); })'
+        + '.filter(Boolean);'
+      + 'boxes.forEach(function(box){'
+        + 'var room=box.clientHeight||0;'
+        + 'var blks=[].slice.call(box.children).filter(function(n){'
+          + 'return n.classList && n.classList.contains("ir-blk"); });'
+        + 'var i=0;'
+        + 'while(i < blks.length-1){'
+          + 'var a=blks[i], b=blks[i+1];'
+          + 'var ha=a.getBoundingClientRect().height, hb=b.getBoundingClientRect().height;'
+          /* An exhibit is a table or a chart; prose is anything without one.
+             Pair only prose with exhibit, so two tables never end up side by
+             side reading as one wider table. */
+          + 'var ea=!!a.querySelector("table,.fig,svg"), eb=!!b.querySelector("table,.fig,svg");'
+          + 'var ok = (ea!==eb)'
+            + ' && ha>PAIR_MIN_MM*MM && hb>PAIR_MIN_MM*MM'
+            + ' && ha<PAIR_MAX_MM*MM && hb<PAIR_MAX_MM*MM'
+            + ' && (room ? Math.max(ha,hb) < room : true);'
+          + 'if(!ok){ i++; continue; }'
+          /* The pair becomes the block. The two originals stop being blocks —
+             otherwise the packer would count three where there is one, and
+             move a half out from under its own container. Their ids survive
+             so the contents page still links to them. */
+          + 'var pair=document.createElement("div");'
+          + 'pair.className="ir-blk ir-pair";'
+          + 'box.insertBefore(pair,a);'
+          + 'var ca=document.createElement("div"); ca.className=ea?"ir-rail":"ir-prose";'
+          + 'var cb=document.createElement("div"); cb.className=eb?"ir-rail":"ir-prose";'
+          + 'a.classList.remove("ir-blk"); a.classList.add("ir-sub");'
+          + 'b.classList.remove("ir-blk"); b.classList.add("ir-sub");'
+          + 'ca.appendChild(a); cb.appendChild(b);'
+          /* Prose always on the left, exhibit always on the right: a rail that
+             swaps sides page to page reads as a mistake. */
+          + 'if(ea){ pair.appendChild(cb); pair.appendChild(ca); }'
+          + 'else   { pair.appendChild(ca); pair.appendChild(cb); }'
+          /* If the pair somehow exceeds the page it must sit on, undo it — the
+             packer moves whole blocks and could not divide this one. */
+          /* Not everything survives being narrowed. Some exhibits hold content
+             with a hard minimum width — a bar with a fixed track, a cell whose
+             value cannot be broken — and in the rail they spill sideways out
+             of the column. Clipping them would hide data, which is the defect
+             this whole layout exists to avoid, so such a block simply does not
+             get paired and keeps the full measure. */
+          + 'var spills=false;'
+          + '[ca,cb].forEach(function(col){'
+            + 'if(col.scrollWidth > col.clientWidth+2){ spills=true; return; }'
+            + 'var kids=col.querySelectorAll("*");'
+            + 'for(var q=0;q<kids.length;q++){'
+              + 'if(kids[q].scrollWidth > col.clientWidth+2){ spills=true; return; }'
+            + '}'
+          + '});'
+          /* The point of pairing is to use less vertical space. It does not
+             always: narrowing a table to 36% of the measure can make it far
+             taller than it was, and max(prose', table') then exceeds what the
+             two cost stacked at full width. So compare the two directly and
+             keep the arrangement that is actually shorter. Without this the
+             sector report grew from 6 pages to 7. */
+          + 'var stacked=ha+hb;'
+          + 'var paired=pair.getBoundingClientRect().height;'
+          + 'if(spills || paired >= stacked || (room && paired > room)){'
+            + 'a.classList.add("ir-blk"); a.classList.remove("ir-sub");'
+            + 'b.classList.add("ir-blk"); b.classList.remove("ir-sub");'
+            + 'box.insertBefore(a,pair); box.insertBefore(b,pair);'
+            + 'box.removeChild(pair); i++; continue;'
+          + '}'
+          + 'i+=2;'
+        + '}'
+      + '});'
+    + '})();'
     + 'var PACKFROM=(function(){'
       + 'var all=document.querySelectorAll(".page");'
       + 'for(var i=0;i<all.length;i++){ if(all[i].querySelector(".ir-box")) return i; }'
@@ -5479,7 +5871,7 @@ function buildSector(p, lang){
 
   /* ---------------- the world ----------------
      Every reference report establishes why the industry compounds before it
-     names a company. The segment is the argument; the companies express it. */
+     names a company. The sector is the argument; the companies express it. */
   out += S2('The world') + eqWorld(p, lang);
 
   /* ---------------- India: macro and policy ---------------- */

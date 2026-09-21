@@ -28,7 +28,7 @@ not supply scores, rankings or valuations.
 | **Setup** | Install, in-app AI toggle, data and privacy, build number |
 
 Vocabulary is **sector / sub-sector** in the interface, prompt, framework and
-reports. The payload keys stay `segment` and `subsegment` — renaming those would
+reports. The payload keys stay `sector` and `subSector` — renaming those would
 invalidate every payload already imported. The rename happens on the finished
 prompt text via `sectorVocabulary()` in `prompt-builder.js`.
 
@@ -47,7 +47,7 @@ prompt text via `sectorVocabulary()` in `prompt-builder.js`.
 4. **Independent Company Research** is a separate path for a company outside any
    Top 3, flagged `standalone`, never filling a Top 3 slot.
 
-Every segment run is kept. The same sector on another date, or with another
+Every sector run is kept. The same sector on another date, or with another
 tool, is a distinct run with its own Top 3. Companies bind to the run they were
 imported under by record id, never matched by name.
 
@@ -60,7 +60,7 @@ index.html          the whole app: markup, styles, page controllers
 render.js           document builders (sector, company, exec, score card)
 charts.js           14 inline-SVG chart types
 docs.js             PDF pipeline, share, per-document dispatch
-segments.js         the sector/sub-sector taxonomy
+sectors.js         the sector/sub-sector taxonomy
 src/engine-bridge.js  ES module that publishes window.EQ
 src/core/*.js       the engine: scoring, ranking, screen, schema, repair, …
 sw.js               service worker; BUILD must match window.APP_BUILD

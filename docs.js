@@ -15,7 +15,7 @@ var PNG_SCALE = 4;   /* 4960 x 7016 = 600 DPI at A4. Messaging apps downscale
 /* What every builder receives. A run, not a company: the report model the
    engine produced, the run metadata, the gap warnings, and which company in the
    run the two per-company documents should use. */
-/* Every document is built from the whole run: the segment study plus whichever
+/* Every document is built from the whole run: the sector study plus whichever
    companies have been imported. The pieces are stored separately so each can be
    researched in one reply; they are only reassembled here. */
 var DOC_SUBJECT = null;
@@ -29,8 +29,8 @@ function soloPayload(){
     var b = EQ.buildReport(solo.data);
     if(!b.ok) return null;
     return {
-      meta: { segment: (solo.data.run && solo.data.run.segment) || null,
-              subsegment: (solo.data.run && solo.data.run.subsegment) || null,
+      meta: { sector: (solo.data.run && solo.data.run.sector) || null,
+              subSector: (solo.data.run && solo.data.run.subSector) || null,
               company: solo.company,
               analysis_datetime: new Date(solo.ts).toISOString() },
       report: b.report, warnings: b.warnings || [], companyIndex: 0,
@@ -73,7 +73,7 @@ function currentPayload(kind){
   }catch(e){}
 
   return {
-    meta: { segment: seg && seg.segment, subsegment: seg && seg.subsegment,
+    meta: { sector: seg && seg.sector, subSector: seg && seg.subSector,
             company: seg && seg.company,
             analysis_datetime: seg && seg.ts ? new Date(seg.ts).toISOString() : new Date().toISOString() },
     report: built.report,
@@ -92,7 +92,7 @@ function shareTitle(p, kind){
     var c = p.report.full[companyIndexFor(p, kind)];
     if(c) return EQDocs.S(c.name || c.symbol);
   }
-  return EQDocs.S((p.meta && (p.meta.segment || p.meta.company)) || 'Equity Analyst');
+  return EQDocs.S((p.meta && (p.meta.sector || p.meta.company)) || 'Equity Analyst');
 }
 function companyIndexFor(p, kind){
   if(kind === 'solo') return (p && p.companyIndex) || 0;
@@ -102,7 +102,7 @@ function companyIndexFor(p, kind){
 }
 function fileBase(p, kind, lang){
   /* Per-company documents are named for the company; run-level ones for the
-     segment, since naming three companies' report after one of them is how a
+     sector, since naming three companies' report after one of them is how a
      file ends up filed in the wrong place. */
   /* An executive summary for a company is named after that company, not after
      the sector run; the sector's own summary keeps the sector name. */
@@ -113,7 +113,7 @@ function fileBase(p, kind, lang){
     co = p.report.full[companyIndexFor(p, kind)];
   }
   var raw = (window.EQDocs && EQDocs.S)
-    ? EQDocs.S(co ? (co.name || co.symbol) : (p.meta && (p.meta.segment || p.meta.company)))
+    ? EQDocs.S(co ? (co.name || co.symbol) : (p.meta && (p.meta.sector || p.meta.company)))
     : '';
   /* Short name, title case. "Anlon Healthcare Limited" files as "Anlon";
      "Punjab National Bank" as "PNB"; "SpiceJet Limited" as "Spice_Jet". The
@@ -199,7 +199,7 @@ function msgEl(){
   /* Progress belongs next to the button that was pressed, so each page has its
      own line. Rendering a 41-page report with the message on another tab is why
      the company reports looked like they were doing nothing. */
-  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-segment','#docMsg']];
+  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-sector','#docMsg']];
   for(var i=0;i<pages.length;i++){
     var sec = document.getElementById(pages[i][0]);
     if(sec && !sec.classList.contains('hidden') && document.querySelector(pages[i][1])) return pages[i][1];
@@ -614,7 +614,7 @@ function doAll(act, msgTarget){
   }
   buildAllFiles(p, lang, step).then(function(files){
     if(act === 'share'){
-      var title = EQDocs.S(p.meta.company || p.meta.segment) + ' — ' + label;
+      var title = EQDocs.S(p.meta.company || p.meta.sector) + ' — ' + label;
       return shareNow(files, title).then(function(r){
         if(r.ok){ msg(r.cancelled ? '' : 'Shared all ' + files.length + ' ' + label + ' files.'); return; }
         if(r.reason === 'gesture'){
@@ -652,9 +652,21 @@ function doAction(kind, act, msgTarget){
   var p = needPayload(kind); if(!p) return;
   var langs = langsWanted();
 
-  if(act === 'make' && !isPng(kind)){
+  /* Both buttons open the preview, and the document leaves from there.
+
+     Share used to take a different route: html2canvas photographed every page
+     and jsPDF pasted the bitmaps in, which produced a 9.2 MB file of pictures
+     when the same document printed from this preview is 135 KB of real text
+     and vector charts. Nothing about sharing required that — it was an
+     implementation choice, made so the Web Share API would have a File to
+     hand over, and it cost two orders of magnitude in size and every bit of
+     sharpness at zoom. There is one path to a PDF now, and it is the good
+     one. */
+  if((act === 'make' || act === 'share') && !isPng(kind)){
     var lg0 = langs[0];
-    msg('Preview open. Tap <b>Save as PDF</b>, then <b>Back</b> to return to the app.');
+    msg(act === 'share'
+      ? 'Preview open. Tap <b>Share</b> to send it, or <b>Save as PDF</b> to keep a copy.'
+      : 'Preview open. Tap <b>Save as PDF</b>, then <b>Back</b> to return to the app.');
     showPreview(buildHTML(p, kind, lg0), fileBase(p, kind, lg0) + '.pdf');
     return;
   }
@@ -771,9 +783,31 @@ document.addEventListener('DOMContentLoaded', function(){
     doAction(b.dataset.doc, b.dataset.act, inScore ? '#scMsg' : '#docMsg');
   });
 
-  var back = $('#pvBack'), save = $('#pvSave');
+  var back = $('#pvBack'), save = $('#pvSave'), shareBtn = $('#pvShare');
   if(back) back.addEventListener('click', function(){ try{ history.back(); }catch(e){ closePreview(); } });
   if(save) save.addEventListener('click', printPreview);
+
+  /* Share goes through the same print sheet as Save.
+
+     The Web Share API needs a File, and a browser will not hand a script the
+     PDF it just printed — so there is no way to produce the vector file and
+     pass it to navigator.share in one step. The print sheet is not a detour
+     around that: on iOS it is itself the share surface, offering Mail,
+     Messages, WhatsApp and Save to Files on the finished PDF. So Share opens
+     it and says so, rather than quietly falling back to the 9.2 MB bitmap
+     build this replaced. */
+  if(shareBtn) shareBtn.addEventListener('click', function(){
+    var bar = shareBtn.parentNode;
+    var hint = bar.querySelector('.pvhint');
+    if(!hint){
+      hint = document.createElement('div');
+      hint.className = 'pvhint';
+      hint.style.cssText = 'flex-basis:100%;font-size:11px;opacity:.75;padding:4px 2px 0;';
+      bar.appendChild(hint);
+    }
+    hint.textContent = 'Pick a destination in the sheet, or Save to Files and send it from there.';
+    printPreview();
+  });
   window.addEventListener('popstate', function(){ closePreview(); });
   document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') closePreview(); });
 });
