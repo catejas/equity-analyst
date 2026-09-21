@@ -401,6 +401,17 @@ material subsidiary. Record every search, including the ones that came back
 clean and the ones you could not reach. A register never searched and a register
 that came back clean look identical in a report unless the report says which.
 
+THIS IS A HARD GATE, NOT A PREFERENCE. Any company with an essential register
+left unsearched is BARRED FROM THE TOP 3 by the application, whatever it scores
+on everything else — a high score resting on searches nobody performed is the
+precise thing this screen exists to refuse. A run that returns three companies
+and leaves essential registers unsearched produces a shortlist of nothing.
+
+So: search every register marked [essential] for every company you shortlist,
+and return an entry for each one. If a register genuinely cannot be reached,
+record it with outcome "register unreachable" and say why — that is an honest
+answer and the report will print it. Omitting the entry is not.
+
 ${registerSection()}
 
 Outcome is one of: "clear", "matters found", "register unreachable".
