@@ -309,17 +309,48 @@ export function relatedPartyIntensity({ rptRevenue = 0, rptPurchases = 0, rptLoa
   });
 }
 
-export function contingentToNetWorth({ contingentLiabilities, netWorth }) {
+export function contingentToNetWorth({ contingentLiabilities, netWorth, lender = false }) {
   const name = 'Contingent liabilities to net worth';
   const gap = need(name, { contingentLiabilities, netWorth });
   if (gap) return gap;
   if (netWorth <= 0) return refuse(name, 'Net worth must be positive for the ratio to mean anything.');
   const pct = (contingentLiabilities / netWorth) * 100;
+
+  /* For a manufacturer, contingent liabilities above half of net worth are a
+     serious finding: they are disputes, guarantees given, claims not provided
+     for. For a BANK they are the business. Letters of credit, bank guarantees
+     and forward exchange contracts are what a bank sells, and they routinely
+     run to several times net worth at an entirely healthy institution — PNB's
+     are 4.6x, and so are every peer's.
+
+     Applying the manufacturer's threshold to a lender produced a SEVERE
+     accounting finding on all three banks in a sub-sector run, which trips the
+     kill switch, which empties the Top 3 — so the screen returned nothing and
+     the reason was buried three levels down in an exclusion list. The same
+     class of error as discounting a bank's free cash flow or printing its
+     EV/EBITDA as 0.0.
+
+     A lender is measured against a threshold that means something for a
+     lender. The figure is still computed and still shown; what changes is what
+     counts as alarming. */
+  const severeAt = lender ? 800 : 50;
+  const flagAt = lender ? 500 : 25;
+
   return Object.freeze({
     name, available: true, value: r2(pct), unit: '%',
-    flagged: pct > 25,
-    severity: pct > 50 ? 'severe' : pct > 25 ? 'moderate' : 'low',
-    reading: pct > 50 ? 'Contingent liabilities exceed half of net worth. Read every matter.' : pct > 25 ? 'Material contingent exposure.' : 'Contingent exposure modest.',
+    basis: lender ? 'lender' : 'standard',
+    flagged: pct > flagAt,
+    severity: pct > severeAt ? 'severe' : pct > flagAt ? 'moderate' : 'low',
+    reading: lender
+      ? (pct > severeAt
+          ? `Contingent exposure of ${r2(pct)}% of net worth is high even for a bank, where `
+            + 'guarantees and letters of credit are ordinary business. Read the composition.'
+          : pct > flagAt
+            ? `Contingent exposure is ${r2(pct)}% of net worth. For a lender that is within the `
+              + 'usual range — guarantees and trade finance sit here — but worth reading.'
+            : `Contingent exposure of ${r2(pct)}% of net worth is modest for a lender.`)
+      : (pct > 50 ? 'Contingent liabilities exceed half of net worth. Read every matter.'
+          : pct > 25 ? 'Material contingent exposure.' : 'Contingent exposure modest.'),
     evidence: 'CALCULATION',
   });
 }

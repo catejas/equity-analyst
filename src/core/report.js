@@ -10,7 +10,7 @@ import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
 import { panel as technicalPanel } from './indicators.js';
 import { multibaggerModel, orderedAnnual } from './models.js';
-import { dcf, sensitivityGrid, impliedGrowth } from './valuation.js';
+import { dcf, sensitivityGrid, impliedGrowth, multipleBands, checkWaccBuildup } from './valuation.js';
 import { buildModel, driverSensitivity, STANDARD_FLEXES } from './model.js';
 import { assessLitigation } from './litigation.js';
 import * as forensic from './forensic.js';
@@ -70,6 +70,8 @@ function readDimensions(supplied) {
 function runForensic(c) {
   const fx = c.forensic;
   if (!fx || typeof fx !== 'object') return null;
+  /* Some tests mean something different for a lender. */
+  const lender = isLender(c);
   const cur = fx.current, prior = fx.prior, decade = fx.decade, inp = fx.inputs || {};
   const computed = [];
 
@@ -104,7 +106,7 @@ function runForensic(c) {
     revenue: cur?.revenue ?? inp.revenue, purchases: inp.purchases, netWorth: inp.netWorth,
   }));
   computed.push(forensic.contingentToNetWorth({
-    contingentLiabilities: inp.contingentLiabilities, netWorth: inp.netWorth,
+    contingentLiabilities: inp.contingentLiabilities, netWorth: inp.netWorth, lender,
   }));
   computed.push(forensic.effectiveTaxRate({
     tax: inp.tax, profitBeforeTax: inp.profitBeforeTax, statutoryRate: inp.statutoryRate,
@@ -467,6 +469,10 @@ function scoreCompany(c, horizonKey) {
          current price already assumes has to be attached here or it never
          leaves the payload. */
       waccBuildup: v.waccBuildup ?? null,
+      /* The buildup, recomputed. It used to be printed exactly as supplied,
+         which meant the one number a discounted valuation turns on was the
+         only number in the report nothing checked. */
+      waccCheck: checkWaccBuildup(v.waccBuildup, v.discountRate, { lender: isLender(c) }),
       sotp: Array.isArray(v.sotp) ? v.sotp : null,
       impliedExpectations: v.impliedExpectations ?? null,
     },
@@ -500,6 +506,41 @@ function scoreCompany(c, horizonKey) {
     historicalSectors: c.historicalSectors ?? null,
     compensation: c.compensation ?? null,
     timeline: c.timeline ?? null,
+    /* What the market has paid for this company against what it pays now.
+       Computed here, like everything else the documents display. A lender is
+       banded on book rather than earnings — see multipleBands for why. */
+    multipleBands: c.priceHistory?.closes
+      ? multipleBands({
+          closes: c.priceHistory.closes,
+          dates: c.priceHistory.dates ?? null,
+          annual: orderedAnnual(c.financials),
+          sharesOutstanding: c.model?.shares?.basic ?? null,
+          lender: isLender(c),
+        })
+      : { available: false, reason: 'No price series, so the multiple has no history to be read against.' },
+    /* The ISIN identifies the security, so it belongs on the tear sheet beside
+       the ticker — and repair.js recovers it from the sources when the research
+       leaves it out, which is worth showing. */
+    isin: c.isin ?? null,
+    exchange: c.exchange ?? null,
+    /* The series itself travels with the report now.
+
+       The comment below used to say "the raw series does not travel with the
+       report, which is why the renderer could never have done this itself" —
+       true, and the reason the tear sheet had no price chart and the P/E bands
+       could not be drawn. Everything COMPUTED from the series is still
+       computed here; this carries the series so the documents can plot it. */
+    priceHistory: c.priceHistory?.closes ? {
+      closes: c.priceHistory.closes,
+      highs: c.priceHistory.highs ?? null,
+      lows: c.priceHistory.lows ?? null,
+      volumes: c.priceHistory.volumes ?? null,
+      dates: c.priceHistory.dates ?? null,
+      spacing: c.priceHistory.spacing ?? 'daily',
+      asOf: c.priceHistory.asOf ?? null,
+      source: c.priceHistory.source ?? null,
+      points: c.priceHistory.points ?? c.priceHistory.closes.length,
+    } : null,
     technicals: c.priceHistory?.closes
       ? { ...entryContext({ closes: c.priceHistory.closes, volumes: c.priceHistory.volumes ?? null,
             benchmarkCloses: c.priceHistory.benchmarkCloses ?? null }),
@@ -507,9 +548,7 @@ function scoreCompany(c, horizonKey) {
           summary: c.technicals?.summary ?? null }
       : (c.technicals ?? null),
     /* The full technical panel, computed here rather than in the renderer: the
-       report carries computed values and the documents display them. The raw
-       series does not travel with the report, which is why the renderer could
-       never have done this itself. */
+       report carries computed values and the documents display them. */
     /* The named model. The existing `multibagger` field is the required-CAGR
        grid and keeps its name; this is the five-test detection model and is a
        different thing. */

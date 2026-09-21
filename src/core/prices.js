@@ -54,10 +54,15 @@ async function timedFetch(url, opts = {}, ms = 12000) {
 /* ---------------------------------------------------------------- Upstox -- */
 
 /* Upstox is keyed by ISIN, not by ticker. The live instrument-search endpoint
-   needs a bearer token, so it is no use to us; the daily master file is 70k
-   rows of gzip, far too much to pull into a phone browser on every report. We
-   ship a trimmed symbol -> instrument_key map as a static asset instead and
-   look the symbol up in it. */
+   needs a bearer token, so it is no use to us, and the daily master is a
+   cross-origin read that assets.upstox.com does not permit from a page — which
+   is exactly how the Update button failed on a real device.
+
+   So the whole NSE equity list ships WITH the app: 1,949 symbols with their
+   ISINs, about 124 KB, precached with everything else. No network call is made
+   to resolve a company, which means no CORS to be blocked by and it works with
+   the phone offline. The device library and a payload-stated ISIN both still
+   take precedence over it. */
 let _instrumentMap = null;
 
 export async function loadInstrumentMap(url = 'data/nse-instruments.json') {
@@ -65,7 +70,20 @@ export async function loadInstrumentMap(url = 'data/nse-instruments.json') {
   try {
     const res = await timedFetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) return (_instrumentMap = {});
-    _instrumentMap = await res.json();
+    const body = await res.json();
+    /* Two shapes are accepted. The file used to be a flat { SYMBOL: ISIN }
+       holding a single seed row; it now carries the whole NSE equity list
+       under `map`, with company names beside it and provenance in keys
+       prefixed with an underscore. Reading both means an older bundled file,
+       or one a person has edited by hand, still works. */
+    const m = (body && typeof body.map === 'object' && body.map) ? body.map : body;
+    const out = {};
+    for (const k of Object.keys(m || {})) {
+      if (k.startsWith('_')) continue;          // provenance, not a symbol
+      const v = m[k];
+      if (typeof v === 'string' && v.trim()) out[k.toUpperCase()] = v.trim().toUpperCase();
+    }
+    _instrumentMap = out;
   } catch {
     _instrumentMap = {};
   }
