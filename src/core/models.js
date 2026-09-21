@@ -40,8 +40,38 @@ function cagr(first, last, years) {
   return Math.pow(last / first, 1 / years) - 1;
 }
 
+/* Oldest first, always.
+
+   financials.annual is written newest first — the schema shows FY26 before
+   FY25, and every payload follows it. The compound growth below reads index 0
+   as the OLDEST period, so it was computing every growth rate backwards: PNB's
+   revenue, which rose from 138,000 to 147,017, came out as -6.1% because the
+   two were the wrong way round. Profit growth had the same sign error.
+
+   The rows are ordered by their period label where one can be read, and
+   otherwise reversed on the schema's own convention. A series whose order
+   cannot be established is left alone rather than guessed at. */
+function periodKey(row) {
+  const m = /FY\s*'?(\d{2,4})/i.exec(String((row && row.period) || ''));
+  if (!m) return null;
+  const v = parseInt(m[1], 10);
+  return v < 100 ? 2000 + v : v;
+}
+
+export function orderedAnnual(financials) {
+  const rows = (financials && Array.isArray(financials.annual)) ? financials.annual.slice() : [];
+  if (rows.length < 2) return rows;
+  const keys = rows.map(periodKey);
+  if (keys.every((k) => k != null)) {
+    return rows.sort((a, b) => periodKey(a) - periodKey(b));
+  }
+  /* No readable periods: fall back to the schema's stated order, newest first,
+     and reverse it. */
+  return rows.reverse();
+}
+
 function seriesOf(financials, field) {
-  const rows = (financials && Array.isArray(financials.annual)) ? financials.annual : [];
+  const rows = orderedAnnual(financials);
   const vals = rows.map((r) => (isObj(r) ? r[field] : null)).filter(isNum);
   return vals.length >= 2 ? vals : null;
 }
@@ -51,6 +81,26 @@ function seriesOf(financials, field) {
  * @param {object} c        the company as the report carries it
  * @param {object} options  { technicalPanel } when one has been computed
  */
+/* Return on equity and leverage, derived from the reported financials when
+   they are not stated outright. Both tests reported "not supplied" on payloads
+   that carried everything needed to compute them — net profit, equity and
+   debt were all sitting in financials.annual. A test that declines to run on
+   data it already has is not a missing input, it is a missing calculation. */
+function latestAnnual(company) {
+  const ann = orderedAnnual(company.financials);
+  return ann.length ? ann[ann.length - 1] : null;
+}
+function derivedRoe(company) {
+  const a = latestAnnual(company);
+  if (!a || !isNum(a.netProfit) || !isNum(a.shareholdersEquity) || a.shareholdersEquity === 0) return null;
+  return Math.round((a.netProfit / a.shareholdersEquity) * 1000) / 10;
+}
+function derivedDebtToEquity(company) {
+  const a = latestAnnual(company);
+  if (!a || !isNum(a.totalDebt) || !isNum(a.shareholdersEquity) || a.shareholdersEquity === 0) return null;
+  return Math.round((a.totalDebt / a.shareholdersEquity) * 100) / 100;
+}
+
 export function multibaggerModel(c, { technicalPanel = null } = {}) {
   const company = isObj(c) ? c : {};
   const fin = company.financials || company.model || null;
@@ -81,26 +131,34 @@ export function multibaggerModel(c, { technicalPanel = null } = {}) {
         + (revC != null ? (patC > revC ? ', ahead of revenue' : ', behind revenue') : ''),
   });
 
-  const roe = isNum(company.roe) ? company.roe
+  const statedRoe = isNum(company.roe) ? company.roe
     : (isObj(company.snapshot) && isNum(company.snapshot.roe) ? company.snapshot.roe : null);
+  const calcRoe = statedRoe == null ? derivedRoe(company) : null;
+  const roe = statedRoe != null ? statedRoe : calcRoe;
   tests.push({
     key: 'returnOnEquity',
     ran: roe != null,
     value: roe,
     unit: '%',
     passed: roe == null ? null : roe >= 15,
-    evidence: roe == null ? 'no return on equity supplied' : `${roe}%`,
+    evidence: roe == null
+      ? 'neither a return on equity nor the profit and equity to compute one'
+      : `${roe}%` + (calcRoe != null ? ', computed from reported profit and equity' : ''),
   });
 
-  const de = isNum(company.debtToEquity) ? company.debtToEquity
+  const statedDe = isNum(company.debtToEquity) ? company.debtToEquity
     : (isObj(company.snapshot) && isNum(company.snapshot.debtToEquity) ? company.snapshot.debtToEquity : null);
+  const calcDe = statedDe == null ? derivedDebtToEquity(company) : null;
+  const de = statedDe != null ? statedDe : calcDe;
   tests.push({
     key: 'debt',
     ran: de != null,
     value: de,
     unit: '×',
     passed: de == null ? null : de <= 1,
-    evidence: de == null ? 'no leverage figure supplied' : `debt to equity ${de}×`,
+    evidence: de == null
+      ? 'neither a leverage figure nor the debt and equity to compute one'
+      : `debt to equity ${de}×` + (calcDe != null ? ', computed from reported debt and equity' : ''),
   });
 
   const tp = technicalPanel || company.technicalPanel || null;

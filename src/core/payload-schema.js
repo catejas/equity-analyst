@@ -14,7 +14,7 @@ import { DISCLOSURE_CHECKS } from './forensic.js';
 import { repairPayload } from './repair.js';
 import { SCREEN_KEYS, MIN_RATED } from './screen.js';
 
-export const PAYLOAD_SCHEMA_VERSION = '4.0.0';
+export const PAYLOAD_SCHEMA_VERSION = '5.0.0';
 
 export const DIRECT_DIMENSIONS = Object.freeze([
   'financialQuality', 'managementGovernance', 'technicalEntry', 'catalysts',
@@ -74,15 +74,18 @@ export function validatePayload(payload, { repair = true } = {}) {
     }
     if (!isStr(run.schemaVersion)) e('run.schemaVersion is required.');
     else if (run.schemaVersion !== PAYLOAD_SCHEMA_VERSION) {
-      /* A v3 payload still imports: nothing in v4 removed a field, it only
-         added the shortlist, the screen and the richer price series. Refusing
-         one would throw away research the person already paid for. */
+      /* A v3 or v4 payload still imports. No version has ever removed a field:
+         4 added the shortlist, the screen and the richer price series, and 5
+         added the institutional blocks and renamed segment to sector — and the
+         rename is migrated in repair.js rather than rejected here. Refusing an
+         older payload would throw away research the person already paid for. */
+      const READABLE = ['3', '4', '5'];
       const major = String(run.schemaVersion).split('.')[0];
-      if (major !== '4' && major !== '3') {
+      if (!READABLE.includes(major)) {
         e(`Payload schema ${run.schemaVersion} predates the current contract ${PAYLOAD_SCHEMA_VERSION}. Regenerate the prompt and run it again.`);
-      } else if (major === '3') {
-        w(`This payload was written for schema 3; it is read as ${PAYLOAD_SCHEMA_VERSION}. `
-          + 'Nothing was removed between the two, so everything in it is used.');
+      } else if (major !== '5') {
+        w(`This payload was written for schema ${major}; it is read as ${PAYLOAD_SCHEMA_VERSION}. `
+          + 'Nothing was removed between them, so everything in it is used.');
       }
       else w(`Payload schema ${run.schemaVersion} differs from the app's ${PAYLOAD_SCHEMA_VERSION}.`);
     }
@@ -450,7 +453,17 @@ export function validatePayload(payload, { repair = true } = {}) {
       else {
         if (given(fin.annual) && !isArr(fin.annual)) e(`${at}: financials.annual must be an array.`);
         if (isArr(fin.annual)) {
-          if (fin.annual.length < 5) w(`${at}: ${fin.annual.length} annual periods supplied; ten is what reveals a cycle.`);
+          /* Three is the floor, not a preference: a cash flow statement is
+             built from movements between balance sheets, so three reported
+             years produce two years of cash flow. Two produce one, which shows
+             no trend at all. */
+          if (fin.annual.length < 3) {
+            w(`${at}: only ${fin.annual.length} annual period(s) supplied. Three reported years are `
+              + 'needed before the cash flow statement shows a trend, because each year of cash flow '
+              + 'is a movement between two balance sheets.');
+          } else if (fin.annual.length < 5) {
+            w(`${at}: ${fin.annual.length} annual periods supplied; ten is what reveals a cycle.`);
+          }
           fin.annual.forEach((row, j) => {
             if (!isStr(row?.period)) e(`${at}: financials.annual[${j}] has no period.`);
             if (!isStr(row?.basis)) e(`${at}: financials.annual[${j}] has no basis; consolidated and standalone must not be mixed.`);

@@ -26,6 +26,27 @@ function pathOf(v, years, name) {
 
 const TOLERANCE = 0.01; // absolute, in the payload's own units
 
+/* The base year has to tie to the revenue the company actually reported, and
+   that is a different kind of check from the ones below it.
+
+   Everything in `checks` is internal: the sector revenues are summed and then
+   compared to their own sum, the closing net block is defined as opening plus
+   capex less depreciation and then checked against opening plus capex less
+   depreciation. They are tautologies. They catch a coding error in this file
+   and nothing else, so `failed.length === 0` was true on a model whose base
+   year was out by a factor of eleven — Reliance's drivers put the base year at
+   95,601 against 1,071,174 reported, because Retail was carried at one unit at
+   a price of one. The report then printed "the base year reconciles to
+   reported revenue" underneath it.
+
+   So the anchor is separate: driver revenue before any growth is applied,
+   against the last reported year, within 2% — the tolerance the prompt's
+   RECONCILIATION RULE states. It is relative, because an absolute rupee
+   tolerance means nothing across companies of different sizes. When no
+   reported revenue is supplied the answer is null, not true: unknown and
+   verified are not the same claim. */
+const RECONCILE_TOLERANCE = 0.02;
+
 function check(name, expected, actual, detail) {
   const diff = expected - actual;
   return { name, ok: Math.abs(diff) <= TOLERANCE, expected: r2(expected), actual: r2(actual), diff: r2(diff), detail };
@@ -44,6 +65,7 @@ function check(name, expected, actual, detail) {
  */
 export function buildModel({
   years, sectors, opex, depreciation, capex, workingCapital, financing, shares,
+  reported = null,
 }) {
   if (!isNum(years) || years < 1 || years > 15) return refuse('years must be between 1 and 15.');
   if (!Array.isArray(sectors) || sectors.length === 0) return refuse('At least one sector is required.');
@@ -96,17 +118,53 @@ export function buildModel({
   const rows = [];
   const checks = [];
 
+  /* The anchor, computed before any growth is applied. */
+  const baseRevenue = seg.reduce((x, s) => x + s.baseVolume * s.baseRealisation, 0);
+  const reportedRevenue = isNum(reported?.revenue) && reported.revenue > 0 ? reported.revenue : null;
+  let anchor = null;
+  if (reportedRevenue !== null) {
+    const rel = Math.abs(baseRevenue - reportedRevenue) / reportedRevenue;
+    anchor = {
+      name: 'Base year: driver revenue ties to reported revenue',
+      ok: rel <= RECONCILE_TOLERANCE,
+      expected: r2(reportedRevenue),
+      actual: r2(baseRevenue),
+      diff: r2(baseRevenue - reportedRevenue),
+      offByPct: r2(rel * 100),
+      period: reported?.period ?? null,
+      detail: 'Base volume times base realisation, summed across the sectors, against the '
+        + 'revenue the last reported year carried. Tolerance 2%.',
+    };
+    checks.push(anchor);
+  }
+
   for (let t = 0; t < years; t++) {
-    const segRows = seg.map((s) => {
+    /* Each sector is computed at full precision and rounded ONLY for display.
+       The totals below are summed from the unrounded figures.
+
+       They used to be summed from the rounded ones — `revenue: r2(revenue)`
+       went into the row and the row went into the sum — so every sector
+       contributed up to half a paise of rounding error to the total, and the
+       total then fed EBITDA, EBIT, profit after tax, the cash flow and the
+       discounted value in turn. An exact-arithmetic check in Python measured
+       the result at up to 8.7e-3 on figures the engine stores to 0.01: not
+       enough to change a printed number, but enough that the stored figure was
+       no longer the correctly rounded value of the thing it claimed to be, and
+       a total that is not the sum of its parts is not a defensible statement
+       in a research report whatever its magnitude. */
+    const segRaw = seg.map((s) => {
       const volume = s.baseVolume * (1 + s.volumeCagr) ** (t + 1);
       const realisation = s.baseRealisation * (1 + s.realisationCagr) ** (t + 1);
       const revenue = volume * realisation;
-      const grossProfit = revenue * s.grossMargin[t];
-      return { name: s.name, volume: r2(volume), realisation: r4(realisation), revenue: r2(revenue), grossProfit: r2(grossProfit) };
+      return { name: s.name, volume, realisation, revenue, grossProfit: revenue * s.grossMargin[t] };
     });
+    const segRows = segRaw.map((s) => ({
+      name: s.name, volume: r2(s.volume), realisation: r4(s.realisation),
+      revenue: r2(s.revenue), grossProfit: r2(s.grossProfit),
+    }));
 
-    const revenue = segRows.reduce((x, s) => x + s.revenue, 0);
-    const grossProfit = segRows.reduce((x, s) => x + s.grossProfit, 0);
+    const revenue = segRaw.reduce((x, s) => x + s.revenue, 0);
+    const grossProfit = segRaw.reduce((x, s) => x + s.grossProfit, 0);
     const cogs = revenue - grossProfit;
 
     if (t > 0) fixed *= (1 + fixedGrowth[t]);
@@ -145,6 +203,10 @@ export function buildModel({
     const closingCash = openingCash + cfo + cfi + cff;
 
     // Reconciliation. These are the checks no LLM report performs on itself.
+    /* Against the ROUNDED rows, deliberately: those are the numbers printed in
+       the sector table, and this check asks whether the table adds up as the
+       reader sees it. The 0.01 tolerance is what absorbs the rounding of each
+       row; a real error would exceed it. */
     checks.push(check(`Year ${t + 1}: sector revenue sums to total`, revenue, segRows.reduce((x, s) => x + s.revenue, 0)));
     checks.push(check(`Year ${t + 1}: fixed asset roll-forward`, closingNetBlock, netBlock + capexTotal - dep));
     checks.push(check(`Year ${t + 1}: debt roll-forward`, closingDebt, debt + draw[t] - repay[t]));
@@ -177,7 +239,10 @@ export function buildModel({
     priorWc = wc;
   }
 
-  const failed = checks.filter((c) => !c.ok);
+  /* The anchor is listed among the checks so the reader sees it, but it is not
+     one of the internal ones — keeping it out of `failed` is what stops the
+     two flags collapsing back into each other. */
+  const failed = checks.filter((c) => !c.ok && c !== anchor);
 
   return Object.freeze({
     available: true,
@@ -187,7 +252,16 @@ export function buildModel({
     dilutedShares: r2(diluted),
     dilutionPct: r2(((diluted - shares.basic) / shares.basic) * 100),
     checks,
-    reconciled: failed.length === 0,
+    /* true  — the base year ties to reported revenue
+       false — it does not
+       null  — no reported revenue was supplied, so nothing was verified */
+    reconciled: anchor ? anchor.ok : null,
+    reconciliation: anchor,
+    baseRevenue: r2(baseRevenue),
+    reportedRevenue: r2(reportedRevenue),
+    /* The internal arithmetic, kept under its own name so it can never again
+       be mistaken for the tie to reported revenue. */
+    internallyConsistent: failed.length === 0,
     failedChecks: failed,
     evidence: 'CALCULATION',
     summary: {

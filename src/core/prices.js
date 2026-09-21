@@ -73,16 +73,30 @@ export async function loadInstrumentMap(url = 'data/nse-instruments.json') {
 }
 
 export function instrumentKeyFor(symbol, map, isin = null) {
-  /* An ISIN stated in the payload beats the map: the map is a build-time
-     snapshot and a newly listed company will not be in it yet. */
+  /* An ISIN stated in the payload beats everything: it is the specific
+     answer for this company. */
   if (typeof isin === 'string' && /^IN[A-Z0-9]{10}$/.test(isin.trim())) {
     return `NSE_EQ|${isin.trim().toUpperCase()}`;
   }
   const k = String(symbol || '').trim().toUpperCase();
+
+  /* Then the app's own library, kept on the device and refreshed from Setup.
+     It is consulted before the bundled seed because the seed is a snapshot
+     frozen at build time and the library is current. */
+  try {
+    const fromLibrary = instrumentLibrary && instrumentLibrary(k);
+    if (fromLibrary) return `NSE_EQ|${fromLibrary}`;
+  } catch { /* the library is optional */ }
+
   const hit = map?.[k];
   if (!hit) return null;
   return hit.startsWith('NSE_EQ|') || hit.startsWith('BSE_EQ|') ? hit : `NSE_EQ|${hit}`;
 }
+
+/* Injected rather than imported, so prices.js stays usable under Node in the
+   engine tests, where there is no localStorage for the library to live in. */
+let instrumentLibrary = null;
+export function useInstrumentLibrary(fn) { instrumentLibrary = typeof fn === 'function' ? fn : null; }
 
 export async function fetchUpstox(instrumentKey, { unit = 'weeks', interval = 1, years = 2 } = {}) {
   /* The path order is to_date then from_date — the reverse of the reading
@@ -223,7 +237,14 @@ export async function fetchHistoricalPrices(company, opts = {}) {
       if (name === 'upstox') {
         const map = await loadInstrumentMap(instrumentMapUrl);
         const key = instrumentKeyFor(symbol, map, isin);
-        if (!key) throw new Error(`no instrument key for "${symbol}"`);
+        if (!key) {
+          /* The map is a seed, not a register of every listed company, and it
+             is deliberately not filled in by guesswork — a wrong ISIN returns
+             another company's price history rather than failing. So say what
+             is actually needed instead of naming an internal file. */
+          throw new Error(`no ISIN for ${symbol}. Add "isin" to the payload `
+            + `(it is on the exchange quote page) and the history will be fetched.`);
+        }
         const bars = await fetchUpstox(key, { unit: 'weeks', interval: 1, years });
         const ph = toPriceHistory(bars, { spacing: 'weekly', source: 'upstox' });
         if (!ph) throw new Error('too few candles');

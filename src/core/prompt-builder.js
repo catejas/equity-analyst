@@ -136,7 +136,7 @@ phone rather than about the data:
      box with a copy button sitting right there. That is the whole difference
      between a payload that is easy to copy and one that is not.
   2. Put "schema" first inside the object, so the collapsed line reads
-     {"schema":"equity-analyst/4", ... } and the reader can see what it is
+     {"schema":"equity-analyst/5", ... } and the reader can see what it is
      without opening it.
 
 Put nothing after the closing fence.
@@ -181,6 +181,54 @@ which it happens, the figure that shows it, and what would have to be true for
 it to continue. A clipped fragment states a conclusion and hides the reasoning;
 these fields exist to carry the reasoning. Do not pad them to reach a length,
 and do not repeat the rating evidence back in different words.
+
+THREE YEARS OF HISTORY, IN FULL.
+
+financials.annual carries THREE completed financial years, newest first, and
+every line above that the company reports. Not two, and not a summary.
+
+Three, rather than two, because a cash flow statement is built from movements:
+working capital, debt and cash are differences between two balance sheets, so
+two years of balance sheet produce only ONE year of cash flow. Three years of
+balance sheet produce two years of cash flow, which is the minimum a reader
+can see a trend in. The application forecasts three further years from the
+driver model, so a complete statement runs three historical years and three
+projected ones.
+
+Leave a line out only where the company genuinely does not report it — a bank
+has no inventory, a lender has no gross block worth stating. Do not write zero
+for a line you did not find: zero is a reading, and a reading you did not take
+is a lie about the accounts. Omit the key instead.
+
+Where the company reports both standalone and consolidated, use consolidated
+and say so in "basis". Use the company's own reporting units, consistently,
+and state them nowhere else — the application reads them as given.
+
+THE RECONCILIATION RULE. This is the one rule in the schema that is checked
+arithmetically, and a model that fails it is discarded silently.
+
+For each entry in model.sectors, baseVolume x baseRealisation is that sector's
+revenue in the base year. Summed across every sector, that total MUST equal the
+base-year revenue you report in financials.annual for the same period, within
+2%. Work backwards from the reported figure: take the revenue you found, split
+it across the operating sectors the company itself discloses, and only then
+choose a volume and a realisation whose product is that sector's revenue. Use
+the company's own units — tonnes and price per tonne, subscribers and ARPU,
+advances and yield — never an index, never a normalised 1.0, never a
+placeholder. A model whose base year does not tie to reported revenue forecasts
+a company that does not exist, and the forecast, the intrinsic value and the
+target price are then all wrong in a way that looks plausible. State the
+arithmetic in each sector's evidence field: the volume, the realisation, the
+product, and the reported figure it ties to.
+
+All three schedules — capex.growthSchedule, financing.repaymentSchedule and
+financing.drawdownSchedule — are arrays of exactly 5 numbers, one per forecast
+year, even where the number is the same every year and even where it is zero.
+A bare number is not acceptable.
+
+Do not copy any of this instruction text into the payload. The payload carries
+data only: a key beginning with an underscore, or a value that repeats an
+instruction back, is a defect.
 
 You do not produce scores, ratios, intrinsic values or rankings. The application
 computes all of those from what you supply. You produce three things: ratings
@@ -554,6 +602,7 @@ including pledged shares.
   "companies": [
     {
       "symbol": "", "name": "", "exchange": "NSE or BSE",
+      "isin": "the 12-character ISIN, e.g. INE002A01018. It is printed on the exchange quote page and in every annual report. The application fetches the price history by ISIN, so without it the technical panel cannot be built.",
       "sector": "banking, nbfc, insurance, manufacturing, commodity, pharma, it, infrastructure or defence",
       "business": "what it does and how it earns",
       "thesis": ["three falsifiable lines"],
@@ -561,7 +610,8 @@ including pledged shares.
       "snapshot": { "marketCap": 0, "freeFloatPct": 0, "avgDailyValue": 0,
         "week52High": 0, "week52Low": 0,
         "performance": { "m3": 0, "m6": 0, "m12": 0,
-                         "m3Relative": 0, "m6Relative": 0, "m12Relative": 0 } },
+                         "m3Relative": 0, "m6Relative": 0, "m12Relative": 0,
+                         "benchmark": "the index the relative figures are measured against, named — Nifty 50, Nifty Bank, BSE 500. A relative return with no benchmark named cannot be read." } },
       "shareholding": [ { "period": "Q1FY26", "promoter": 0, "fii": 0, "dii": 0,
         "public": 0, "pledged": 0 } ],
 
@@ -592,7 +642,8 @@ including pledged shares.
         "ceoPayToMedian": 0, "source": "" },
 
       "esg": { "environment": "", "social": "", "governance": "",
-        "versusPeers": "", "score": null },
+        "versusPeers": "", "score": null,
+        "scoreBasis": "if score is null, say in one line why — no rating agency covers it, the rating is paywalled, disclosures are too thin to score. A blank where a number was expected reads as a defect rather than as an absence." },
       "timeline": [ { "when": "", "event": "" } ],
 
       "businessQuality": { ${componentKeys('businessQuality')} },
@@ -638,26 +689,6 @@ including pledged shares.
         "shares": { "basic": 0, "esop": 0, "warrants": 0, "convertibles": 0 }
       },
 
-      "_model_rules": "THE RECONCILIATION RULE, and it is the one rule in this
-      schema that is checked arithmetically. For each entry in sectors,
-      baseVolume x baseRealisation is that sector's revenue in the base year.
-      Summed across every sector, that total MUST equal the base-year revenue
-      you reported in financials.annual for the same period, within 2%. Work
-      backwards from the reported figure to get there: take the revenue you
-      found, split it across the operating sectors the company itself
-      discloses, and only then choose a volume and a realisation whose product
-      is that sector's revenue. Use the company's own units — tonnes and price
-      per tonne, subscribers and ARPU, stores and revenue per store — never an
-      index, never a normalised 1.0, never a placeholder. A model whose base
-      year does not tie to reported revenue forecasts a company that does not
-      exist, and every number downstream of it — the forecast, the intrinsic
-      value, the target price — is then wrong in a way that looks plausible.
-      State the arithmetic in each sector's evidence field: the volume, the
-      realisation, the product, and the reported figure it ties to.
-      All three schedules — capex.growthSchedule, financing.repaymentSchedule,
-      financing.drawdownSchedule — are arrays of exactly 5 numbers, one per
-      forecast year, even where the number is the same every year and even
-      where it is zero. A bare number is not acceptable.",
 
       "valuation": {
         "currentPrice": 0, "priceAsOf": "", "currency": "INR",
@@ -693,14 +724,29 @@ including pledged shares.
         "historicalShare": 0.0, "source": "how often companies in this situation sustained it" },
 
       "financials": {
-        "annual": [ { "period": "FY25", "basis": "consolidated", "revenue": 0,
-          "ebitda": 0, "ebit": 0, "depreciation": 0, "interestExpense": 0,
+        "annual": [ { "period": "FY26", "basis": "consolidated",
+
+          "revenue": 0, "otherIncome": 0, "costOfGoodsSold": 0, "grossProfit": 0,
+          "employeeCost": 0, "otherExpenses": 0, "ebitda": 0, "depreciation": 0,
+          "ebit": 0, "interestExpense": 0, "exceptionalItems": 0,
           "profitBeforeTax": 0, "tax": 0, "netProfit": 0,
-          "cashFromOperations": 0, "capitalExpenditure": 0,
-          "totalAssets": 0, "shareholdersEquity": 0, "totalDebt": 0,
-          "cashAndEquivalents": 0, "receivables": 0, "inventory": 0,
-          "payables": 0, "costOfGoodsSold": 0 } ],
-        "quarterly": [ { "period": "Q1FY26", "basis": "consolidated", "revenue": 0,
+          "minorityInterest": 0, "epsBasic": 0, "epsDiluted": 0,
+          "dividendPerShare": 0, "sharesOutstanding": 0,
+
+          "totalAssets": 0, "netFixedAssets": 0, "capitalWorkInProgress": 0,
+          "goodwillAndIntangibles": 0, "investments": 0, "inventory": 0,
+          "receivables": 0, "cashAndEquivalents": 0, "otherCurrentAssets": 0,
+          "shareholdersEquity": 0, "shareCapital": 0, "reservesAndSurplus": 0,
+          "totalDebt": 0, "longTermDebt": 0, "shortTermDebt": 0,
+          "payables": 0, "otherCurrentLiabilities": 0, "totalLiabilities": 0,
+
+          "cashFromOperations": 0, "changeInWorkingCapital": 0,
+          "capitalExpenditure": 0, "cashFromInvesting": 0,
+          "dividendsPaid": 0, "debtRaised": 0, "debtRepaid": 0,
+          "equityRaised": 0, "buyback": 0, "cashFromFinancing": 0,
+          "netChangeInCash": 0, "openingCash": 0, "closingCash": 0 } ],
+
+        "quarterly": [ { "period": "Q1FY27", "basis": "consolidated", "revenue": 0,
           "ebitda": 0, "netProfit": 0 } ] },
 
   "priceHistory": {

@@ -9,7 +9,7 @@ import { validatePayload, DIRECT_DIMENSIONS } from './payload-schema.js';
 import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
 import { panel as technicalPanel } from './indicators.js';
-import { multibaggerModel } from './models.js';
+import { multibaggerModel, orderedAnnual } from './models.js';
 import { dcf, sensitivityGrid, impliedGrowth } from './valuation.js';
 import { buildModel, driverSensitivity, STANDARD_FLEXES } from './model.js';
 import { assessLitigation } from './litigation.js';
@@ -214,10 +214,82 @@ function computeMetrics(c) {
 }
 
 /** Build the forecast, then value it. */
+/* A free-cash-flow discount is not a valuation method for a lender.
+
+   A bank's liabilities ARE its raw material: deposits are not debt to be
+   netted off, they are the funding the business runs on. Netting them as net
+   debt produced a value per share of MINUS 388 for a bank trading at 117 —
+   a number that looks like a valuation and is not one. The research itself
+   said so, giving its method as "Price to Book Value is standard for banking
+   institutions"; the engine ran an FCFF discount over the top of that and
+   printed the result anyway.
+
+   So for lenders the forecast is still built — the income statement and the
+   operating lines are real — and the discounted value is withheld, with the
+   reason stated. The scenarios the analyst supplied, which are book-value
+   based, carry the valuation instead. */
+const LENDER_SECTORS = new Set(['banking', 'nbfc', 'insurance']);
+function isLender(c) {
+  return LENDER_SECTORS.has(String(c?.sector || '').trim().toLowerCase());
+}
+
+/* The last reported year, for the model to anchor its base year against. */
+function reportedBase(c) {
+  const rows = orderedAnnual(c.financials);
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    if (r && isNum(r.revenue) && r.revenue > 0) return { revenue: r.revenue, period: r.period ?? null };
+  }
+  return null;
+}
+
 function runModel(c) {
   if (!c.model || typeof c.model !== 'object') return null;
-  const built = buildModel(c.model);
-  if (!built.available) return { model: built, valuation: null, sensitivity: null };
+  const reported = reportedBase(c);
+  /* The drivers travel with the result. Without them nothing downstream can
+     re-run the model — the scenario page exists to move a driver and see the
+     valuation move, and it was being handed the computed output with the
+     inputs stripped out. */
+  const drivers = { ...c.model, reported };
+  const built = buildModel(drivers);
+  if (!built.available) return { drivers, model: built, valuation: null, sensitivity: null };
+
+  /* A discounted value off a base year that does not tie to reported revenue
+     is not a valuation of this company. Reliance's drivers put the base year
+     at 95,601 against 1,071,174 reported, and the report printed a target
+     price off it. The forecast is still shown — it is what the research
+     supplied, and the reader should see how far out it is — but the number
+     that would be acted on is withheld until the drivers are corrected. */
+  if (built.reconciled === false) {
+    const rec = built.reconciliation || {};
+    return {
+      drivers,
+      model: built,
+      valuation: { available: false,
+        reason: `The base year does not reconcile. The drivers produce revenue of ${rec.actual} `
+          + `against ${rec.expected} reported${rec.period ? ` for ${rec.period}` : ''} — out by `
+          + `${rec.offByPct}%, against a tolerance of 2%. Every figure downstream of the base year `
+          + 'describes a company with the wrong starting point, so no intrinsic value is computed '
+          + 'from it. Correct the base volume and realisation for each sector and re-import.' },
+      rateGrid: null, impliedGrowth: null, sensitivity: null, terminalNetDebt: null,
+      unreconciled: true,
+    };
+  }
+
+  if (isLender(c)) {
+    return {
+      drivers,
+      model: built,
+      valuation: { available: false,
+        reason: 'A discounted free-cash-flow value is not computed for a lender. Deposits are the '
+          + 'funding a bank runs on, not debt to be netted off, so an FCFF discount treats the '
+          + 'business as though its liabilities were a cost of acquiring it — which produces a '
+          + 'confident negative number rather than an answer. The scenarios below, on the '
+          + 'research\'s own book-value method, carry the valuation.' },
+      rateGrid: null, impliedGrowth: null, sensitivity: null, terminalNetDebt: null,
+      lender: true,
+    };
+  }
 
   const v = c.valuation || {};
   const rate = v.discountRate;
@@ -249,7 +321,7 @@ function runModel(c) {
   let sensitivity = null;
   try { sensitivity = driverSensitivity(c.model, STANDARD_FLEXES); } catch { sensitivity = null; }
 
-  return { model: built, valuation: value, rateGrid: grid, impliedGrowth: implied, sensitivity, terminalNetDebt: r2(netDebt) };
+  return { drivers, model: built, valuation: value, rateGrid: grid, impliedGrowth: implied, sensitivity, terminalNetDebt: r2(netDebt) };
 }
 
 /** Our numbers against consensus, where consensus exists. */
@@ -418,6 +490,11 @@ function scoreCompany(c, horizonKey) {
        not something the engine derives, so recomputing them here would only
        introduce a second answer to the same question. The renderer decides
        what to show; the report's job is not to lose it on the way. */
+    /* The reported financials themselves. The renderer needs them to put the
+       subject company on the same axes as its peers and to name the forecast
+       years after the last reported one — neither of which it could do while
+       this was dropped. */
+    financials: c.financials ?? null,
     dupont: c.dupont ?? null,
     capitalCycle: c.capitalCycle ?? null,
     historicalSectors: c.historicalSectors ?? null,
@@ -495,7 +572,11 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
           payloadGeneratedAt: payload.run.generatedAt, reportBuiltAt: asOf.toISOString(),
           methodologyVersion: METHODOLOGY_VERSION, payloadSchemaVersion: payload.run.schemaVersion,
           researchNotes: payload.run.researchNotes ?? null,
-          searchesRun: payload.run.searchesRun ?? null, noiseBand: NOISE_BAND },
+          searchesRun: payload.run.searchesRun ?? null, noiseBand: NOISE_BAND,
+          /* Set when the reader ran this on assumptions of their own. A report
+             built on moved drivers that does not say so is the one output this
+             application must never produce. */
+          scenario: payload.run.scenario ?? null },
         industryMap: payload.industryMap ?? null, universe: payload.universe ?? null,
         global: payload.global ?? null, macro: payload.macro ?? null, budget: payload.budget ?? null,
         policy: payload.policy ?? null, policyEvolution: payload.policyEvolution ?? null,
@@ -524,13 +605,30 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   };
 
   const gaps = [];
+
+  /* A base year that does not tie to reported revenue is a fact about the
+     company's model, not about its rank. Reliance's model was out by 91% and
+     said nothing, because the gap loop below only reads the Top 3 and Reliance
+     had been excluded from it — so the one company whose numbers were wrong
+     was the one company not checked. */
+  for (const c of scored) {
+    const m = c.model?.model;
+    if (!m?.available) continue;
+    if (m.reconciled === false) {
+      const rec = m.reconciliation || {};
+      gaps.push(`${c.symbol}: the model's base year does not reconcile to reported revenue — `
+        + `${rec.actual} against ${rec.expected}, out by ${rec.offByPct}%. No intrinsic value `
+        + 'is computed from it.');
+    } else if (m.reconciled === null) {
+      gaps.push(`${c.symbol}: no reported revenue was supplied, so the model's base year could `
+        + 'not be checked against anything the company published.');
+    }
+  }
+
   for (const c of ranked.top3) {
     if ((c.thesisBreakers?.length || 0) < 5) gaps.push(`${c.symbol} has fewer than five thesis breakers.`);
     if (!c.variantPerception) gaps.push(`${c.symbol} has no variant perception, which is mandatory for the Top 3.`);
     if (!c.model?.model?.available) gaps.push(`${c.symbol} has no working driver model, so its intrinsic value is asserted rather than built.`);
-    if (c.model?.model?.available && !c.model.model.reconciled) {
-      gaps.push(`${c.symbol}: the forecast does not reconcile. ${c.model.model.failedChecks.length} checks failed.`);
-    }
     if (!c.consensus?.available) gaps.push(`${c.symbol} has no consensus to measure the variant perception against.`);
     if (!c.liquidity?.available) gaps.push(`${c.symbol} has no liquidity data, so position sizing is unassessed.`);
   }
@@ -552,6 +650,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
         researchNotes: payload.run.researchNotes ?? null,
         searchesRun: payload.run.searchesRun ?? null,
         noiseBand: NOISE_BAND,
+        scenario: payload.run.scenario ?? null,
       },
       industryMap: payload.industryMap ?? null,
       universe: payload.universe ?? null,

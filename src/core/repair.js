@@ -163,6 +163,32 @@ export function repairPayload(payload) {
       say('the driver model arrived with its sectors under the old key "segments" and was read');
     }
 
+    /* The ISIN, recovered from the sources when it was not stated.
+
+       Upstox keys its price API by ISIN, so a company without one cannot have
+       its price history fetched — which is exactly what "symbol not in
+       instrument map" meant. The NSE quote page carries the ISIN in its URL,
+       and that URL is usually already in the sources list, so the identifier
+       is often present in the payload without being in the field that needs
+       it. */
+    if (!/^IN[A-Z0-9]{10}$/.test(String(c.isin || '').trim())) {
+      let found = null;
+      const hunt = (t) => {
+        const m = /\b(IN[A-Z0-9]{10})\b/.exec(String(t || ''));
+        if (m && !found) found = m[1];
+      };
+      (Array.isArray(c.sources) ? c.sources : []).forEach((src) => {
+        if (!isObj(src)) return;
+        hunt(src.url); hunt(src.title); hunt(src.evidence);
+      });
+      if (found) {
+        c.isin = found;
+        say(`the ISIN was not stated and was read as ${found} from the sources`);
+      }
+    } else {
+      c.isin = String(c.isin).trim().toUpperCase();
+    }
+
     /* A schedule given as one number means "this much every year". Spelling
        that out is what the five-element array was always for, and it is a
        repair rather than a rejection because the intent is unambiguous. */
