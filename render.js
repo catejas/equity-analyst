@@ -1077,13 +1077,51 @@ function page(p, i, total, label, inner, lang, docName){
   return '<section class="page">'+head(p,label)+'<div class="body">'+inner+'</div>'
        + foot(p,i,total,lang,docName)+'</section>';
 }
+/* Headings are Title Case throughout. They were written as sentences, so one
+   read "Return on capital, deconstructed" while the score card beside it read
+   "Margin Of Safety" — the same document in two voices. Small words stay
+   lowercase, as they do in any set titles, and the first word is always
+   capitalised. */
+/* "is" is a verb and stays capitalised, which is why it is not in this list. */
+var SEC_SMALL = { a:1, an:1, and:1, as:1, at:1, but:1, by:1, for:1, from:1, in:1,
+  into:1, nor:1, of:1, on:1, or:1, per:1, the:1, to:1, up:1, vs:1, via:1, with:1 };
+function secTitleCase(t){
+  var words = String(t || '').split(/(\s+)/);
+  var lastIdx = -1;
+  words.forEach(function(w, i){ if(w.trim()) lastIdx = i; });
+  var first = true;
+  return words.map(function(w, i){
+    if(!w.trim()) return w;
+    var bare = w.replace(/[^A-Za-z]/g, '');
+    /* An acronym the payload already capitalised stays as it is: ESG, PCR. */
+    if(bare && bare === bare.toUpperCase() && bare.length > 1) { first = false; return w; }
+    var lower = w.toLowerCase();
+    var keySrc = lower.replace(/[^a-z]/g, '');
+    /* The last word is capitalised even when it is a small one, so a title
+       does not trail off in lowercase: "What the Answer Turns On". */
+    if(!first && i !== lastIdx && SEC_SMALL[keySrc]) return lower;
+    first = false;
+    return lower.replace(/[a-z]/, function(ch){ return ch.toUpperCase(); });
+  }).join('');
+}
 function sec(no, title){
-  return '<div class="sec"><span class="no en">'+e(no)+'</span><span class="ti">'+e(title)
+  return '<div class="sec"><span class="no en">'+e(no)+'</span><span class="ti">'
+       + e(secTitleCase(title))
        + '</span><span class="ln"></span></div>';
+}
+function tblCls(opts, kv){
+  var cls = [];
+  if(opts && opts.cls) cls.push(opts.cls);
+  if(kv) cls.push('kv');
+  return cls.length ? ' class="'+cls.join(' ')+'"' : '';
 }
 function tbl(cols, rows, opts){
   opts = opts || {};
   var num = opts.num || [];
+  /* A two-column table whose first heading is blank is a label-and-reading
+     table. Naming the shape lets the stylesheet give the label column a fixed
+     width instead of letting a long value crush it. */
+  var kv = opts.kv === true || (cols.length === 2 && String(cols[0]).trim() === '');
   var h = cols.map(function(c,i){ return '<th'+(num.indexOf(i)>=0?' class="n en"':'')+'>'+e(c)+'</th>'; }).join('');
   /* A row whose every cell is empty is a row the payload never filled. Printing
      it produced three ruled lines carrying nothing but a dash under the
@@ -1112,7 +1150,7 @@ function tbl(cols, rows, opts){
      like two unrelated tables. */
   var CHUNK = (opts.chunk === false) ? Infinity : (opts.chunk || 12);
   if(live.length <= CHUNK){
-    return '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+h+'</tr></thead><tbody>'
+    return '<table'+tblCls(opts, kv)+'><thead><tr>'+h+'</tr></thead><tbody>'
          + b+'</tbody></table>';
   }
   var out = '', part = 0;
@@ -1130,7 +1168,7 @@ function tbl(cols, rows, opts){
         return '<th'+(num.indexOf(j)>=0?' class="n en"':'')+'>'+e(c)
 +'</th>'; }).join('');
     }
-    out += '<table'+(opts.cls?' class="'+opts.cls+'"':'')+'><thead><tr>'+head+'</tr></thead><tbody>'
+    out += '<table'+tblCls(opts, kv)+'><thead><tr>'+head+'</tr></thead><tbody>'
          + slice+'</tbody></table>';
   }
   return out;
@@ -1935,6 +1973,16 @@ function grpHead(lang, key){
        + e(L(lang, key)) + '</div></div>';
 }
 
+/* The five pillars the report is organised into. The sections themselves are
+   unchanged — this names the argument they add up to, so a reader can see
+   where they are in it rather than working through forty-odd numbered
+   headings with no structure over them. blocksFromBody already reads an
+   ir-grp as a group in the contents, so each pillar appears there too. */
+function pillarHead(title){
+  return '<div class="ir-grp" style="margin:0 0 3mm"><div class="ir-grph">'
+       + e(String(title).toUpperCase()) + '</div></div>';
+}
+
 function buildCompany(p, lang){
   lang = lang || 'en';
   var rep = eqRep(p), run = rep.run || {};
@@ -1976,6 +2024,10 @@ function buildCompany(p, lang){
   /* A two-page backdrop, not a sector study: a company cannot be judged
      without its industry, its policy regime and its peers, but the sector
      report is where that work belongs in full. */
+  out += eqScenarioBanner(rep);
+  out += eqNarrative(c, 'opening');
+  out += pillarHead('Pillar 1 — The Company And The Case');
+  out += eqNarrative(c, 'pillar', 1);
   out += S3('Sector backdrop')
     + tbl(['','Reading'], (function(){
         var rows=[], ind=rep.industry, tam=rep.tam, mac=rep.macro;
@@ -2014,10 +2066,29 @@ function buildCompany(p, lang){
   }
   if(S(c.business)) out += S3('The business') + '<p>' + e(S(c.business)) + '</p>';
 
+  out += pillarHead('Pillar 2 — Industry Context And Competitive Moat');
+  out += eqNarrative(c, 'pillar', 2);
   out += S3('Moat') + eqMoat(c, lang);
   out += S3('Management, promoters and governance') + eqManagement(c, lang);
+  var cmp = eqCompensation(c);
+  if(cmp) out += S3('Pay and alignment') + cmp;
+  out += pillarHead('Pillar 3 — Financial Analysis And Capital Allocation');
+  out += eqNarrative(c, 'pillar', 3);
   out += S3('Capital allocation') + eqCapitalAllocation(c, lang);
+  /* The accounts, next to the capital allocation they explain. These used to
+     sit after Peers, which put the balance sheet three sections downstream of
+     the valuation built on it. */
+  var three = eqThreeStatement(c);
+  if(three) out += S3('The three statements, as reported') + three;
+  var dup = eqDupont(c);
+  if(dup) out += S3('Return on capital, deconstructed') + dup + eqRoicChart(c);
+  var ccy = eqCapitalCycle(c);
+  if(ccy) out += S3('The capital cycle') + ccy;
+  var hsec = eqHistoricalSectors(c);
+  if(hsec) out += S3('Revenue by operating line') + hsec + eqSectorMixChart(c);
 
+
+  out += eqComment(c, 'score');
   out += S3('Scoring') + figScoreBullets(c)
     + tbl(['Model','Score','Coverage'], ['businessQuality','growthMultibagger','valuationOpportunity','riskQuality']
         .map(function(k){
@@ -2036,16 +2107,17 @@ function buildCompany(p, lang){
   var mo = c.model;
   if(mo && mo.model && mo.model.available){
     var m = mo.model;
-    out += S3('Forecast') + figForecast(c) + figCashflow(c)
+    out += S3('Forecast') + eqComment(c, 'model') + figForecast(c) + figCashflow(c)
       + tbl(['Year','Revenue','EBITDA','Margin','PAT','EPS diluted','FCFF'],
-          arr(m.years).map(function(y){
-            return { cells:['<span class="en">' + y.year + '</span>', n(y.revenue,0), n(y.ebitda,0),
+          (function(){
+            var labels = fyLabels(c, arr(m.years).length);
+            return arr(m.years).map(function(y, i){
+            return { cells:['<span class="en">' + e(labels[i] || ('Y' + y.year)) + '</span>',
+              n(y.revenue,0), n(y.ebitda,0),
               n(y.ebitdaMargin,1) + '%', n(y.pat,0), n(y.epsDiluted,2), n(y.fcff,0)] };
-          }), { num:[1,2,3,4,5,6] })
+          }); })(), { num:[1,2,3,4,5,6] })
       + '<div class="mut" style="margin-top:1.5mm">Built from the supplied drivers. '
-        + (m.reconciled
-            ? 'All ' + arr(m.checks).length + ' reconciliation checks pass.'
-            : '<span class="neg">' + arr(m.failedChecks).length + ' reconciliation checks fail.</span>')
+        + eqReconLine(m)
         + ' Diluted share count ' + n(m.dilutedShares,2)
         + (m.dilutionPct ? ', ' + n(m.dilutionPct,1) + '% above basic' : '') + '.</div>';
 
@@ -2072,6 +2144,14 @@ function buildCompany(p, lang){
           ], { num:[1] })
         + arr(mo.valuation.warnings).map(function(w){
             return '<div class="note">' + e(S(w)) + '</div>'; }).join('');
+    } else if(mo.valuation && mo.valuation.reason){
+      /* A value withheld in silence reads as a value nobody computed. Where
+         the engine declined to discount the forecast — a lender, or a base
+         year that does not tie to reported revenue — the reason goes on the
+         page in place of the number. */
+      out += S3('Intrinsic value')
+        + '<div class="note"><b>No intrinsic value is computed here.</b> '
+        + e(S(mo.valuation.reason)) + '</div>';
     }
     if(mo.impliedGrowth && mo.impliedGrowth.available){
       out += '<div class="note"><b>What the price already assumes.</b> '
@@ -2083,36 +2163,29 @@ function buildCompany(p, lang){
       + '<div class="note">The model did not build: ' + e(S(mo.model.reason)) + '</div>';
   }
 
+  out += pillarHead('Pillar 4 — Valuation And Scenarios');
+  out += eqNarrative(c, 'pillar', 4);
   out += S3('Valuation scenarios') + figFootball(c) + eqScenarios(c, lang);
-  out += S3('What the market is missing') + figConsensus(c) + eqVariant(c, lang);
-  var misC = eqMispricing(c, lang);
-  if(misC) out += S3('Why the market has this wrong') + misC;
-  var techC = eqTechPanel(c, lang);
-  if(techC) out += S3('Technical panel') + techC;
-  var mbC = eqMultibagger(c, lang);
-  if(mbC) out += S3('Multibagger detection') + mbC;
-  var peC = eqPeers(c, lang);
-  if(peC) out += S3('Peers') + peC;
-
-  /* The institutional blocks. Each prints only when the payload carried it, so
-     a run made before these were asked for still renders exactly as it did —
-     an empty heading over a gap note reads as a rendering fault. */
-  var dup = eqDupont(c);
-  if(dup) out += S3('Return on capital, deconstructed') + dup + eqRoicChart(c);
-  var psc = eqPeerScatter(c);
-  if(psc) out += psc;
-  var ccy = eqCapitalCycle(c);
-  if(ccy) out += S3('The capital cycle') + ccy;
-  var hsec = eqHistoricalSectors(c);
-  if(hsec) out += S3('Revenue by operating line') + hsec + eqSectorMixChart(c);
-  var cmp = eqCompensation(c);
-  if(cmp) out += S3('Pay and alignment') + cmp;
+  out += eqComment(c, 'valuation');
+  /* How the discount rate was built, how the parts sum, and what the price
+     already assumes — beside the scenarios they qualify. */
   var wac = eqWacc(c);
   if(wac) out += S3('How the discount rate is built') + wac;
   var sot = eqSotp(c);
   if(sot) out += S3('Sum of the parts') + sot;
   var imp = eqImplied(c);
   if(imp) out += S3('What the price already assumes') + imp;
+
+  out += S3('What the market is missing') + figConsensus(c) + eqVariant(c, lang);
+  var misC = eqMispricing(c, lang);
+  if(misC) out += S3('Why the market has this wrong') + misC;
+  var techC = eqTechPanel(c, lang);
+  if(techC) out += S3('Technical panel') + techC;
+  var mbC = eqMultibagger(c, lang);
+  if(mbC) out += S3('Multibagger detection') + mbC + eqComment(c, 'multibagger');
+  var peC = eqPeers(c, lang);
+  if(peC) out += S3('Peers') + peC + eqPeerScatter(c);
+
 
   var esgC = eqEsg(c, lang);
   if(esgC) out += S3('ESG') + esgC;
@@ -2123,7 +2196,10 @@ function buildCompany(p, lang){
       + '<p><b>Why we think it is wrong.</b> ' + e(S(c.bearCase.answer)) + '</p>';
   }
 
-  out += S3('Accounting quality') + eqForensic(c, lang);
+  out += pillarHead('Pillar 5 — Risks, Governance And ESG');
+  out += eqNarrative(c, 'pillar', 5);
+  out += S3('Accounting quality') + eqForensic(c, lang) + eqTrafficLights(c);
+  out += eqComment(c, 'forensic');
   out += S3('Litigation and regulatory registers') + eqLitigation(c, lang);
 
   var mt = c.metrics;
@@ -2175,7 +2251,7 @@ function buildCompany(p, lang){
           return { cells:[e(S(x.event)), e(S(x.expectedWindow)), e(S(x.impact))] }; }));
   }
   if(arr(c.risks).length){
-    out += S3('Risks') + figRisks(c)
+    out += S3('Risks') + eqRiskMatrix(c) + figRisks(c)
       + tbl(['Risk','Severity','Probability','Impact'], arr(c.risks).map(function(r){
           return { cells:[e(S(r.risk)),
             '<span class="' + (r.severity==='severe'?'neg':'') + '">' + e(S(r.severity)) + '</span>',
@@ -2183,17 +2259,17 @@ function buildCompany(p, lang){
             r.impactPct == null ? '<span class="mut">not quantified</span>' : eqSignedPct(r.impactPct)] };
         }), { num:[2,3] });
   }
+  out += eqNarrative(c, 'closing');
   if(arr(c.thesisBreakers).length) out += S3('Thesis breakers') + eqList(c.thesisBreakers);
   if(arr(c.upgradeTriggers).length) out += S3('What would make us more positive') + eqList(c.upgradeTriggers);
   if(arr(c.managementQuestions).length) out += S3('Questions for management') + eqList(c.managementQuestions);
 
   if(c.baseRates && S(c.baseRates.claim)){
-    out += S3('Base rates')
-      + '<p>' + e(S(c.baseRates.claim)) + '</p>'
-      + (c.baseRates.historicalShare != null
-          ? '<div class="note">Historically ' + Math.round(c.baseRates.historicalShare*100)
-            + '% of comparable companies sustained it. ' + e(S(c.baseRates.source)) + '</div>'
-          : '');
+    /* The outside view, with the forecast held against it. The old version
+       printed the claim and the share as two sentences; a reader had to do the
+       comparison themselves, which is the one thing a base rate exists to save
+       them from. */
+    out += S3('Base rates — the outside view') + eqBaseRate(c);
   }
 
   if(arr(c.conflicts).length){
@@ -2212,7 +2288,8 @@ function buildCompany(p, lang){
   }
 
   if(!c.eligibleForTop3 && arr(c.exclusionReasons).length){
-    out += S3('Why this company is barred from the Top 3') + eqList(c.exclusionReasons);
+    out += S3('Why this company is barred from the Top 3')
+      + eqComment(c, 'eligibility') + eqList(c.exclusionReasons);
   }
 
   var built = blocksFromBody(out);
@@ -2531,7 +2608,9 @@ function eqVariant(c, lang){
     out += '<div style="height:2mm"></div>'
       + tbl(['Line','Year','Consensus','Our model','Difference'],
           arr(cs.lines).map(function(l){
-            return { cells:[e(S(l.line)), '<span class="en">' + l.year + '</span>',
+            var cl = fyLabels(c, 2);
+            return { cells:[e(S(l.line)),
+              '<span class="en">' + e(cl[Number(l.year) - 1] || ('Y' + l.year)) + '</span>',
               n(l.consensus,2), '<b>' + n(l.ours,2) + '</b>', eqSignedPct(l.deltaPct)] };
           }), { num:[1,2,3,4] })
       + '<div class="mut" style="margin-top:1.5mm">Consensus from ' + e(S(cs.source))
@@ -2709,8 +2788,23 @@ function figFootball(c){
       color:K.palette.s3 });
   }
   if(!rows.length) return K.unavailable('Valuation range','No method produced a range.');
+  /* Say what the picture shows. A band that sits entirely above the price is
+     the whole argument; one that straddles it is a different conclusion. */
+  var note2 = '';
+  if(typeof v.currentPrice === 'number'){
+    var spans = rows.filter(function(r){ return typeof r.low === 'number' && typeof r.high === 'number'; });
+    var allAbove = spans.length && spans.every(function(r){ return r.low > v.currentPrice; });
+    var allBelow = spans.length && spans.every(function(r){ return r.high < v.currentPrice; });
+    note2 = 'Each bar is the range one method produces; the dashed line is the price paid today, '
+      + n(v.currentPrice,2) + '. '
+      + (allAbove ? 'Every method puts the business above the price, so the methods agree and the '
+          + 'question is the size of the gap rather than its direction.'
+        : allBelow ? 'Every method puts the business below the price. The thesis has to rest on '
+            + 'something none of these methods captures.'
+          : 'The methods straddle the price, so the conclusion depends on which one you weight.');
+  }
   return K.footballField({ title:'Valuation range against the price',
-    source:'Computed by the application', price:v.currentPrice, rows:rows });
+    source:'Computed by the application', note:note2, price:v.currentPrice, rows:rows });
 }
 
 function figForecast(c){
@@ -2718,11 +2812,93 @@ function figForecast(c){
   var m=c.model&&c.model.model;
   if(!m||!m.available) return '';
   var ys=arr(m.years);
-  return K.columnLine({ title:'Forecast revenue and EBITDA margin',
+  return K.columnLine({ title:'Forecast revenue (INR Crore) and EBITDA margin (%)',
     source:'Driver model, built by the application',
-    categories:ys.map(function(y){ return 'Y'+y.year; }),
+    categories:fyLabels(c, ys.length),
     bars:{ name:'Revenue', values:ys.map(function(y){ return y.revenue; }) },
     line:{ name:'EBITDA margin', values:ys.map(function(y){ return y.ebitdaMargin; }) } });
+}
+
+/* A report built on the reader's own assumptions says so, at the top, before
+   anything else. Every number below the banner — the forecast, the intrinsic
+   value, the upside, the commentary reading it — has been recomputed on the
+   drivers named here, and a reader who picks the document up a month later has
+   no other way of knowing that. The research's own figures are printed
+   alongside, so the two are never confused. */
+function eqScenarioBanner(rep){
+  var sc = rep && rep.run && rep.run.scenario;
+  if(!sc || !arr(sc.changed).length) return '';
+  var one = function(v, scale){
+    return (typeof v === 'number')
+      ? (v * (scale || 1)).toFixed(2).replace(/\.00$/,'') : '—'; };
+  return '<div class="scnban">'
+    + '<b>This report is a scenario, not the research’s own case.</b> '
+    + 'The assumptions below were changed by the reader, and every figure in this document '
+    + 'has been rebuilt on them through the same engine that produced the base case.'
+    + '<table class="kv"><tbody>'
+    + arr(sc.changed).map(function(d){
+        return '<tr><td>' + e(S(d.label)) + '</td>'
+          + '<td class="num">' + one(d.from, d.scale) + e(S(d.unit || '')) + '</td>'
+          + '<td class="num"><b>' + one(d.to, d.scale) + e(S(d.unit || '')) + '</b></td></tr>';
+      }).join('')
+    + '</tbody></table>'
+    + '<div class="mut">Left column: what the research assumed. Right: what this report was '
+    + 'built on. Everything not listed here is unchanged.</div></div>';
+}
+
+/* The reconciliation line, in the three states it can honestly be in.
+
+   It used to read "All N reconciliation checks pass" whenever an internal
+   arithmetic flag was true — and those checks compare the model to itself, so
+   the line printed under a base year out by a factor of eleven. It now reports
+   the tie to reported revenue, which is the only check that can fail for a
+   reason the reader cares about, and says plainly when there was nothing to
+   tie to. */
+function eqReconLine(m){
+  if(!m) return '';
+  var rec = m.reconciliation || {};
+  if(m.reconciled === true){
+    return 'The base year ties to reported revenue of ' + n(rec.expected,0)
+      + (rec.period ? ' for ' + e(S(rec.period)) : '')
+      + ', within ' + n(rec.offByPct,1) + '%, and the three statements tie to each other '
+      + 'in every forecast year.';
+  }
+  if(m.reconciled === false){
+    return '<span class="neg">The base year does NOT tie to reported revenue: the drivers produce '
+      + n(rec.actual,0) + ' against ' + n(rec.expected,0)
+      + (rec.period ? ' reported for ' + e(S(rec.period)) : ' reported')
+      + ', out by ' + n(rec.offByPct,1) + '%. The forecast below is shown as supplied, but no '
+      + 'intrinsic value is computed from it.</span>';
+  }
+  return 'No reported revenue was supplied for the base year, so the forecast could not be tied '
+    + 'to anything the company has published. The three statements tie to each other, which is a '
+    + 'weaker claim than it sounds.';
+}
+
+/* Forecast years, named. The driver model counts 1..5 and the chart printed
+   "Y1".."Y5", which tells the reader nothing about when. The base year comes
+   from the latest reported period, and each forecast year is marked with an E
+   so a projection is never mistaken for a reported figure. */
+function fyLabels(c, count){
+  var out = [];
+  var base = null;
+  try{
+    var ann = arr(c.financials && c.financials.annual);
+    /* metrics.period is the same reported period seen from the other side of
+       the engine, and it survives even when the raw financials do not. */
+    var per = ann.length ? String(ann[0].period || '')
+      : String((c.metrics && c.metrics.period) || '');
+    var m = /FY\s*'?(\d{2,4})/i.exec(per);
+    if(m){
+      var v = parseInt(m[1], 10);
+      base = v < 100 ? 2000 + v : v;
+    }
+  }catch(err){}
+  for(var i = 1; i <= count; i++){
+    out.push(base == null ? ('Y' + i)
+      : ('FY' + String((base + i) % 100).padStart(2, '0') + 'E'));
+  }
+  return out;
 }
 
 function figCashflow(c){
@@ -2730,9 +2906,9 @@ function figCashflow(c){
   var m=c.model&&c.model.model;
   if(!m||!m.available) return '';
   var ys=arr(m.years);
-  return K.lines({ title:'Free cash flow and earnings per share',
+  return K.lines({ title:'Free cash flow (INR Crore) and earnings per share (INR)',
     source:'Driver model, built by the application',
-    categories:ys.map(function(y){ return 'Y'+y.year; }),
+    categories:fyLabels(c, ys.length),
     series:[{ name:'FCFF', values:ys.map(function(y){ return y.fcff; }) },
             { name:'EPS diluted', values:ys.map(function(y){ return y.epsDiluted; }) }] });
 }
@@ -2741,11 +2917,33 @@ function figSensitivity(c){
   var K=CH_(); if(!K) return '';
   var g=c.model&&c.model.rateGrid;
   if(!g||!g.available) return '';
+  /* A grid of numbers with no reading is a table the reader has to interpret
+     unaided. Name the axes and say what the spread across them means. */
+  var cells = [];
+  arr(g.rows).forEach(function(r){ arr(r.cells).forEach(function(x){
+    if(typeof x.value === 'number') cells.push(x.value); }); });
+  var note = '';
+  if(cells.length > 1){
+    var lo = Math.min.apply(null, cells), hi = Math.max.apply(null, cells);
+    var price = c.valuation && c.valuation.currentPrice;
+    var above = (typeof price === 'number') ? cells.filter(function(v){ return v > price; }).length : null;
+    note = 'Each cell is the value per share at that discount rate and that terminal growth rate — '
+      + 'the two assumptions the answer is most sensitive to. Across the grid the value runs from '
+      + n(lo,0) + ' to ' + n(hi,0) + '.'
+      + (above == null ? ''
+         : ' ' + above + ' of the ' + cells.length + ' combinations sit above the current price of '
+           + n(price,2) + (above === 0
+              ? ', so no combination on this grid justifies the price.'
+              : above === cells.length
+                ? ', so every combination on this grid does.'
+                : '; the thesis depends on which half of the grid you believe.'));
+  }
   return K.heatgrid({ title:'Value per share across discount rate and terminal growth',
     source:'Computed by the application',
-    columns:arr(g.discountRates).map(function(r){ return (r*100).toFixed(1)+'%'; }),
+    note:note,
+    columns:arr(g.discountRates).map(function(r){ return (r*100).toFixed(1)+'% discount rate'; }),
     rows:arr(g.rows).map(function(r){
-      return { label:(r.terminalGrowth*100).toFixed(1)+'% g',
+      return { label:(r.terminalGrowth*100).toFixed(1)+'% terminal growth',
                cells:arr(r.cells).map(function(x){ return { value:x.value }; }) };
     }) });
 }
@@ -2756,8 +2954,9 @@ function figDrivers(c){
   if(!s||!s.available) return '';
   var rows=arr(s.results).filter(function(r){ return !r.error && typeof r.epsDeltaPct==='number'; });
   if(!rows.length) return '';
-  return K.columns({ title:'What the answer turns on',
+  return K.columns({ title:'What the answer turns on — % change in terminal EPS',
     source:'Each driver flexed on its own, effect on terminal earnings per share',
+    yFmt:function(v){ return v + '%'; },
     categories:rows.map(function(r){ return S(r.driver)+' '+S(r.change); }),
     series:[{ name:'Effect on terminal EPS', values:rows.map(function(r){ return r.epsDeltaPct; }) }] });
 }
@@ -2770,7 +2969,9 @@ function figConsensus(c){
     source:S(cs.source)+(cs.asOf?', as at '+S(cs.asOf):''),
     leftLabel:'Consensus', rightLabel:'Our model',
     rows:arr(cs.lines).map(function(l){
-      return { label:S(l.line)+' Y'+l.year, left:l.consensus, right:l.ours }; }) });
+      var cl = fyLabels(c, 2);
+      return { label:S(l.line)+' '+(cl[Number(l.year)-1] || ('Y'+l.year)),
+               left:l.consensus, right:l.ours }; }) });
 }
 
 function figOwnership(c){
@@ -3129,11 +3330,18 @@ function figPerformance(c){
   var pf=s.performance;
   var have=['m3','m6','m12'].filter(function(k){ return typeof pf[k]==='number'; });
   if(!have.length) return '';
-  return K.columns({ title:'Stock performance, absolute and against the index',
+  /* "Absolute" and "Relative" named two unlabelled colours against an unlabelled
+     axis — relative to what was never stated, and the axis never said the
+     numbers were percentages. The benchmark is named when the payload gives
+     one, and called the market index when it does not. */
+  var bench = S(pf.benchmark) || S(s.benchmark) || '';
+  return K.columns({ title:'Share price return, % — against ' + (bench || 'the market index'),
     source:'Exchange data', categories:['3 months','6 months','12 months'],
+    yFmt:function(v){ return v + '%'; },
     series:[
-      { name:'Absolute', values:['m3','m6','m12'].map(function(k){ return pf[k]; }) },
-      { name:'Relative', values:['m3Relative','m6Relative','m12Relative'].map(function(k){
+      { name:'Share price return %', values:['m3','m6','m12'].map(function(k){ return pf[k]; }) },
+      { name:'Versus ' + (bench || 'the index') + ', percentage points',
+        values:['m3Relative','m6Relative','m12Relative'].map(function(k){
           return typeof pf[k]==='number'?pf[k]:null; }) }] });
 }
 
@@ -3336,12 +3544,28 @@ function figCapitalAllocation(c){
   var K=CH_(); var ca=c.capitalAllocation; if(!K||!ca||!arr(ca.tenYear).length) return '';
   var t=arr(ca.tenYear)[0];
   var items=[{ label:'Operating cash', value:t.operatingCash, total:true }];
+  var spent = 0;
   [['capex','Capex'],['acquisitions','Acquisitions'],['dividends','Dividends'],
    ['buyback','Buyback'],['debtRepaid','Debt repaid']].forEach(function(k){
-    if(typeof t[k[0]]==='number' && t[k[0]]!==0) items.push({ label:k[1], value:-Math.abs(t[k[0]]) });
+    if(typeof t[k[0]]==='number' && t[k[0]]!==0){
+      var v = Math.abs(t[k[0]]);
+      spent += v;
+      items.push({ label:k[1], value:-v });
+    }
   });
   if(items.length<2) return '';
-  return K.waterfall({ title:'Where a decade of cash went', source:S(t.period), items:items });
+  /* The bars did not add up to the opening figure, so a reader could not tell
+     whether the rest had been spent on something unnamed or simply kept. What
+     was not spent is retained in the business, and stating it closes the
+     arithmetic. */
+  if(typeof t.operatingCash === 'number'){
+    var retained = t.operatingCash - spent;
+    if(Math.abs(retained) > 0.5) items.push({ label:'Retained in business', value:-retained });
+  }
+  return K.waterfall({
+    title:'Where the operating cash went — INR Crore',
+    source:S(t.period) + ' · cash from operations, after tax and before capital spending',
+    items:items });
 }
 function eqCapitalAllocation(c, lang){
   var ca=c.capitalAllocation;
@@ -3389,24 +3613,295 @@ function eqPeers(c, lang){
     + gapNote('This run predates the fuller peer matrix, so only the two unnamed metrics were supplied.');
   }
   var rows = pr.map(function(x){
-    return { cells:[ '<b>'+e(S(x.name))+'</b>', eqNum(x.marketCap), eqNum(x.pe),
-      eqNum(x.evEbitda), eqNum(x.roe), eqNum(x.revGrowth), eqNum(x.ebitdaMargin) ]};
+    return { cells:[ '<b>'+e(S(x.name))+'</b>',
+      x.marketCap == null ? '—' : n(x.marketCap, 1), ratioCell(x.pe),
+      ratioCell(x.evEbitda), ratioCell(x.roe),
+      x.revGrowth == null ? '—' : n(x.revGrowth, 1), ratioCell(x.ebitdaMargin) ]};
   });
-  /* The subject company, on the same axes, from what the engine already knows.
-     A peer table that omits the company being valued makes the reader do the
-     comparison in their head. */
-  var selfPe = null, selfMcap = null;
-  try{
-    selfMcap = c.snapshot && c.snapshot.marketCap;
-    var mv = c.metrics && c.metrics.values;
-    if(mv) selfPe = mv.pe != null ? mv.pe : null;
-  }catch(err){}
-  if(selfMcap != null || selfPe != null){
-    rows.unshift({ __cls:'tot', cells:[ '<b>'+e(S(c.name)||S(c.symbol))+'</b>',
-      eqNum(selfMcap), eqNum(selfPe), '—', '—', '—', '—' ] });
-  }
+  /* The subject company on the same axes, computed from the financials the
+     payload already carries. The first version printed the name and five
+     dashes, which is worse than omitting the row: it says the comparison was
+     attempted and failed. Nothing here is guessed — each figure is arithmetic
+     on stated numbers, and anything whose inputs are missing stays a dash. */
+  var self = eqSelfPeerRow(c);
+  if(self) rows.unshift(self);
   return tbl(['Company','Market cap','P/E','EV/EBITDA','ROE %','Rev growth %','EBITDA margin %'],
     rows, { num:[1,2,3,4,5,6] });
+}
+
+/* A ratio of exactly zero is almost never a real reading — it is how a model
+   says "not applicable" in a numeric field. EV/EBITDA and EBITDA margin are
+   meaningless for a bank, and printing 0.0 asserts something false about it. */
+function ratioCell(v){
+  if(v == null) return '—';
+  var x = Number(v);
+  if(!isFinite(x) || x === 0) return '—';
+  return n(x, 1);
+}
+
+function eqSelfPeerRow(c){
+  var num = function(v){ return (typeof v === 'number' && isFinite(v)) ? v : null; };
+  var snap = c.snapshot || {};
+  var ann = arr(c.financials && c.financials.annual);
+  var cur = ann[0] || null, prv = ann[1] || null;
+  var f = (c.forensic && c.forensic.current) || {};
+
+  var mcap = num(snap.marketCap);
+  var netProfit = num(cur && cur.netProfit) != null ? cur.netProfit : num(f.netProfit);
+  var revenue = num(cur && cur.revenue) != null ? cur.revenue : num(f.revenue);
+  var prevRev = num(prv && prv.revenue);
+  var equity = num(cur && cur.shareholdersEquity);
+  var ebitda = num(cur && cur.ebitda);
+  var debt = num(cur && cur.totalDebt);
+  var cash = num(cur && cur.cashAndEquivalents);
+
+  var pe = (mcap != null && netProfit) ? mcap / netProfit : null;
+  var roe = (netProfit != null && equity) ? (netProfit / equity) * 100 : null;
+  var growth = (revenue != null && prevRev) ? ((revenue - prevRev) / prevRev) * 100 : null;
+  var margin = (ebitda != null && revenue) ? (ebitda / revenue) * 100 : null;
+  var evEbitda = (mcap != null && ebitda && debt != null && cash != null)
+    ? (mcap + debt - cash) / ebitda : null;
+
+  if(mcap == null && pe == null && roe == null) return null;
+  return { __cls:'tot', cells:[
+    '<b>' + e(S(c.name) || S(c.symbol)) + '</b>',
+    mcap == null ? '—' : n(mcap, 1),
+    ratioCell(pe), ratioCell(evEbitda), ratioCell(roe),
+    growth == null ? '—' : n(growth, 1), ratioCell(margin) ] };
+}
+
+/* The three statements, reported years and forecast years in one table.
+
+   The report used to print eight summary ratios from financials.annual and
+   nothing else, so a reader could see the ratios and not the accounts that
+   produced them. Three reported years and three forecast years is the minimum
+   that shows a trend: a cash flow statement is built from movements between
+   balance sheets, so three balance sheets produce two years of cash flow.
+
+   Forecast columns are marked E and come from the driver model, which is the
+   same model the intrinsic value is built on — so the statement and the
+   valuation cannot disagree. */
+/* The engine's own reasoning, printed beside the result it explains.
+
+   The application screens, scores, runs fifteen forensic tests, applies a kill
+   switch, reconciles a driver model and runs five multibagger tests — and used
+   to print a number for each. This renders the argument behind the number.
+   Every sentence names a figure the engine computed; where it could not
+   compute one, nothing is printed rather than something generic. */
+/* The narrative through-line. The commentary blocks explain each computed
+   result where it sits; this is the argument that runs between them, so the
+   report arrives somewhere rather than being forty sections that each happen
+   to be true. */
+function eqStory(block, cls){
+  if(!block) return '';
+  var ps = arr(block.paragraphs);
+  if(!ps.length && S(block.text)) ps = [S(block.text)];
+  if(!ps.length) return '';
+  return '<div class="' + (cls || 'storybox') + '">'
+    + (S(block.title) ? '<div class="storyh">' + e(S(block.title)) + '</div>' : '')
+    + ps.map(function(t){ return '<p class="storyp">' + e(S(t)) + '</p>'; }).join('')
+    + '</div>';
+}
+function eqNarrative(c, which, pillar){
+  try{
+    if(!window.EQ || !EQ.commentary) return '';
+    var C = EQ.commentary;
+    if(which === 'opening' && typeof C.openingNarrative === 'function') return eqStory(C.openingNarrative(c));
+    if(which === 'closing' && typeof C.closingNarrative === 'function') return eqStory(C.closingNarrative(c));
+    if(which === 'pillar' && typeof C.pillarNarrative === 'function'){
+      return eqStory(C.pillarNarrative(c, pillar), 'bridgebox');
+    }
+  }catch(err){}
+  return '';
+}
+
+function eqSay(block){
+  if(!block || !S(block.text)) return '';
+  return '<div class="saybox"><div class="sayh">' + e(S(block.title)) + '</div>'
+       + '<div class="sayt">' + e(S(block.text)) + '</div></div>';
+}
+function eqComment(c, key){
+  try{
+    if(!window.EQ || !EQ.commentary) return '';
+    var fn = { score:'scoreCommentary', forensic:'forensicCommentary',
+      eligibility:'eligibilityCommentary', model:'modelCommentary',
+      valuation:'valuationCommentary', multibagger:'multibaggerCommentary' }[key];
+    if(!fn || typeof EQ.commentary[fn] !== 'function') return '';
+    return eqSay(EQ.commentary[fn](c));
+  }catch(err){ return ''; }
+}
+
+function eqThreeStatement(c){
+  var ann = arr(c.financials && c.financials.annual);
+  if(ann.length < 1) return '';
+  var fyNum = function(x){
+    var m = /FY\s*'?(\d{2,4})/i.exec(S(x));
+    if(!m) return null;
+    var v = parseInt(m[1],10);
+    return v < 100 ? 2000 + v : v;
+  };
+  /* Oldest first: a statement is read left to right through time. */
+  var hist = ann.slice().sort(function(a,b){
+    var ka = fyNum(a.period), kb = fyNum(b.period);
+    return (ka == null || kb == null) ? 0 : ka - kb;
+  });
+
+  /* The forecast, mapped onto the same line names. */
+  var proj = [];
+  try{
+    var my = arr(c.model && c.model.model && c.model.model.years);
+    var labels = fyLabels(c, my.length);
+    proj = my.map(function(y, i){
+      return { period: labels[i], projected: true,
+        revenue:y.revenue, costOfGoodsSold:y.cogs, ebitda:y.ebitda,
+        depreciation:y.depreciation, ebit:y.ebit, interestExpense:y.interest,
+        profitBeforeTax:y.pbt, tax:y.tax, netProfit:y.pat,
+        epsDiluted:y.epsDiluted, netFixedAssets:y.netBlock, totalDebt:y.debt,
+        cashAndEquivalents:y.closingCash, receivables:y.receivables,
+        inventory:y.inventory, payables:y.payables,
+        cashFromOperations:y.cfo, capitalExpenditure:y.capex,
+        cashFromInvesting:y.cfi, cashFromFinancing:y.cff,
+        changeInWorkingCapital:y.changeInWorkingCapital };
+    });
+  }catch(err){ proj = []; }
+
+  var rows = hist.concat(proj);
+  if(!rows.length) return '';
+  var periods = rows.map(function(r){ return S(r.period); });
+  var num = periods.map(function(_,i){ return i+1; });
+
+  function band(label){
+    return { __cls:'tot', cells:[('<b>'+label+'</b>')].concat(periods.map(function(){ return ''; })) };
+  }
+  function line(label, key, bold){
+    var any = rows.some(function(r){ return typeof r[key] === 'number'; });
+    if(!any) return null;
+    return { cells:[(bold ? '<b>'+label+'</b>' : label)].concat(rows.map(function(r){
+      if(typeof r[key] !== 'number') return '—';
+      var v = n(r[key], key === 'epsDiluted' || key === 'epsBasic' ? 2 : 0);
+      return bold ? '<b>'+v+'</b>' : v;
+    })) };
+  }
+  var L = function(defs){ return defs.map(function(d){ return line(d[0], d[1], d[2]); }).filter(Boolean); };
+
+  var income = L([['Revenue','revenue',true],['Other income','otherIncome'],
+    ['Cost of goods sold','costOfGoodsSold'],['Gross profit','grossProfit'],
+    ['Employee cost','employeeCost'],['Other expenses','otherExpenses'],
+    ['EBITDA','ebitda',true],['Depreciation','depreciation'],['EBIT','ebit',true],
+    ['Interest expense','interestExpense'],['Exceptional items','exceptionalItems'],
+    ['Profit before tax','profitBeforeTax'],['Tax','tax'],['Net profit','netProfit',true],
+    ['EPS diluted','epsDiluted']]);
+  var balance = L([['Total assets','totalAssets',true],['Net fixed assets','netFixedAssets'],
+    ['Capital work in progress','capitalWorkInProgress'],
+    ['Goodwill and intangibles','goodwillAndIntangibles'],['Investments','investments'],
+    ['Inventory','inventory'],['Receivables','receivables'],
+    ['Cash and equivalents','cashAndEquivalents'],
+    ['Shareholders equity','shareholdersEquity',true],['Share capital','shareCapital'],
+    ['Reserves and surplus','reservesAndSurplus'],['Total debt','totalDebt',true],
+    ['Long-term debt','longTermDebt'],['Short-term debt','shortTermDebt'],
+    ['Payables','payables'],['Total liabilities','totalLiabilities']]);
+  var cash = L([['Cash from operations','cashFromOperations',true],
+    ['Change in working capital','changeInWorkingCapital'],
+    ['Capital expenditure','capitalExpenditure'],['Cash from investing','cashFromInvesting'],
+    ['Dividends paid','dividendsPaid'],['Debt raised','debtRaised'],['Debt repaid','debtRepaid'],
+    ['Buyback','buyback'],['Cash from financing','cashFromFinancing',true],
+    ['Net change in cash','netChangeInCash'],['Closing cash','closingCash']]);
+
+  var body = [];
+  if(income.length){ body.push(band('Income statement')); body = body.concat(income); }
+  if(balance.length){ body.push(band('Balance sheet')); body = body.concat(balance); }
+  if(cash.length){ body.push(band('Cash flow')); body = body.concat(cash); }
+  if(!body.length) return '';
+
+  var nHist = hist.length, nProj = proj.length;
+  var note = nHist + ' reported ' + (nHist === 1 ? 'year' : 'years')
+    + (nProj ? ' and ' + nProj + ' forecast years, marked E' : '')
+    + '. Reported figures are as filed, in the company\'s own units; forecast figures come from '
+    + 'the same driver model the intrinsic value is built on. A line is blank where the company '
+    + 'does not report it — a bank has no inventory — rather than being filled with a zero.'
+    + (nHist < 3 ? ' <b>Only ' + nHist + ' reported ' + (nHist === 1 ? 'year was' : 'years were')
+        + ' supplied; three are needed before the cash flow shows a trend.</b>' : '');
+
+  return tbl([''].concat(periods), body, { num:num }) + '<p class="note">' + note + '</p>';
+}
+
+/* Risks placed on the two axes that decide what to do about one: how likely it
+   is, and how much it would cost. A list of risks ranks nothing; the top right
+   is where the attention belongs. */
+function eqRiskMatrix(c){
+  var K = CH_(); if(!K) return '';
+  var rk = arr(c.risks).filter(function(r){
+    return r && typeof r.probability === 'number' && typeof r.impactPct === 'number'; });
+  if(rk.length < 2) return '';
+  var pts = rk.map(function(r){
+    return { x: r.probability * 100, y: r.impactPct, title: S(r.risk) };
+  });
+  return K.figure('Risks — likelihood against what it would cost',
+    'Stated in the research, one point per risk',
+    K.scatter({ points: pts, xRange:[0,100],
+      yRange:[0, Math.max.apply(null, pts.map(function(p){ return p.y; })) * 1.25 || 10],
+      cap: 96, xLabel:'Likelihood %', yLabel:'Impact on value %' }),
+    { note:'Upper right is what the thesis turns on: likely and expensive. Lower left can be '
+      + 'monitored rather than hedged.' });
+}
+
+/* The forecast against what companies have historically achieved. A plan is
+   not evidence; the base rate is the outside view, and the gap between them is
+   the question a reader should be asking. */
+function eqBaseRate(c){
+  var b = c.baseRates;
+  if(!b || (!S(b.claim) && b.historicalShare == null)) return '';
+  var share = typeof b.historicalShare === 'number' ? b.historicalShare * 100 : null;
+  var flag = '';
+  if(share != null){
+    flag = share < 25
+      ? '<b class="neg">Fewer than one company in four has managed this.</b> The forecast needs the '
+        + 'reason this company is the exception, not merely the reason it is good.'
+      : share < 50
+        ? '<b>Roughly one company in three has managed this.</b> The claim is achievable but not the '
+          + 'default outcome.'
+        : '<b class="pos">Most companies attempting this have managed it.</b> The base rate supports '
+          + 'the forecast rather than arguing with it.';
+  }
+  return tbl(['','Reading'], [
+    { cells:['The claim', e(S(b.claim))] },
+    { cells:['How often it has happened', share == null ? '—' : n(share,0) + '% of comparable cases'] },
+    { cells:['Basis', '<span class="mut">' + e(S(b.source)) + '</span>'] }
+  ]) + (flag ? '<p class="note">' + flag + '</p>' : '');
+}
+
+/* Accounting checks as a traffic light. The forensic score says how many
+   passed; this says which ones, so a reader can see whether the failures are
+   the ones that matter to them. */
+function eqTrafficLights(c){
+  var f = c.forensic;
+  if(!f || !f.available) return '';
+  var flags = arr(f.flags);
+  var severe = arr(f.severeFlags);
+  if(!flags.length && !severe.length) return '';
+  var dot = function(kind){
+    var col = kind === 'severe' ? 'var(--red)' : kind === 'flag' ? 'var(--gold)' : 'var(--green)';
+    return '<span style="display:inline-block;width:2.4mm;height:2.4mm;border-radius:50%;'
+      + 'background:' + col + ';margin-right:1.6mm;vertical-align:middle"></span>';
+  };
+  var seen = {};
+  var rows = [];
+  severe.forEach(function(x){
+    var t = S(x.label || x.name || x.check || x);
+    if(!t || seen[t]) return; seen[t] = 1;
+    rows.push({ cells:[ dot('severe') + '<b>' + e(t) + '</b>',
+      '<span class="neg">Severe</span>', '<span class="mut">' + e(S(x.detail || x.evidence)) + '</span>' ] });
+  });
+  flags.forEach(function(x){
+    var t = S(x.label || x.name || x.check || x);
+    if(!t || seen[t]) return; seen[t] = 1;
+    rows.push({ cells:[ dot('flag') + e(t), 'Flagged',
+      '<span class="mut">' + e(S(x.detail || x.evidence)) + '</span>' ] });
+  });
+  if(!rows.length) return '';
+  return tbl(['Check','Reading','What was found'], rows)
+    + '<p class="note">Red is a finding severe enough to bar the company from the Top 3 on its own. '
+    + 'Amber is a finding to read before relying on the accounts. Every check not listed passed.</p>';
 }
 
 /* ROIC against the hurdle rate, year by year. The gap between the two lines is
@@ -3414,7 +3909,7 @@ function eqPeers(c, lang){
    expensive way to stand still. A table of the same numbers makes the reader
    do the subtraction. */
 function eqRoicChart(c){
-  if(!window.EQCharts) return '';
+  var K = CH_(); if(!K) return '';
   var d = arr(c.dupont).filter(function(x){ return x && x.roic != null; });
   if(d.length < 2) return '';
   var wacc = null;
@@ -3427,9 +3922,9 @@ function eqRoicChart(c){
   if(wacc != null){
     series.push({ name:'Cost of capital', values: d.map(function(){ return wacc; }), dashed:true });
   }
-  return EQCharts.figure('Return on invested capital against its cost',
+  return K.figure('Return on invested capital against its cost',
     'Company filings; cost of capital per the buildup',
-    EQCharts.lines({ categories: d.map(function(x){ return S(x.period); }), series: series }),
+    K.lines({ categories: d.map(function(x){ return S(x.period); }), series: series }),
     { note: wacc == null ? 'No cost of capital was stated, so only the return is shown.'
         : 'Where the solid line sits below the dashed one, the business is earning less on new '
           + 'capital than that capital costs.' });
@@ -3438,7 +3933,7 @@ function eqRoicChart(c){
 /* How the revenue mix has shifted. In a conglomerate the mix IS the thesis,
    and a shift is invisible in any single-year chart. */
 function eqSectorMixChart(c){
-  if(!window.EQCharts) return '';
+  var K = CH_(); if(!K) return '';
   var d = arr(c.historicalSectors);
   if(d.length < 2) return '';
   var names = [];
@@ -3450,9 +3945,9 @@ function eqSectorMixChart(c){
       var hit = arr(p0.lines).filter(function(l){ return S(l.name)===nm; })[0];
       return hit && hit.revenue != null ? hit.revenue : 0; }) };
   });
-  return EQCharts.figure('Revenue by operating line',
+  return K.figure('Revenue by operating line',
     'Company filings',
-    EQCharts.columns({ categories: d.map(function(p0){ return S(p0.period); }),
+    K.columns({ categories: d.map(function(p0){ return S(p0.period); }),
       series: series, stacked: true }),
     { note:'Each band is one operating line. What matters is how the proportions move, '
       + 'not the total height.' });
@@ -3462,7 +3957,7 @@ function eqSectorMixChart(c){
    business earns. The subject company is marked, because the comparison is the
    point and a chart that omits it makes the reader estimate. */
 function eqPeerScatter(c){
-  if(!window.EQCharts) return '';
+  var K = CH_(); if(!K) return '';
   var pr = arr(c.peers).filter(function(x){ return x && x.pe != null && x.roe != null; });
   if(pr.length < 2) return '';
   var pts = pr.map(function(x){
@@ -3471,9 +3966,12 @@ function eqPeerScatter(c){
   var xs = pts.map(function(p){ return p.x; }), ys = pts.map(function(p){ return p.y; });
   var pad = function(a){ var lo=Math.min.apply(null,a), hi=Math.max.apply(null,a);
     var g=(hi-lo)||1; return [Math.max(0, lo-g*0.2), hi+g*0.2]; };
-  return EQCharts.figure('Peers — what you pay against what the business earns',
+  return K.figure('Peers — what you pay against what the business earns',
     'Company filings and exchange data',
-    EQCharts.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
+    K.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
+      /* Half the usual height: two axes and a handful of points do not need a
+         page to say what they say. */
+      cap: 96,
       xLabel:'Return on equity %', yLabel:'P/E' }),
     { note:'Upper left is expensive for the return earned; lower right is the opposite.' });
 }
@@ -3486,20 +3984,30 @@ function eqDupont(c){
   if(!d.length) return '';
   var rows = d.map(function(x){
     var sp = x.waccSpreadPct;
-    var spCell = sp == null ? '—'
+    /* A spread of exactly zero is how a model fills a field it cannot answer —
+       ROIC is not a meaningful measure for a bank, whose "invested capital" is
+       its deposits. Printing 0.0 and then asserting that growth adds value is
+       a false statement about the business, which is worse than a gap. */
+    var known = sp != null && Number(sp) !== 0;
+    var spCell = !known ? '—'
       : '<span class="' + (sp >= 0 ? 'pos' : 'neg') + '">' + n(sp,1) + '</span>';
-    return { cells:[ e(S(x.period)), eqNum(x.netProfitMargin), eqNum(x.assetTurnover),
-      eqNum(x.financialLeverage), eqNum(x.roe), eqNum(x.roic), spCell ]};
+    return { cells:[ e(S(x.period)), ratioCell(x.netProfitMargin), ratioCell(x.assetTurnover),
+      ratioCell(x.financialLeverage), ratioCell(x.roe), ratioCell(x.roic), spCell ]};
   });
   var last = d[d.length-1];
   var note = '';
-  if(last && last.waccSpreadPct != null){
-    note = last.waccSpreadPct >= 0
-      ? '<p class="note">Return on invested capital sits ' + n(last.waccSpreadPct,1)
+  var lastSp = last && last.waccSpreadPct;
+  if(lastSp != null && Number(lastSp) !== 0){
+    note = lastSp >= 0
+      ? '<p class="note">Return on invested capital sits ' + n(lastSp,1)
         + ' points above the cost of that capital, so growth adds value.</p>'
-      : '<p class="note">Return on invested capital sits ' + n(Math.abs(last.waccSpreadPct),1)
+      : '<p class="note">Return on invested capital sits ' + n(Math.abs(lastSp),1)
         + ' points below the cost of that capital. Until that reverses, growth consumes value '
         + 'rather than creating it.</p>';
+  } else if(last && (last.roic == null || Number(last.roic) === 0)){
+    note = '<p class="note">Return on invested capital was not stated. For a lender it is not a '
+      + 'meaningful measure — the capital a bank deploys is its depositors\' — so return on '
+      + 'equity and return on assets carry the argument instead.</p>';
   }
   return tbl(['Period','Net margin %','Asset turnover','Leverage','ROE %','ROIC %','ROIC − WACC'],
     rows, { num:[1,2,3,4,5,6] }) + note;
@@ -3511,6 +4019,13 @@ function eqDupont(c){
 function eqCapitalCycle(c){
   var d = arr(c.capitalCycle);
   if(!d.length) return '';
+  /* Capital work in progress is a manufacturer's measure. A bank returns zeros
+     for it, and a table of zeros under a heading reads as a rendering fault
+     rather than as a measure that does not apply. */
+  var informative = d.some(function(x){
+    return (x.cwip != null && Number(x.cwip) !== 0)
+        || (x.cwipPctOfGrossBlock != null && Number(x.cwipPctOfGrossBlock) !== 0); });
+  if(!informative) return '';
   return tbl(['Period','CWIP','Gross block','CWIP % of gross block','Reading'], d.map(function(x){
     return { cells:[ e(S(x.period)), eqNum(x.cwip), eqNum(x.grossBlock),
       eqNum(x.cwipPctOfGrossBlock), '<span class="mut">'+e(S(x.note))+'</span>' ]};
@@ -3623,7 +4138,10 @@ function eqEsg(c, lang){
     { cells:['Social', e(S(g.social))] },
     { cells:['Governance', e(S(g.governance))] },
     { cells:['Against peers', e(S(g.versusPeers))] },
-    { cells:['Score', g.score==null?'<span class="mut">not scored</span>':n(g.score,0)] }
+    /* "not scored" on its own invites the question this line now answers. */
+    { cells:['Score', g.score==null
+        ? '<span class="mut">not scored' + (S(g.scoreBasis) ? ' — ' + e(S(g.scoreBasis)) : '') + '</span>'
+        : n(g.score,0)] }
   ]);
 }
 
@@ -5054,8 +5572,20 @@ function blocksFromBody(html){
       var ht = carry.match(/<div class="ir-grph">([\s\S]*?)<\/div>/);
       if(ht) TITLES.push({ heading: ht[1].replace(/<[^>]*>/g, '').trim() });
     }
+    /* The whole carry opens this block, not just its group heading.
+
+       Only the GRP match was kept, so anything else sitting before a section —
+       the opening narrative, a pillar bridge — was silently discarded. The
+       comment at the top of this function always said the carry belongs with
+       the first section; the code kept one substring of it. A group heading
+       still has to come last so the contents can find it, so the remainder is
+       emitted first and the heading after it. */
     var head = carry.match(GRP);
-    var open = head ? head[0] : '';
+    var groupOpen = head ? head[0] : '';
+    var rest = head ? carry.slice(0, carry.length - head[0].length) : carry;
+    /* A carry of nothing but whitespace is not content. */
+    var open = (/\S/.test(rest.replace(/<[^>]*>/g, '')) || /<(svg|table|img)/i.test(rest))
+      ? rest + groupOpen : groupOpen;
 
     var m = full.match(/<span class="no en">([^<]*)<\/span><span class="ti">([^<]*)<\/span>/);
     var title = m ? m[2].trim() : '';
@@ -5182,6 +5712,46 @@ function packDoc(p, lang, cfg){
     + '.ir-pair > .ir-rail .ir-box{ min-width:0; width:100%; }\n'
     + '.ir-pair > .ir-prose > *:first-child{ margin-top:0; }\n'
     + '.ir-pair > .ir-rail > *:first-child{ margin-top:0; }\n'
+    /* A row must never be divided by a page break. When one was, the label
+       column collapsed to its minimum width and the two halves of the row were
+       laid on top of each other — the "Evidence it exists" cell in the moat
+       table came out as a column of single letters overlapping the value
+       beside it. */
+    + '\n.ir-blk tr{ break-inside:avoid; -webkit-column-break-inside:avoid;'
+      + ' page-break-inside:avoid; }\n'
+    /* A label-and-reading table gets a fixed label column. Without one the
+       label column is sized from its content, and a long value squeezes it to
+       nothing. */
+    + '.ir-blk table.kv{ table-layout:fixed; width:100%; }\n'
+    + '.ir-blk table.kv td:first-child, .ir-blk table.kv th:first-child{'
+      + ' width:30%; overflow-wrap:anywhere; }\n'
+    /* A heading is never the last thing on a page. It used to be left behind
+       with its table on the next, which reads as a heading over nothing. */
+    + '.ir-blk .sec{ break-after:avoid; -webkit-column-break-after:avoid;'
+      + ' page-break-after:avoid; }\n'
+    + '\n.storybox{ border:0.6pt solid var(--rule); border-left:3pt solid var(--gold);'
+      + ' background:var(--paper2, transparent); padding:3mm 3.5mm; margin:3mm 0 4mm;'
+      + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
+    + '.storyh{ font-size:8.2pt; font-weight:800; letter-spacing:-.01em; margin-bottom:2mm; }\n'
+    + '.storyp{ font-size:var(--body); line-height:var(--bodyline); margin:0 0 2mm; }\n'
+    + '.storyp:last-child{ margin-bottom:0; }\n'
+    /* The pillar bridge is one line of orientation, not a box competing with
+       the pillar heading above it. */
+    + '.bridgebox{ margin:0 0 3mm; }\n'
+    /* The scenario banner is the one block on the page that must not be
+       skimmed past, so it is ruled on all four sides rather than on one. */
+    + '.scnban{ border:1.4pt solid var(--gold); padding:2.4mm 3mm; margin:0 0 3.5mm;'
+      + ' font-size:var(--body); line-height:var(--bodyline);'
+      + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
+    + '.scnban table.kv{ margin:2mm 0 1.4mm; }\n'
+    + '.scnban .mut{ font-size:6.8pt; }\n'
+    + '.bridgebox .storyp{ font-size:var(--body); line-height:var(--bodyline);'
+      + ' color:var(--ink3); font-style:italic; }\n'
+    + '\n.saybox{ border-left:2.2pt solid var(--gold); padding:1.6mm 0 1.6mm 3mm;'
+      + ' margin:2.5mm 0 3mm; break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
+    + '.sayh{ font-size:6.6pt; font-weight:800; letter-spacing:.02em; text-transform:uppercase;'
+      + ' color:var(--gold); margin-bottom:1mm; }\n'
+    + '.sayt{ font-size:var(--body); line-height:var(--bodyline); }\n'
     + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
     + '.ir-blk:last-child{ margin-bottom:0; }\n'
     + '.ir-blk table{ margin-bottom:1.5mm; font-size:var(--body); }\n'
@@ -5309,6 +5879,49 @@ function packDoc(p, lang, cfg){
        (Once the sections are consolidated into the five pillars, a single
        block will carry its own prose and its own figure, and pairing inside a
        block becomes the better seam. The CSS below serves either.) */
+    /* ---- abbreviations -------------------------------------------------
+       Financial abbreviations are capitals. They arrive in every case a
+       payload or a heading can produce — "Ebitda" from Title Case, "roe" from
+       a model writing prose, "Wacc" from a label — and a report that writes
+       EBITDA one way in a heading and another in a sentence reads as careless.
+
+       This runs over text nodes only. Touching innerHTML would rewrite tags
+       and attributes; a text node cannot damage markup. Whole words only, so
+       "Peer" never becomes "PEer" and a company called Roeder is left alone. */
+    + 'var ABBR=["EBITDA","EBIT","EPS","PAT","PBT","NII","NIM","CASA","CRAR","CRR","SLR",'
+      + '"NPA","GNPA","NNPA","PCR","LCR","NSFR","ECL","AQR","ROE","ROCE","ROIC","ROA",'
+      + '"WACC","CAGR","DCF","FCF","FCFF","FCFE","SOTP","CWIP","PEG","TSR","ARPU",'
+      + '"TAM","SAM","SOM","ESG","SEBI","RBI","NSE","BSE","IPO","GST","MSME","RAM",'
+      + '"FII","DII","ADTV","GDP","USD","INR","UPI","API","ISIN","YoY","QoQ","EV",'
+      + '"CET","MOAT"];'
+    /* P/E, P/B, EV/EBITDA and D/E carry a slash, so they need their own
+       patterns — a word boundary does not survive the slash. */
+    + 'var ABBR_SLASH=[["p/e","P/E"],["p/b","P/B"],["d/e","D/E"],["ev/ebitda","EV/EBITDA"],'
+      + '["ev/sales","EV/Sales"],["p/bv","P/BV"],["yoy","YoY"],["qoq","QoQ"]];'
+    + '(function abbrPass(){'
+      /* Tokenise into letter runs, optionally joined by one slash so P/E and
+         EV/EBITDA survive as single tokens, and look each token up whole.
+         An earlier version built a word-boundary regex from a string and
+         emitted "\\b" as a literal backspace character rather than a boundary,
+         so it silently matched nothing. Matching maximal letter runs needs no
+         escaping and cannot go wrong the same way: a token is only replaced
+         when the entire token is an abbreviation, so Roeder is left alone. */
+      + 'var up={};'
+      + 'ABBR.forEach(function(a){ up[a.toUpperCase()]=a; });'
+      + 'ABBR_SLASH.forEach(function(pr){ up[pr[0].toUpperCase()]=pr[1]; });'
+      + 'var rx=new RegExp("[A-Za-z]+(?:/[A-Za-z]+)?","g");'
+      + 'var walker=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);'
+      + 'var nodes=[], nd;'
+      + 'while((nd=walker.nextNode())) nodes.push(nd);'
+      + 'nodes.forEach(function(t){'
+        + 'var pn=t.parentNode; if(!pn) return;'
+        + 'var tag=pn.nodeName;'
+        + 'if(tag==="SCRIPT"||tag==="STYLE"||tag==="CODE"||tag==="A") return;'
+        + 'var v=t.nodeValue; if(!v || v.length>4000) return;'
+        + 'var out=v.replace(rx,function(w){ return up[w.toUpperCase()] || w; });'
+        + 'if(out!==v) t.nodeValue=out;'
+      + '});'
+    + '})();'
     + 'var PAIR_MAX_MM=118;'   /* neither half may be taller than this        */
     + 'var PAIR_MIN_MM=16;'    /* below this, stacking wastes nothing anyway  */
     + '(function pairPass(){'
@@ -5928,9 +6541,7 @@ function buildSector(p, lang){
                 n(y.ebitdaMargin,1) + '%', n(y.pat,0), n(y.epsDiluted,2), n(y.fcff,0)] };
             }), { num:[1,2,3,4,5,6] })
         + '<div class="mut" style="margin-top:1.5mm">'
-          + (m2.reconciled
-              ? 'All ' + arr(m2.checks).length + ' reconciliation checks pass across the forecast.'
-              : '<span class="neg">' + arr(m2.failedChecks).length + ' reconciliation checks fail.</span>')
+          + eqReconLine(m2)
           + ' Revenue compounds at ' + (m2.summary && m2.summary.revenueCagr != null
               ? n(m2.summary.revenueCagr,1) + '%' : 'an unstated rate')
           + '. Diluted share count ' + n(m2.dilutedShares,2) + '.</div>';
@@ -5953,6 +6564,9 @@ function buildSector(p, lang){
           ], { num:[1] })
           + arr(mo.valuation.warnings).map(function(w){
               return '<div class="note">' + e(S(w)) + '</div>'; }).join('');
+      } else if(mo.valuation && mo.valuation.reason){
+        out += '<div class="note"><b>No intrinsic value is computed here.</b> '
+          + e(S(mo.valuation.reason)) + '</div>';
       }
       if(mo.impliedGrowth && mo.impliedGrowth.available){
         out += '<div class="note"><b>What the price already assumes.</b> '
@@ -6059,8 +6673,10 @@ function buildSector(p, lang){
       + 'less than the ' + (run.noiseBand || 3) + '-point noise band share a rank, because ranking '
       + 'to one decimal would claim a precision the ratings do not have.</p>'
     + '<p>Forecasts are built by the application from operating drivers — volume, realisation, '
-      + 'margin, working capital, capital expenditure and the debt schedule — and reconciled '
-      + 'across the three statements each year. Sensitivity is run on those drivers rather than '
+      + 'margin, working capital, capital expenditure and the debt schedule — and tied across the '
+      + 'three statements each year. The base year is checked against the revenue the company '
+      + 'reported, within 2%; where it does not tie, the forecast is printed with that stated and '
+      + 'no intrinsic value is computed from it. Sensitivity is run on those drivers rather than '
       + 'on the discount rate.</p>'
     + '<p>A severe accounting, governance, promoter, solvency or data-integrity finding bars a '
       + 'company from the Top 3 whatever it scores. So does an absent forensic assessment, an '

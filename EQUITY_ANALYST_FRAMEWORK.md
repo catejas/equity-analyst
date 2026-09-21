@@ -104,7 +104,7 @@ phone rather than about the data:
      box with a copy button sitting right there. That is the whole difference
      between a payload that is easy to copy and one that is not.
   2. Put "schema" first inside the object, so the collapsed line reads
-     {"schema":"equity-analyst/4", ... } and the reader can see what it is
+     {"schema":"equity-analyst/5", ... } and the reader can see what it is
      without opening it.
 
 Put nothing after the closing fence.
@@ -1102,7 +1102,7 @@ phone rather than about the data:
      box with a copy button sitting right there. That is the whole difference
      between a payload that is easy to copy and one that is not.
   2. Put "schema" first inside the object, so the collapsed line reads
-     {"schema":"equity-analyst/4", ... } and the reader can see what it is
+     {"schema":"equity-analyst/5", ... } and the reader can see what it is
      without opening it.
 
 Put nothing after the closing fence.

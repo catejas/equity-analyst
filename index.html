@@ -348,6 +348,24 @@ select{
 .docrow .db{ display:flex; gap:6px; flex:0 0 auto; }
 .docrow .db .btn{ margin:0; font-size:.72rem; padding:7px 12px; min-height:34px; }
 .docrow.off .dn{ color:var(--mut); }
+
+/* The scenario sliders. A moved driver is marked, because the difference
+   between an assumption the research made and one the reader made is the
+   whole point of the page and cannot be left to memory. */
+.scn-drv{ padding:12px 0; border-bottom:1px solid var(--line); }
+.scn-drv:last-child{ border-bottom:0; }
+.scn-top{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.scn-lab{ font-size:.86rem; font-weight:700; }
+.scn-val{ font-size:.95rem; font-weight:800; font-variant-numeric:tabular-nums;
+  color:var(--ink); flex:0 0 auto; }
+.scn-drv.moved .scn-val{ color:var(--gold); }
+.scn-drv.moved .scn-lab::after{ content:' \2022 moved'; font-size:.7rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--gold); }
+.scn-help{ font-size:11.5px; color:var(--ink3); line-height:1.45; margin-top:5px; }
+input[type=range].scn-range{ width:100%; margin:9px 0 0; height:28px; accent-color:var(--gold);
+  background:transparent; }
+input[type=range].scn-range:disabled{ opacity:.4; }
+.note.warn{ border-color:var(--gold); }
 .grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
 .btn.xs{font-size:.72rem;padding:11px 2px;min-height:44px;letter-spacing:.01em;}
 .ico{position:relative;z-index:2;min-width:52px;min-height:44px;}
@@ -498,7 +516,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="21-09-2026.3";</script>
+<script>window.APP_BUILD="21-09-2026.10";</script>
 </head>
 <body>
 
@@ -514,6 +532,7 @@ body.previewing{overflow:hidden;}
   <nav>
     <button class="on" data-tab="sector">Sector</button>
     <button data-tab="company">Company</button>
+    <button data-tab="scenario">Scenario</button>
     <button data-tab="score">Score Card</button>
     <button data-tab="setup">Setup</button>
   </nav>
@@ -676,6 +695,39 @@ body.previewing{overflow:hidden;}
      card took the Score Card and Setup pages with it. -->
 </div>
 
+<!-- The scenario page.
+
+     Every number in a valuation rests on assumptions a reader is entitled to
+     disagree with, and until now the only thing the app let them disagree with
+     was the conclusion. The research supplies drivers; this page moves them and
+     recomputes the whole chain — forecast, free cash flow, discounted value,
+     per share — through the same engine that produced the base case, and then
+     generates the report on whatever was chosen. A report built here says at
+     the top which assumptions it is standing on. -->
+<section id="tab-scenario" class="hidden">
+  <div class="card">
+    <h2>Scenario</h2>
+    <p class="hint">Move an assumption and the valuation is rebuilt on it — the same engine,
+    the same arithmetic, a different premise. The research's own figures are never overwritten;
+    Reset returns to them. Generate the report from here and it carries the assumptions you
+    chose, stated on the page.</p>
+
+    <label for="scnCompany">Company</label>
+    <div class="selwrap"><select id="scnCompany"><option value="">&mdash; none imported &mdash;</option></select></div>
+
+    <div id="scnBase" class="note" style="margin-top:10px;"></div>
+    <div id="scnDrivers"></div>
+    <div id="scnResult"></div>
+
+    <div class="grid2" style="margin-top:12px;">
+      <button class="btn sm" id="btnScnReset" style="margin:0;">Reset to the research</button>
+      <button class="btn sm" id="btnScnPreset" style="margin:0;">Bear case</button>
+    </div>
+    <div id="scnDocs"></div>
+    <div id="scnMsg" class="note" style="margin-top:8px;"></div>
+  </div>
+</section>
+
 <section id="tab-score" class="hidden">
   <div class="card">
     <h2>Score Card</h2>
@@ -718,6 +770,35 @@ body.previewing{overflow:hidden;}
 
 <!-- ============ SETUP ============ -->
 <section id="tab-setup" class="hidden">
+  <div class="card">
+    <h2>Company And ISIN Library</h2>
+    <p class="hint">The price API is keyed by ISIN, not by ticker. This library is the app's own —
+    fetched from the exchange master and kept on this device. It is never asked for in a prompt and
+    never travels in a payload.</p>
+    <div class="hint" id="instMeta" style="margin:6px 0 8px"></div>
+    <button class="btn sm pri" id="btnInstRefresh">Update library</button>
+    <div class="hint" id="instMsg" style="margin-top:8px"></div>
+
+    <label class="tg-label" for="instSearch" style="margin-top:10px;display:block">Find a company</label>
+    <input id="instSearch" type="text" placeholder="RELIANCE, PNB, INE002A01018"
+           autocapitalize="characters" autocorrect="off" spellcheck="false" style="width:100%;margin:6px 0">
+    <div id="instList" class="hint"></div>
+
+    <details style="margin-top:10px">
+      <summary class="hint">Add one by hand</summary>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input id="instSym" type="text" placeholder="PNB" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" style="flex:1">
+        <input id="instIsin" type="text" placeholder="INE160A01022" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" style="flex:1.4">
+        <button class="btn sm" id="btnInstAdd">Add</button>
+      </div>
+      <p class="hint" style="margin-top:6px">The ISIN is printed on the exchange quote page and in
+      every annual report. Entering a wrong one returns another company's price history rather than
+      an error, so check it before saving.</p>
+    </details>
+  </div>
+
   <div class="card">
     <h2>Price Data</h2>
     <p class="hint">Two years of weekly closes are fetched when a payload arrives with a short
@@ -842,7 +923,7 @@ $$('nav button').forEach(function(b){
   b.addEventListener('click', function(){
     $$('nav button').forEach(function(x){ x.classList.remove('on'); });
     b.classList.add('on');
-    ['sector','company','score','setup'].forEach(function(t){
+    ['sector','company','scenario','score','setup'].forEach(function(t){
       var el = $('#tab-'+t); if(!el) return;
       el.classList.toggle('hidden', t !== b.dataset.tab);
       /* The import card is shared by every page, so it is put away on a tab
@@ -850,6 +931,7 @@ $$('nav button').forEach(function(b){
          holding the last payload pasted. */
       if($('#importCard')) $('#importCard').classList.add('hidden');
     });
+    if(b.dataset.tab === 'scenario'){ try{ renderScenarioPage(); }catch(e){} }
     window.scrollTo(0,0);
   });
 });
@@ -3023,6 +3105,64 @@ $('#btnDoImport').addEventListener('click', function(){
       + ' \u2014 if the paste looks complete, send this message and it can be fixed.';
   }
 });
+/* The company and ISIN library, on the Setup page.
+
+   The library is the app's own: fetched from the exchange master, stored on
+   the device, refreshed by the button. It deliberately does not go through a
+   prompt — asking a research model to supply an ISIN puts a lookup the app can
+   do itself into a payload, and a model that guesses one returns another
+   company's price history rather than an error. */
+(function(){
+  var meta = $('#instMeta'), msg = $('#instMsg'), list = $('#instList');
+  var btn = $('#btnInstRefresh'), box = $('#instSearch');
+  if(!meta || !btn) return;
+
+  function draw(){
+    if(!window.EQ || !EQ.instruments){ meta.textContent = 'The engine has not finished loading.'; return; }
+    var m = EQ.instruments.libraryMeta();
+    meta.innerHTML = m.count
+      ? '<b>' + m.count + '</b> companies · updated ' + (m.at ? dmyTime(m.at) : 'unknown')
+      : 'Empty. Tap <b>Update library</b> to fetch it from the exchange.';
+    render();
+  }
+  function render(){
+    if(!window.EQ || !EQ.instruments) return;
+    var rows = EQ.instruments.search(box ? box.value : '', 25);
+    if(!rows.length){ list.textContent = box && box.value ? 'No match.' : ''; return; }
+    list.innerHTML = rows.map(function(r){
+      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0">'
+        + '<b>' + str(r.symbol) + '</b><span class="mut">' + str(r.isin) + '</span></div>';
+    }).join('');
+  }
+  if(box) box.addEventListener('input', render);
+
+  btn.addEventListener('click', function(){
+    if(!window.EQ || !EQ.instruments){ msg.textContent = 'The engine has not finished loading.'; return; }
+    btn.disabled = true; msg.textContent = 'Fetching the exchange master…';
+    EQ.instruments.refresh().then(function(r){
+      btn.disabled = false;
+      if(r.ok){ msg.textContent = 'Updated — ' + r.count + ' companies.'; }
+      else {
+        msg.innerHTML = '<b>Could not update.</b> ' + str(r.error)
+          + (r.likelyCors ? ' Add the companies you research by hand below; each one only has to be entered once.' : '');
+      }
+      draw();
+    });
+  });
+
+  var add = $('#btnInstAdd');
+  if(add) add.addEventListener('click', function(){
+    if(!window.EQ || !EQ.instruments) return;
+    var r = EQ.instruments.put($('#instSym').value, $('#instIsin').value);
+    msg.textContent = r.ok ? ('Saved ' + r.symbol + ' — ' + r.isin) : r.error;
+    if(r.ok){ $('#instSym').value = ''; $('#instIsin').value = ''; }
+    draw();
+  });
+
+  window.addEventListener('eq:ready', draw);
+  setTimeout(draw, 400);
+})();
+
 /* The price-provider diagnostic, run from inside the app.
 
    Whether either API sends the CORS header a browser needs cannot be settled
@@ -3937,10 +4077,10 @@ function fillPicker(sel, records, current, empty){
 function composedPayload(){
   if(!window.EQ || !window.EQ.compose) return null;
   var co = coRecord();
-  if(co && co.standalone) return co.data;
+  if(co && co.standalone) return scenarioApplyTo(co.data);
   var seg = segRecord();
-  if(seg) return EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; }));
-  return co ? co.data : null;
+  if(seg) return scenarioApplyTo(EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; })));
+  return co ? scenarioApplyTo(co.data) : null;
 }
 function composedReport(){
   var p = composedPayload(); if(!p) return null;
@@ -4132,6 +4272,175 @@ function renderCompanyPage(){
 }
 function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
 
+/* ============================== the scenario page ==================== */
+/* One piece of state: whose scenario, and which drivers were moved. A driver
+   the reader has not touched is absent, not zero — a slider resting at a value
+   nobody chose is how a scenario quietly becomes the base case. */
+var SCENARIO = { of: null, overrides: {} };
+try{
+  var _s = JSON.parse(get('eq.scenario', 'null'));
+  if(_s && typeof _s === 'object' && _s.overrides) SCENARIO = _s;
+}catch(e){}
+function scenarioSave(){ try{ set('eq.scenario', JSON.stringify(SCENARIO)); }catch(e){} }
+function scenarioActive(){ return Object.keys(SCENARIO.overrides || {}).length > 0; }
+
+/* Every company the app holds a driver model for, as the picker sees them. */
+function scenarioSubjects(){
+  var out = [], seen = {};
+  var add = function(rec){
+    var d = rec && rec.data && rec.data.companies && rec.data.companies[0];
+    if(!d || !d.model || !Array.isArray(d.model.sectors)) return;
+    var sym = String(d.symbol || d.name || '').toUpperCase();
+    if(!sym || seen[sym]) return;
+    seen[sym] = 1;
+    out.push({ id: rec.id, symbol: d.symbol || sym, name: d.name || rec.company || sym, co: d });
+  };
+  try{ companyRecords().forEach(add); }catch(e){}
+  return out;
+}
+function scenarioSubject(){
+  var subs = scenarioSubjects();
+  if(!subs.length) return null;
+  var want = String(SCENARIO.of || '').toUpperCase();
+  for(var i = 0; i < subs.length; i++){
+    if(String(subs[i].symbol).toUpperCase() === want) return subs[i];
+  }
+  return subs[0];
+}
+
+/* The payload company, with whatever the reader moved applied to it. This is
+   the one place the overrides enter the pipeline: composedPayload calls it, so
+   the report, the summary, the score card and every chart downstream are all
+   built on the same scenario rather than on some of it. */
+function scenarioApplyTo(payload){
+  if(!payload || !scenarioActive() || !window.EQ || !EQ.scenario) return payload;
+  var subj = scenarioSubject();
+  if(!subj) return payload;
+  var out;
+  try{ out = JSON.parse(JSON.stringify(payload)); }catch(e){ return payload; }
+  var list = Array.isArray(out.companies) ? out.companies : [];
+  var hit = null;
+  for(var i = 0; i < list.length; i++){
+    if(String(list[i].symbol || '').toUpperCase() === String(subj.symbol).toUpperCase()){
+      list[i] = EQ.scenario.applyOverrides(list[i], SCENARIO.overrides);
+      hit = list[i];
+      break;
+    }
+  }
+  if(!hit) return payload;
+  /* Stamped on the run so the document can say, at the top, that it is not the
+     research's own case. A scenario report that looks identical to the base
+     case is the one thing this page must never produce. */
+  out.run = out.run || {};
+  out.run.scenario = {
+    of: subj.symbol,
+    describe: EQ.scenario.describe(subj.co, SCENARIO.overrides),
+    changed: EQ.scenario.changedFrom(subj.co, SCENARIO.overrides)
+  };
+  return out;
+}
+
+function renderScenarioPage(){
+  var host = $('#scnDrivers'); if(!host) return;
+  var subs = scenarioSubjects();
+  var sel = $('#scnCompany');
+  if(sel){
+    var subj0 = scenarioSubject();
+    sel.innerHTML = subs.length
+      ? subs.map(function(s){
+          return '<option value="' + esc(s.symbol) + '"'
+            + (subj0 && s.symbol === subj0.symbol ? ' selected' : '') + '>'
+            + esc(s.name) + '</option>'; }).join('')
+      : '<option value="">— none imported —</option>';
+  }
+  var subj = scenarioSubject();
+  if(!subj){
+    $('#scnBase').innerHTML = 'Import a company with a driver model and its assumptions appear '
+      + 'here as sliders. A company whose research supplied no model has nothing to move.';
+    host.innerHTML = '';
+    if($('#scnResult')) $('#scnResult').innerHTML = '';
+    if($('#scnDocs')) $('#scnDocs').innerHTML = '';
+    return;
+  }
+  if(!window.EQ || !EQ.scenario){ host.innerHTML = ''; return; }
+
+  var base = EQ.scenario.baseValues(subj.co);
+  var pct = function(v){ return (typeof v === 'number') ? (v * 100).toFixed(2).replace(/\.00$/,'') + '%' : '—'; };
+
+  $('#scnBase').innerHTML = '<b>' + esc(subj.name) + '</b> as researched: volume '
+    + pct(base.volumeCagr) + ', realisation ' + pct(base.realisationCagr)
+    + ', gross margin ' + pct(base.grossMargin) + ', discount rate ' + pct(base.discountRate)
+    + ', terminal growth ' + pct(base.terminalGrowth) + '.';
+
+  host.innerHTML = EQ.scenario.DRIVERS.map(function(d){
+    var b = base[d.key];
+    var cur = (typeof SCENARIO.overrides[d.key] === 'number') ? SCENARIO.overrides[d.key] : b;
+    var shown = (typeof cur === 'number') ? cur * d.scale : null;
+    var moved = typeof SCENARIO.overrides[d.key] === 'number'
+      && (typeof b !== 'number' || Math.abs(SCENARIO.overrides[d.key] - b) > 1e-9);
+    return '<div class="scn-drv' + (moved ? ' moved' : '') + '">'
+      + '<div class="scn-top"><span class="scn-lab">' + esc(d.label) + '</span>'
+      + '<span class="scn-val" data-val="' + esc(d.key) + '">'
+        + (shown === null ? '—' : shown.toFixed(2).replace(/\.00$/,'') + d.unit) + '</span></div>'
+      + '<input type="range" class="scn-range" data-drv="' + esc(d.key) + '"'
+        + ' min="' + d.min + '" max="' + d.max + '" step="' + d.step + '"'
+        + ' value="' + (shown === null ? 0 : shown) + '"'
+        + (shown === null ? ' disabled' : '') + '>'
+      + '<div class="scn-help">' + esc(d.help)
+      + (moved ? ' <b>Research assumed ' + (typeof b === 'number' ? (b * d.scale).toFixed(2).replace(/\.00$/,'') + d.unit : '—') + '.</b>' : '')
+      + '</div></div>';
+  }).join('');
+
+  renderScenarioResult();
+}
+
+function renderScenarioResult(){
+  var box = $('#scnResult'); if(!box) return;
+  var subj = scenarioSubject();
+  if(!subj || !window.EQ || !EQ.scenario){ box.innerHTML = ''; return; }
+
+  var r = EQ.scenario.evaluate(subj.co, SCENARIO.overrides,
+    { buildModel: EQ.model.buildModel, dcf: EQ.valuation.dcf });
+
+  if(!r.available){
+    /* The engine's reasons are written as clause fragments, to be joined onto
+       a sentence. Dropped straight after a full stop they read as a typo. */
+    var why = String(r.reason || 'the model could not be built');
+    box.innerHTML = '<div class="note warn"><b>No value on these assumptions.</b> '
+      + esc(why.charAt(0).toUpperCase() + why.slice(1)) + '</div>';
+  } else {
+    var price = r.price;
+    var up = r.upsidePct;
+    box.innerHTML = '<div class="note"><b>On these assumptions the business is worth '
+      + (typeof r.perShare === 'number' ? r.perShare.toFixed(2) : '—') + ' a share</b>'
+      + (typeof price === 'number' ? ' against a market price of ' + price.toFixed(2) : '')
+      + (typeof up === 'number'
+          ? ', which is ' + Math.abs(up).toFixed(1) + '% ' + (up >= 0 ? 'above' : 'below') + ' it.'
+          : '.')
+      + (r.changed && r.changed.length
+          ? ' <br><b>Changed from the research:</b> ' + esc(EQ.scenario.describe(subj.co, SCENARIO.overrides))
+          : ' Nothing has been moved yet, so this is the research’s own case.')
+      + '</div>';
+  }
+
+  /* The documents are offered whenever the scenario produces a value. A report
+     off an unbuildable model would be a report with a hole where its
+     conclusion goes. */
+  if($('#scnDocs')){
+    $('#scnDocs').innerHTML = '<h2 style="margin:16px 2px 8px;">Generate on these assumptions</h2>'
+      + docRows('co' + (typeof rankOfCompany === 'function' ? (rankOfCompany(coRecordFor(subj)) || 1) : 1),
+                !!r.available);
+  }
+}
+
+/* The library record behind a scenario subject, so the document addressing —
+   which is by rank — still resolves. */
+function coRecordFor(subj){
+  try{
+    return companyRecords().filter(function(r){ return r.id === subj.id; })[0] || null;
+  }catch(e){ return null; }
+}
+
 function openImport(target){
   IMPORT_TARGET = target;
   if($('#importCard')) $('#importCard').classList.remove('hidden');
@@ -4144,13 +4453,69 @@ document.addEventListener('change', function(ev){
   if(id === 'segSel'){ fillSubSelect(); return; }
   if(id === 'segPick'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
   if(id === 'soloPick'){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
-  if(id === 'coPick'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
+  if(id === 'coPick'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); renderScenarioPage(); }
+  if(id === 'scnCompany'){
+    /* A different company is a different base case, so the overrides do not
+       travel with it: sliders set against one company's drivers mean nothing
+       against another's. */
+    SCENARIO = { of: ev.target.value, overrides: {} };
+    scenarioSave(); renderScenarioPage(); return;
+  }
   if(id === 'scSector'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
   if(id === 'scCompany'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
 });
 
+/* Sliders. `input` rather than `change`, so the value follows the thumb — a
+   number that only appears once the finger lifts makes the relationship
+   between the assumption and the answer impossible to feel. The valuation is
+   recomputed on release, because rebuilding a five-year three-statement model
+   on every pixel of travel is work nobody asked for. */
+document.addEventListener('input', function(ev){
+  var el = ev.target;
+  if(!el || !el.classList || !el.classList.contains('scn-range')) return;
+  var key = el.dataset.drv;
+  var drv = (window.EQ && EQ.scenario)
+    ? EQ.scenario.DRIVERS.filter(function(d){ return d.key === key; })[0] : null;
+  if(!drv) return;
+  var shown = Number(el.value);
+  SCENARIO.overrides[key] = shown / drv.scale;
+  var lab = document.querySelector('.scn-val[data-val="' + key + '"]');
+  if(lab) lab.textContent = shown.toFixed(2).replace(/\.00$/,'') + drv.unit;
+});
+document.addEventListener('change', function(ev){
+  if(!ev.target || !ev.target.classList || !ev.target.classList.contains('scn-range')) return;
+  scenarioSave();
+  renderScenarioPage();
+});
+
 document.addEventListener('click', function(ev){
   if(!ev.target.closest) return;
+
+  /* --- scenario page --- */
+  if(ev.target.closest('#btnScnReset')){
+    SCENARIO.overrides = {};
+    scenarioSave(); renderScenarioPage();
+    if($('#scnMsg')) $('#scnMsg').textContent = 'Back to the assumptions the research supplied.';
+    return;
+  }
+  if(ev.target.closest('#btnScnPreset')){
+    /* One worked disagreement, so the page is not a blank instrument. Growth
+       and margin down, discount rate up — the three that move together when a
+       thesis is wrong, rather than one driver flexed in isolation. */
+    var subj = scenarioSubject();
+    if(!subj || !window.EQ || !EQ.scenario){ return; }
+    var b = EQ.scenario.baseValues(subj.co);
+    var down = function(v, by){ return (typeof v === 'number') ? v - by : null; };
+    var o = {};
+    if(typeof b.volumeCagr === 'number') o.volumeCagr = Math.max(-0.2, down(b.volumeCagr, 0.04));
+    if(typeof b.grossMargin === 'number') o.grossMargin = Math.max(0, down(b.grossMargin, 0.03));
+    if(typeof b.discountRate === 'number') o.discountRate = Math.min(0.25, b.discountRate + 0.02);
+    SCENARIO.overrides = o;
+    scenarioSave(); renderScenarioPage();
+    if($('#scnMsg')) $('#scnMsg').textContent = 'Volume 4 points lower, margin 3 points lower, '
+      + 'the discount rate 2 points higher. Move any of them from there.';
+    return;
+  }
 
   /* --- sector page --- */
   if(ev.target.closest('#btnSegSearch')){

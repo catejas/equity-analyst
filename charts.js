@@ -51,8 +51,11 @@
     opts = opts || {};
     var n = opts.unnumbered ? null : nextFigure();
     return '<figure class="fig' + (opts.cls ? ' ' + opts.cls : '') + '">'
-      + (title ? '<figcaption class="fig-t">'
-          + (n ? '<b>Fig ' + n + '</b> ' : '') + esc(title) + '</figcaption>' : '')
+      /* The figure number was printed for a reader who would be told to
+         "see Fig 7". Nothing in this report ever refers to one, so the number
+         was a label with no referent taking space in front of every caption.
+         The counter still runs, because the anchor ids depend on it. */
+      + (title ? '<figcaption class="fig-t">' + esc(title) + '</figcaption>' : '')
       + '<div class="fig-b">' + body + '</div>'
       /* How to read it, for someone who does not read charts for a living.
          A figure that needs prior knowledge to interpret is decoration. */
@@ -111,9 +114,29 @@
 
     if (xLabels && xLabels.length) {
       var step = plotW / xLabels.length;
+      /* A category label wider than its slot used to be drawn anyway, so seven
+         driver names ran into each other and none of them could be read. Each
+         label is wrapped onto at most two lines at a space, and the type steps
+         down when even that will not fit. Nothing is truncated: a label that
+         has been cut is worse than one that is small. */
+      var perLine = Math.max(6, Math.floor(step / 4.6));
       xLabels.forEach(function (lab, i) {
-        g += '<text x="' + (pad.l + step * (i + 0.5)).toFixed(1) + '" y="' + (h - pad.b + 13)
-          + '" text-anchor="middle" class="ax">' + esc(lab) + '</text>';
+        var words = String(lab).split(/\s+/);
+        var lines = [''];
+        words.forEach(function (w) {
+          var tryLine = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + w : w;
+          if (tryLine.length <= perLine || !lines[lines.length - 1]) lines[lines.length - 1] = tryLine;
+          else if (lines.length < 2) lines.push(w);
+          else lines[1] = lines[1] + ' ' + w;
+        });
+        var longest = Math.max.apply(null, lines.map(function (l) { return l.length; }));
+        var fs = longest * 4.6 > step ? Math.max(4.2, (step / longest) * 4.4) : 0;
+        var cx = (pad.l + step * (i + 0.5)).toFixed(1);
+        lines.forEach(function (l, li) {
+          g += '<text x="' + cx + '" y="' + (h - pad.b + 13 + li * 7)
+            + '" text-anchor="middle" class="ax"'
+            + (fs ? ' style="font-size:' + fs.toFixed(1) + 'px"' : '') + '>' + esc(l) + '</text>';
+        });
       });
     }
     return { g: g, y: y, plotW: plotW, plotH: plotH, lo: lo, hi: hi };
@@ -126,11 +149,15 @@
      and keeps two figures in one section from filling the page between them.
      Small inline marks — sparklines — are left alone. */
   var FIG_CAP = 165;
-  function svg(w, h, inner) {
+  function svg(w, h, inner, cap) {
     var st = '';
     if (h >= 40) {
-      st = ' style="width:100%;max-width:' + Math.round(w * FIG_CAP / h)
-         + 'px;max-height:' + FIG_CAP + 'px;margin:0 auto;"';
+      /* A figure may ask for less room than the default. The peer scatter
+         reads better small: it is two axes and a handful of points, and at
+         full height it took a page to say what it says in a third of one. */
+      var capPx = (typeof cap === 'number' && cap > 40) ? cap : FIG_CAP;
+      st = ' style="width:100%;max-width:' + Math.round(w * capPx / h)
+         + 'px;max-height:' + capPx + 'px;margin:0 auto;"';
     }
     return '<svg style="overflow:hidden" viewBox="0 0 ' + w + ' ' + h + '" width="100%"' + st
       + ' preserveAspectRatio="xMidYMid meet"'
@@ -291,7 +318,7 @@
 
     return figure(opts.title, opts.source,
       svg(w, h, body) + legend([bars.name, line && line.name].filter(Boolean),
-        [bars.color || C.navy, (line && line.color) || C.gold]));
+        [bars.color || C.navy, (line && line.color) || C.gold]), { note: opts.note, cap: opts.cap });
   }
 
   /* ---------------------------------------------------------- waterfall */
@@ -326,7 +353,7 @@
         + '" text-anchor="middle" class="ax">' + esc(fitLabel(p.it.label || '', step, 8)) + '</text>';
     });
 
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
   }
 
   /* ------------------------------------------------------ football field
@@ -374,7 +401,7 @@
         + '" text-anchor="middle" class="ax" fill="' + C.s1 + '">price ' + esc(fmt(price)) + '</text>';
     }
 
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
   }
 
   /* ------------------------------------------------------------- bullet
@@ -418,7 +445,7 @@
   function scatter(opts) {
     var pts = (opts.points || []).filter(function (p) { return p && isNum(p.x) && isNum(p.y); });
     if (!pts.length) return unavailable(opts.title, 'No points supplied.');
-    var w = 460, h = 300, pad = { l: 54, r: 16, t: 14, b: 40 };
+    var w = 460, h = 300, pad = { l: 54, r: 60, t: 14, b: 44 };
     var plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
     var xr = opts.xRange || [0, 100], yr = opts.yRange || [0, 100];
     var X = function (v) { return pad.l + ((v - xr[0]) / (xr[1] - xr[0])) * plotW; };
@@ -437,18 +464,41 @@
     body += '<rect x="' + pad.l + '" y="' + pad.t + '" width="' + plotW + '" height="' + plotH
       + '" fill="none" stroke="' + C.rule + '"/>';
 
+    /* Tick numbers. Without them this was two axis titles and some dots: the
+       reader could see that one company sat above another and had no way to
+       say by how much. */
+    var xt = niceTicks(xr[0], xr[1], 4), yt = niceTicks(yr[0], yr[1], 4);
+    xt.forEach(function (t) {
+      if (t < xr[0] || t > xr[1]) return;
+      body += '<text x="' + X(t).toFixed(1) + '" y="' + (h - pad.b + 12)
+        + '" text-anchor="middle" class="ax">' + esc(fmt(t)) + '</text>';
+    });
+    yt.forEach(function (t) {
+      if (t < yr[0] || t > yr[1]) return;
+      body += '<text x="' + (pad.l - 5) + '" y="' + (Y(t) + 3).toFixed(1)
+        + '" text-anchor="end" class="ax">' + esc(fmt(t)) + '</text>';
+    });
+
     pts.forEach(function (p) {
       body += '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="6" fill="'
         + (p.color || C.navy) + '" opacity="0.9"/>';
-      body += '<text x="' + X(p.x).toFixed(1) + '" y="' + (Y(p.y) + 3).toFixed(1)
-        + '" text-anchor="middle" class="ax" fill="#fff">' + esc(p.label || '') + '</text>';
+      /* The name goes beside the dot, not inside it. A six-pixel circle cannot
+         hold a company name, so every label was invisible. */
+      if (p.title) {
+        var right = X(p.x) < pad.l + plotW * 0.7;
+        body += '<text x="' + (X(p.x) + (right ? 9 : -9)).toFixed(1) + '" y="' + (Y(p.y) + 3).toFixed(1)
+          + '" text-anchor="' + (right ? 'start' : 'end') + '" class="ax">' + esc(p.title) + '</text>';
+      } else if (p.label) {
+        body += '<text x="' + X(p.x).toFixed(1) + '" y="' + (Y(p.y) + 3).toFixed(1)
+          + '" text-anchor="middle" class="ax" fill="#fff">' + esc(p.label) + '</text>';
+      }
     });
     body += '<text x="' + (pad.l + plotW / 2) + '" y="' + (h - 8) + '" text-anchor="middle" class="ax">'
       + esc(opts.xLabel || '') + '</text>';
     body += '<text x="14" y="' + (pad.t + plotH / 2) + '" text-anchor="middle" class="ax"'
       + ' transform="rotate(-90 14 ' + (pad.t + plotH / 2) + ')">' + esc(opts.yLabel || '') + '</text>';
 
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap), { note: opts.note });
   }
 
   /* ------------------------------------------------------------ heatgrid
@@ -474,7 +524,7 @@
     }).join('');
 
     return figure(opts.title, opts.source,
-      '<table class="heat"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>');
+      '<table class="heat"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>', { note: opts.note, cap: opts.cap });
   }
 
   function mix(a, b, t) {
@@ -510,7 +560,7 @@
     }).join('') + '</div>';
 
     return figure(opts.title, opts.source,
-      '<div class="fig-row">' + svg(w, h, body) + lg + '</div>');
+      '<div class="fig-row">' + svg(w, h, body) + lg + '</div>', { note: opts.note, cap: opts.cap });
   }
 
   /* ------------------------------------------------------------ timeline */
@@ -528,7 +578,7 @@
         + esc(fitLabel(it.when || '', pad.l - 18, 8)) + '</text>';
       body += '<text x="' + (pad.l + 12) + '" y="' + (y + 3) + '" class="ax ink">' + esc(it.label) + '</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
   }
 
   /* -------------------------------------------------------------- funnel */
@@ -549,7 +599,7 @@
       body += '<text x="' + (146 + bw).toFixed(1) + '" y="' + (y + rowH / 2 - 1) + '" class="ax ink">'
         + esc(fmt(s.value, 0)) + '</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
   }
 
   /* ---------------------------------------------------------- slope pair
@@ -576,7 +626,7 @@
       body += '<text x="' + (X(r.left) * 0 + 92) + '" y="' + (y + 18) + '" class="ax" fill="'
         + (up ? C.s5 : C.s1) + '">' + (up ? '+' : '') + esc(((r.right - r.left) / Math.abs(r.left) * 100).toFixed(1)) + '%</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body));
+    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
   }
 
   /* --------------------------------------------------------- value chain */
