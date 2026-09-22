@@ -145,17 +145,31 @@
   /* Every figure is drawn to its own viewBox, then displayed at a size the
      page can carry. A chart is an aid to a paragraph, not a poster: capping
      the rendered height at FIG_CAP and letting the width follow the aspect
-     ratio keeps a figure to roughly a fifth of the text column on every page,
+     ratio keeps a figure to roughly a sixth of the text column on every page,
      and keeps two figures in one section from filling the page between them.
-     Small inline marks — sparklines — are left alone. */
-  var FIG_CAP = 165;
+     Small inline marks — sparklines — are left alone.
+
+     Tejas: "graphs size is too big ... lots of charts and numbers but no
+     commentary of what that mean." Both halves of that are the same
+     complaint. A chart that takes a third of a page has crowded out the
+     paragraph that would say what it means, and the paragraph is the part
+     worth reading. 165px came down to 132 — a fifth off every exhibit in
+     every document — and the space bought goes to commentary. */
+  var FIG_CAP = 132;
   function svg(w, h, inner, cap) {
     var st = '';
     if (h >= 40) {
       /* A figure may ask for less room than the default. The peer scatter
          reads better small: it is two axes and a handful of points, and at
          full height it took a page to say what it says in a third of one. */
-      var capPx = (typeof cap === 'number' && cap > 40) ? cap : FIG_CAP;
+      /* A row-based exhibit — a funnel, a set of bullets, a timeline — grows
+         downwards with its item count and is already compact per row. Capping
+         its HEIGHT shrinks its width instead, so a five-step funnel came out
+         at 70% of the column while a four-step one filled it, and two charts
+         of the same kind on facing pages were different sizes. Those pass
+         cap:'rows' and keep their natural height. */
+      var capPx = (cap === 'rows') ? h
+        : (typeof cap === 'number' && cap > 40) ? cap : FIG_CAP;
       st = ' style="width:100%;max-width:' + Math.round(w * capPx / h)
          + 'px;max-height:' + capPx + 'px;margin:0 auto;"';
     }
@@ -361,7 +375,8 @@
         + '" text-anchor="middle" class="ax">' + esc(fitLabel(p.it.label || '', step, 8)) + '</text>';
     });
 
-    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap),
+      { note: opts.note, cap: opts.cap });
   }
 
   /* ------------------------------------------------------ football field
@@ -409,7 +424,8 @@
         + '" text-anchor="middle" class="ax" fill="' + C.s1 + '">price ' + esc(fmt(price)) + '</text>';
     }
 
-    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap || 'rows'),
+      { note: opts.note, cap: opts.cap });
   }
 
   /* ------------------------------------------------------------- bullet
@@ -586,7 +602,8 @@
         + esc(fitLabel(it.when || '', pad.l - 18, 8)) + '</text>';
       body += '<text x="' + (pad.l + 12) + '" y="' + (y + 3) + '" class="ax ink">' + esc(it.label) + '</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap || 'rows'),
+      { note: opts.note, cap: opts.cap });
   }
 
   /* -------------------------------------------------------------- funnel */
@@ -607,7 +624,8 @@
       body += '<text x="' + (146 + bw).toFixed(1) + '" y="' + (y + rowH / 2 - 1) + '" class="ax ink">'
         + esc(fmt(s.value, 0)) + '</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap || 'rows'),
+      { note: opts.note, cap: opts.cap });
   }
 
   /* ---------------------------------------------------------- slope pair
@@ -634,7 +652,8 @@
       body += '<text x="' + (X(r.left) * 0 + 92) + '" y="' + (y + 18) + '" class="ax" fill="'
         + (up ? C.s5 : C.s1) + '">' + (up ? '+' : '') + esc(((r.right - r.left) / Math.abs(r.left) * 100).toFixed(1)) + '%</text>';
     });
-    return figure(opts.title, opts.source, svg(w, h, body), { note: opts.note, cap: opts.cap });
+    return figure(opts.title, opts.source, svg(w, h, body, opts.cap),
+      { note: opts.note, cap: opts.cap });
   }
 
   /* --------------------------------------------------------- value chain */

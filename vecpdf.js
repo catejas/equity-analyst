@@ -32,7 +32,21 @@
 (function () {
   'use strict';
 
-  var PT_W = 595.276, PT_H = 841.89;              /* A4 in points */
+  /* The sheet is the page box, not A4.
+   *
+   * The box is 210 x 263mm on purpose: shorter than A4 so that a browser's own
+   * print margins cannot make it fragment (see --pageh in render.js). Writing
+   * it onto an A4 sheet meant centring it and leaving 17mm of white above the
+   * header and below the footer on every page — margins nobody designed, on
+   * top of the margins the design already has. Tejas read that as the header
+   * and footer space being wrong, and it was.
+   *
+   * So the PDF's sheet IS the page box. Nothing is centred, nothing is padded,
+   * and the file looks on screen exactly like the design. Printing it on A4
+   * still works: the print dialogue scales it to fit, which is what it does
+   * with any page size. */
+  var MM = 72 / 25.4;
+  var PT_W = 210 * MM, PT_H = 263 * MM;
 
   /* jsPDF's built-in Helvetica is WinAnsi. Everything the reports use is in
      that set except these two, which have exact typographic stand-ins. */
@@ -564,11 +578,11 @@
 
     var first = pages[0].getBoundingClientRect();
     var k = PT_W / (first.width || 1);
-    /* The content box is shorter than A4 on purpose (see --pageh). Centre it,
-       so the sheet a reader prints has an even margin top and bottom. */
-    var offY = Math.max(0, (PT_H - first.height * k) / 2);
+    /* The sheet is the box, so there is nothing to offset by. */
+    var offY = 0;
 
-    var pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4', compress: true });
+    var pdf = new jsPDF({ orientation: 'p', unit: 'pt',
+      format: [PT_W, PT_H], compress: true });
     pdf.setLineJoin('round'); pdf.setLineCap('butt');
     var w = new Writer(pdf, first, k, offY);
 
@@ -582,7 +596,7 @@
       if (i) w.newPage();
       var r = el.getBoundingClientRect();
       w.box = r;
-      w.offY = Math.max(0, (PT_H - r.height * k) / 2);
+      w.offY = 0;
       walk(w, el, r);
     });
 
@@ -604,9 +618,20 @@
         var ar = a.getBoundingClientRect();
         var spr = sp.getBoundingClientRect();
         if (!(ar.width > 0)) continue;
+        /* Land on the SECTION, not on the top of the page it happens to be on.
+     
+           A destination given only a page number resolves to /XYZ at the top of
+           that page, so tapping "Sum of the parts" on the contents jumped to
+           page 13 and left the reader to find the heading somewhere down it.
+           The destination now carries the heading's own y, with a little
+           headroom above so it does not sit flush against the window edge. */
+        var tpr = tp.getBoundingClientRect();
+        var tr = target.getBoundingClientRect();
+        var top = Math.max(0, (tr.top - tpr.top) * k - 10);
         pdf.setPage(pageOf.get(sp));
-        pdf.link((ar.left - spr.left) * k, (ar.top - spr.top) * k + Math.max(0, (PT_H - spr.height * k) / 2),
-          ar.width * k, ar.height * k, { pageNumber: pageOf.get(tp) });
+        pdf.link((ar.left - spr.left) * k, (ar.top - spr.top) * k,
+          ar.width * k, ar.height * k,
+          { pageNumber: pageOf.get(tp), magFactor: 'XYZ', top: top });
       }
       pdf.setPage(pages.length);
     } catch (e) { /* a missing link is not worth losing the document over */ }
