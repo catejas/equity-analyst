@@ -198,8 +198,17 @@ function isPng(kind){ return kind==='visual' || kind==='scorepng'; }
 function msgEl(){
   /* Progress belongs next to the button that was pressed, so each page has its
      own line. Rendering a 41-page report with the message on another tab is why
-     the company reports looked like they were doing nothing. */
-  var pages = [['tab-score','#scDocMsg'], ['tab-company','#coMsg'], ['tab-sector','#docMsg']];
+     the company reports looked like they were doing nothing.
+
+     The caller says where. doAction is given the panel belonging to the button
+     that was tapped, and that is the answer — this used to throw it away and
+     re-derive the panel from whichever tab happened to be visible, off a list
+     that never included the Scenario page. So every word the Scenario page's
+     buttons produced went to the Sector page's line instead, and the buttons
+     looked dead twice over: disabled, and silent about it. */
+  if(MSG_EL && document.querySelector(MSG_EL)) return MSG_EL;
+  var pages = [['tab-scenario','#scnMsg'], ['tab-score','#scDocMsg'],
+               ['tab-company','#coMsg'], ['tab-sector','#docMsg']];
   for(var i=0;i<pages.length;i++){
     var sec = document.getElementById(pages[i][0]);
     if(sec && !sec.classList.contains('hidden') && document.querySelector(pages[i][1])) return pages[i][1];
@@ -371,8 +380,35 @@ function outlineOf(pages){
   return items;
 }
 
+/* The PDF a share hands over.
+ *
+ * There were two of these and both were wrong. The raster one below photographed
+ * every page and produced 9.2 MB of bitmaps; routing Share to the print preview
+ * instead fixed the file but broke the button, because opening the printer is
+ * not sharing. EQVecPdf writes the same laid-out DOM as vectors — text as text,
+ * rules as rules, the charts as curves — so there is a real File to hand to
+ * navigator.share on the first tap, at print-path size and sharpness.
+ *
+ * The raster path is kept only as a fallback, for a browser where the vector
+ * writer throws. It is never the first choice again. */
 function htmlToPdfBlob(html, sel){
   return stage(html).then(function(f){
+    var doc = f.contentDocument;
+    if(window.EQVecPdf){
+      try{
+        var blob = window.EQVecPdf.writePdf(doc, sel || '.page');
+        unstage(f);
+        return blob;
+      }catch(err){
+        try{ console.warn('vector PDF failed, falling back to raster: ' + err.message); }catch(e){}
+      }
+    }
+    return htmlToRasterPdfBlob(f, sel);
+  });
+}
+
+function htmlToRasterPdfBlob(f, sel){
+  return Promise.resolve().then(function(){
     var doc = f.contentDocument;
     var pages = Array.prototype.slice.call(doc.querySelectorAll(sel));
     var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
@@ -662,11 +698,13 @@ function doAction(kind, act, msgTarget){
      hand over, and it cost two orders of magnitude in size and every bit of
      sharpness at zoom. There is one path to a PDF now, and it is the good
      one. */
-  if((act === 'make' || act === 'share') && !isPng(kind)){
+  /* PDF opens the preview, because "make a PDF" means looking at it first.
+     Share does not: Share means the share sheet, on the tap that asked for it.
+     Routing Share through the preview was the whole of Tejas's complaint —
+     "Share button is not working directly and this is very inconvenient." */
+  if(act === 'make' && !isPng(kind)){
     var lg0 = langs[0];
-    msg(act === 'share'
-      ? 'Preview open. Tap <b>Share</b> to send it, or <b>Save as PDF</b> to keep a copy.'
-      : 'Preview open. Tap <b>Save as PDF</b>, then <b>Back</b> to return to the app.');
+    msg('Preview open. Tap <b>Save as PDF</b>, then <b>Back</b> to return to the app.');
     showPreview(buildHTML(p, kind, lg0), fileBase(p, kind, lg0) + '.pdf');
     return;
   }
@@ -779,23 +817,36 @@ document.addEventListener('DOMContentLoaded', function(){
 
     var b = t.closest && t.closest('[data-doc]');
     if(!b) return;
-    var inScore = !!(b.closest('#scDocs'));
-    doAction(b.dataset.doc, b.dataset.act, inScore ? '#scMsg' : '#docMsg');
+    /* Where the result is reported. This used to be a two-way choice — the
+       score card's box or the report page's — so the Scenario page's buttons
+       wrote into a box on a tab the user was not looking at. Every message
+       they produced, including "import a company first", went to a hidden
+       element, and the buttons read as dead. They were not dead; they were
+       mute. The panel is now found from the button itself. */
+    var host = b.closest('#scnDocs') ? '#scnMsg'
+             : b.closest('#scDocs') ? '#scMsg'
+             : b.closest('#tab-scenario') ? '#scnMsg'
+             : b.closest('#tab-score') ? '#scDocMsg'
+             : '#docMsg';
+    if(!$(host)) host = '#docMsg';
+    doAction(b.dataset.doc, b.dataset.act, host);
   });
 
   var back = $('#pvBack'), save = $('#pvSave'), shareBtn = $('#pvShare');
   if(back) back.addEventListener('click', function(){ try{ history.back(); }catch(e){ closePreview(); } });
   if(save) save.addEventListener('click', printPreview);
 
-  /* Share goes through the same print sheet as Save.
+  /* Share, from inside the preview, shares.
 
-     The Web Share API needs a File, and a browser will not hand a script the
-     PDF it just printed — so there is no way to produce the vector file and
-     pass it to navigator.share in one step. The print sheet is not a detour
-     around that: on iOS it is itself the share surface, offering Mail,
-     Messages, WhatsApp and Save to Files on the finished PDF. So Share opens
-     it and says so, rather than quietly falling back to the 9.2 MB bitmap
-     build this replaced. */
+     It used to open the print sheet, on the reasoning that a browser will not
+     hand a script the PDF it has just printed — true, but it was the wrong
+     conclusion, because the file does not have to come from the printer. The
+     preview holds the same laid-out document the printer would consume, and
+     EQVecPdf writes that to a vector PDF here in the page. So there is a File,
+     and the share sheet opens on this tap.
+
+     The printer stays reachable, on the Save as PDF button next to this one,
+     for the case where the user wants a printed copy. */
   if(shareBtn) shareBtn.addEventListener('click', function(){
     var bar = shareBtn.parentNode;
     var hint = bar.querySelector('.pvhint');
@@ -805,8 +856,31 @@ document.addEventListener('DOMContentLoaded', function(){
       hint.style.cssText = 'flex-basis:100%;font-size:11px;opacity:.75;padding:4px 2px 0;';
       bar.appendChild(hint);
     }
-    hint.textContent = 'Pick a destination in the sheet, or Save to Files and send it from there.';
-    printPreview();
+    var fr = $('#pvFrame');
+    var name = ($('#pvTitle') && $('#pvTitle').textContent) || 'report.pdf';
+    if(!window.EQVecPdf || !fr || !fr.contentDocument){
+      hint.textContent = 'Pick a destination in the sheet, or Save to Files and send it from there.';
+      printPreview();
+      return;
+    }
+    hint.textContent = 'Preparing the file…';
+    try{
+      var blob = window.EQVecPdf.writePdf(fr.contentDocument, '.page');
+      var file = new File([blob], name, { type:'application/pdf' });
+      shareNow([file], name.replace(/\.pdf$/,'')).then(function(r){
+        if(r.ok){ hint.textContent = r.cancelled ? '' : 'Shared.'; return; }
+        if(r.reason === 'gesture'){
+          hint.textContent = 'Tap Share once more to send it.';
+          PENDING_SHARE = { files:[file], title:name };
+          return;
+        }
+        download(blob, name);
+        hint.textContent = 'Sharing is not available here, so the file was saved instead.';
+      });
+    }catch(err){
+      hint.textContent = 'Pick a destination in the sheet, or Save to Files and send it from there.';
+      printPreview();
+    }
   });
   window.addEventListener('popstate', function(){ closePreview(); });
   document.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') closePreview(); });

@@ -519,7 +519,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="21-09-2026.15";</script>
+<script>window.APP_BUILD="22-09-2026.16";</script>
 </head>
 <body>
 
@@ -3092,6 +3092,22 @@ function showReview(res, raw){
     html += '<div class="rvm">' + esc(runSeg)
           + ((d.run && d.run.subSector) ? ' · ' + esc(d.run.subSector) : '')
           + ' · ' + nCo + ' companies</div>';
+    /* A company reply that answered about a different sector than the run it
+       is being imported into. Saying so here is the only cheap moment: once
+       saved, it is kept out of the study and the reader meets it as a gap in
+       the ranking instead. */
+    if(IMPORT_TARGET.kind === 'company' && EQ.compose && EQ.compose.sectorMismatch){
+      var segNow = segRecord();
+      var mm = segNow && EQ.compose.sectorMismatch(segNow.data && segNow.data.run, d.run);
+      if(mm){
+        html += '<div class="rvbad"><b>This reply is about a different sector.</b> '
+          + 'Its run block says <b>' + esc(mm.found) + '</b>'
+          + (mm.foundSub ? ' — ' + esc(mm.foundSub) : '')
+          + ', but you are importing it into the <b>' + esc(mm.expected) + '</b> run. '
+          + 'It will be kept out of that study. Re-run the company prompt from this sector, '
+          + 'or import it as an independent company instead.</div>';
+      }
+    }
     var sum2 = sumLines(d.score_lines);
     html += ' · they total <b>' + sum2.toFixed(1) + '</b>';
     if(res.statedTotal != null){
@@ -4592,13 +4608,28 @@ function renderScenarioResult(){
       + '</div>';
   }
 
-  /* The documents are offered whenever the scenario produces a value. A report
-     off an unbuildable model would be a report with a hole where its
-     conclusion goes. */
+  /* The documents are offered whenever the model rebuilt on these assumptions —
+     not only when a discounted cash flow came out of it.
+
+     Gating on r.available disabled every button on this page for every bank,
+     because a lender has no DCF by design: deposits are funding, not debt to be
+     netted off, so the engine declines the valuation and says so. The forecast
+     still moved, the statements still rebuilt, and the report is still worth
+     generating — but the Scenario page sat there with six dead buttons and no
+     explanation, which is what Tejas found. A report with no DCF is not a
+     report with a hole; it is a report that values a bank the way banks are
+     valued. */
   if($('#scnDocs')){
+    var buildable = !!(r.available || r.model);
     $('#scnDocs').innerHTML = '<h2 style="margin:16px 2px 8px;">Generate on these assumptions</h2>'
+      + (buildable && !r.available
+          ? '<p class="hint" style="margin:0 2px 8px;">The forecast rebuilt on these assumptions, so the '
+            + 'reports carry them. The discounted value is not part of this one — see above for why.</p>'
+          : '')
       + docRows('co' + (typeof rankOfCompany === 'function' ? (rankOfCompany(coRecordFor(subj)) || 1) : 1),
-                !!r.available);
+                buildable)
+      + (buildable ? '' : '<p class="hint" style="margin:8px 2px 0;">Nothing can be generated until the '
+          + 'model builds on these assumptions. Reset returns to the research’s own figures.</p>');
   }
 }
 
@@ -4811,6 +4842,7 @@ document.addEventListener('click', function(ev){
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="charts.js"></script>
 <script src="render.js"></script>
+<script src="vecpdf.js"></script>
 <script src="docs.js"></script>
 
 <div id="preview" class="hidden" role="dialog" aria-label="Document preview" aria-modal="true">
