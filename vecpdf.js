@@ -48,13 +48,51 @@
   var MM = 72 / 25.4;
   var PT_W = 210 * MM, PT_H = 263 * MM;
 
-  /* jsPDF's built-in Helvetica is WinAnsi. Everything the reports use is in
-     that set except these two, which have exact typographic stand-ins. */
+  /* Character handling.
+   *
+   * jsPDF's built-in Helvetica is encoded WinAnsi, and the rupee sign is not
+   * in WinAnsi — so every "₹" in the documents vanished from the shared PDF
+   * and a column header came out reading "Crs, except EPS in". Where
+   * vendor/fonts/eqfont.js has loaded, an embedded Helvetica-metric font with
+   * a real rupee glyph is registered and used, and nothing is substituted.
+   *
+   * Without it the sign falls back to "Rs." rather than disappearing: a
+   * missing currency symbol on a page of figures is the one outcome worse
+   * than a plain one. The others have exact typographic stand-ins either way,
+   * because a tilde reads better than a dropped glyph at 6pt. */
   var SUBS = { '≈': '~', '−': '-', ' ': ' ', ' ': ' ',
     ' ': ' ', ' ': ' ', ' ': ' ', '﻿': '' };
+  var EMBEDDED = false;
   function ascii(s) {
-    return String(s == null ? '' : s).replace(/[≈−     ﻿]/g,
-      function (c) { return SUBS[c]; });
+    var out = String(s == null ? '' : s)
+      .replace(/[≈−     ﻿]/g,
+        function (c) { return SUBS[c]; });
+    if (!EMBEDDED) out = out.replace(/₹\s?/g, 'Rs.');
+    return out;
+  }
+
+  /* Register the embedded font on a jsPDF document. Returns the family to
+     set, or 'helvetica' when the font did not load. */
+  var FAMILY = 'eqsans';
+  function useFont(pdf) {
+    EMBEDDED = false;
+    var F = window.EQFont;
+    if (!F || !F['EQSans-Regular.ttf'] || !F['EQSans-Bold.ttf']) return 'helvetica';
+    try {
+      pdf.addFileToVFS('EQSans-Regular.ttf', F['EQSans-Regular.ttf']);
+      pdf.addFont('EQSans-Regular.ttf', FAMILY, 'normal');
+      pdf.addFileToVFS('EQSans-Bold.ttf', F['EQSans-Bold.ttf']);
+      pdf.addFont('EQSans-Bold.ttf', FAMILY, 'bold');
+      /* No italic in the subset: these documents set emphasis in weight and
+         colour, and an italic that silently fell back would be worse than
+         asking for regular in the first place. */
+      pdf.addFont('EQSans-Regular.ttf', FAMILY, 'italic');
+      pdf.addFont('EQSans-Bold.ttf', FAMILY, 'bolditalic');
+      EMBEDDED = true;
+      return FAMILY;
+    } catch (e) {
+      return 'helvetica';
+    }
   }
 
   /* --- colour -------------------------------------------------------------
@@ -102,7 +140,7 @@
     if (this._lw !== w) { this.pdf.setLineWidth(w); this._lw = w; }
   };
   Writer.prototype.font = function (style, size, space) {
-    if (this._font !== style) { this.pdf.setFont('helvetica', style); this._font = style; }
+    if (this._font !== style) { this.pdf.setFont(this.family || 'helvetica', style); this._font = style; }
     if (this._size !== size) { this.pdf.setFontSize(size); this._size = size; }
     space = space || 0;
     if (this._space !== space) { this.pdf.setCharSpace(space); this._space = space; }
@@ -583,8 +621,10 @@
 
     var pdf = new jsPDF({ orientation: 'p', unit: 'pt',
       format: [PT_W, PT_H], compress: true });
+    var family = useFont(pdf);
     pdf.setLineJoin('round'); pdf.setLineCap('butt');
     var w = new Writer(pdf, first, k, offY);
+    w.family = family;
 
     /* Every marker is inserted before anything is measured, so the one reflow
        it costs happens once rather than once per page. */

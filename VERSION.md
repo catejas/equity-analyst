@@ -26,4 +26,9 @@ behave and it is not a fault.
 
 ## Current build
 
-`2026.09.10.1` — methodology 2.0.0, payload schema 3.0.0.
+`22-09-2026.19` — methodology 2.0.0, payload schema 4.0.0, framework v5.
+
+Build 19 sets body type at 9.0pt, removes the narrowed prose measure, sizes the
+printed sheet to the page box, adds the industry intelligence engine
+(`src/core/industry.js`) and prints the full three statements for every
+nominated company in the sector report.

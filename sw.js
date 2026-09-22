@@ -2,17 +2,22 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '22-09-2026.17';
+var BUILD = '22-09-2026.19';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
-  './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './render.js', './charts.js', './sectors.js', './data/nse-instruments.json', './docs.js', './vecpdf.js', './vendor/html2canvas.min.js', './vendor/jspdf.umd.min.js',
+  './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './render.js', './charts.js', './sectors.js', './data/nse-instruments.json', './docs.js', './vecpdf.js', './vendor/html2canvas.min.js', './vendor/jspdf.umd.min.js', './vendor/fonts/eqfont.js',
   './src/engine-bridge.js',
   './src/data/store.js',
   './src/core/prices.js',
   './src/core/instruments.js',
   './src/core/commentary.js',
+  /* The arithmetic audit and the industry intelligence engine. Both are
+     imported by report.js, so a cache that holds report.js and not these
+     serves a build that cannot start offline. */
+  './src/core/audit.js',
+  './src/core/industry.js',
   './src/core/scenario.js',
   './src/core/compare.js',
   './src/core/forensic.js',

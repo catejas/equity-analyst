@@ -339,6 +339,16 @@ select{
   box-shadow:0 1px 2px rgba(0,0,0,.18);
 }
 
+/* Adding an ISIN by hand.
+
+   The symbol, the ISIN and the button were on one flex row, which on a phone
+   left the ISIN field about five characters wide for a twelve-character code —
+   you could not see what you had typed. They are stacked, full width, with the
+   button its own row beneath. */
+.instadd{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.instadd input{ width:100%; font-family:var(--mono,inherit); letter-spacing:.04em; }
+.instadd .btn{ align-self:flex-start; margin:0; }
+
 /* Document rows: one line each, the name on the left and its two buttons on
    the right. "Executive Summary" wrapped to two lines when the buttons took a
    third of the row, which for two words looks like a mistake. */
@@ -519,7 +529,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="22-09-2026.17";</script>
+<script>window.APP_BUILD="22-09-2026.19";</script>
 </head>
 <body>
 
@@ -797,16 +807,27 @@ body.previewing{overflow:hidden;}
     <label class="tg-label" for="instSearch" style="margin-top:10px;display:block">Find a company</label>
     <input id="instSearch" type="text" placeholder="RELIANCE, PNB, INE002A01018"
            autocapitalize="characters" autocorrect="off" spellcheck="false" style="width:100%;margin:6px 0">
+    <!-- The matches as a dropdown rather than a list.
+
+         Twenty-five rows of symbol-and-ISIN pushed everything below them off
+         the screen on a phone, and the list is not something anyone reads —
+         it is something they look one company up in. A select collapses to a
+         single line, opens as the platform's own picker, and shows the chosen
+         company's ISIN underneath where it can be read and copied. -->
+    <div class="selwrap" style="margin:6px 0"><select id="instPick"></select></div>
     <div id="instList" class="hint"></div>
 
     <details style="margin-top:10px">
       <summary class="hint">Add one by hand</summary>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <input id="instSym" type="text" placeholder="PNB" autocapitalize="characters"
-               autocorrect="off" spellcheck="false" style="flex:1">
-        <input id="instIsin" type="text" placeholder="INE160A01022" autocapitalize="characters"
-               autocorrect="off" spellcheck="false" style="flex:1.4">
-        <button class="btn sm" id="btnInstAdd">Add</button>
+      <!-- Three controls on one row left each of them too narrow to use: an
+           ISIN is twelve characters and the field showed about five. They are
+           stacked now, full width, with the button below. -->
+      <div class="instadd">
+        <input id="instSym" type="text" placeholder="Symbol, e.g. PNB" autocapitalize="characters"
+               autocorrect="off" spellcheck="false">
+        <input id="instIsin" type="text" placeholder="ISIN, e.g. INE160A01022" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" maxlength="12">
+        <button class="btn sm pri" id="btnInstAdd">Add to library</button>
       </div>
       <p class="hint" style="margin-top:6px">The ISIN is printed on the exchange quote page and in
       every annual report. Entering a wrong one returns another company's price history rather than
@@ -3245,16 +3266,43 @@ $('#btnDoImport').addEventListener('click', function(){
         + 'companies listed since it was made.';
     render();
   }
+  /* The matches, as a dropdown.
+  
+     This drew twenty-five rows of symbol-and-ISIN straight into the page,
+     which on a phone pushed the rest of the Setup tab off the screen. Nobody
+     reads that list; they look one company up in it. So the matches fill a
+     select, and the one that is chosen shows its ISIN underneath where it can
+     be read and copied. */
+  var pick = $('#instPick');
   function render(){
     if(!window.EQ || !EQ.instruments) return;
-    var rows = EQ.instruments.search(box ? box.value : '', 25);
-    if(!rows.length){ list.textContent = box && box.value ? 'No match.' : ''; return; }
-    list.innerHTML = rows.map(function(r){
-      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0">'
-        + '<b>' + str(r.symbol) + '</b><span class="mut">' + str(r.isin) + '</span></div>';
-    }).join('');
+    var q = box ? box.value : '';
+    var rows = EQ.instruments.search(q, 200);
+    if(pick){
+      var keep = pick.value;
+      pick.innerHTML = rows.length
+        ? rows.map(function(r){
+            return '<option value="' + esc(str(r.isin)) + '">' + esc(str(r.symbol))
+              + ' \u00b7 ' + esc(str(r.isin)) + '</option>'; }).join('')
+        : '<option value="">' + (q ? 'No match' : 'The library is empty') + '</option>';
+      /* Keep the chosen company selected while the search narrows around it. */
+      if(keep && rows.some(function(r){ return str(r.isin) === keep; })) pick.value = keep;
+      pick.disabled = !rows.length;
+    }
+    showPicked();
+  }
+  function showPicked(){
+    if(!list) return;
+    if(!pick || !pick.value){ list.textContent = ''; return; }
+    var rows = EQ.instruments.search(pick.value, 1);
+    var r = rows && rows[0];
+    list.innerHTML = r
+      ? '<b>' + esc(str(r.symbol)) + '</b> &nbsp;<span class="mut">' + esc(str(r.isin)) + '</span>'
+        + (r.name ? '<br><span class="mut">' + esc(str(r.name)) + '</span>' : '')
+      : '';
   }
   if(box) box.addEventListener('input', render);
+  if(pick) pick.addEventListener('change', showPicked);
 
   btn.addEventListener('click', function(){
     if(!window.EQ || !EQ.instruments){ msg.textContent = 'The engine has not finished loading.'; return; }
@@ -4840,6 +4888,7 @@ document.addEventListener('click', function(ev){
 <script type="module" src="src/engine-bridge.js"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/fonts/eqfont.js"></script>
 <script src="charts.js"></script>
 <script src="render.js"></script>
 <script src="vecpdf.js"></script>

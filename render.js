@@ -33,7 +33,29 @@ function e(s){ return westernDigits(S(s)).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function n(v, dp){ if(v==null||v===''||isNaN(v)) return '—';
   return Number(v).toLocaleString('en-IN',{minimumFractionDigits:dp||0,maximumFractionDigits:dp||0}); }
-function cr(v){ return v==null||isNaN(v) ? '—' : '₹'+n(v, Math.abs(v)<100?2:0)+' cr'; }
+function cr(v){ return v==null||isNaN(v) ? '—' : '₹'+n(v, Math.abs(v)<100?2:0)+' Crs'; }
+/* Money, written the way an Indian CA writes it: the rupee symbol in front of
+   the amount, and the scale after it — Crs for crore, Lacs for lakh. A bare
+   1,28,206 on a page is a number a reader has to guess the size of; ₹1,28,206
+   Crs is a figure they can check against a filing. The unit comes from the
+   run's own reporting block, so a payload stated in lakh is printed in lakh.
+
+   `unit` is the resolved unit word ('crore', 'lakh', '' for absolutes). */
+var UNIT_SHORT = { crore: 'Crs', lakh: 'Lacs', million: 'Mn', billion: 'Bn',
+                   thousand: 'K' };
+function unitShort(unit){
+  var u = String(unit == null ? '' : unit).toLowerCase();
+  return UNIT_SHORT[u] || '';
+}
+/* One money figure, with its symbol and its scale. */
+function money(v, reporting, dp){
+  if(v == null || v === '' || isNaN(v)) return '&mdash;';
+  var r = reporting || {};
+  var sym = (String(r.currency || 'INR').toUpperCase() === 'INR') ? '₹'
+    : (S(r.currency) ? S(r.currency) + ' ' : '');
+  var suffix = unitShort(r.unit);
+  return sym + n(v, dp == null ? 0 : dp) + (suffix ? ' ' + suffix : '');
+}
 function pct(v,dp){ return v==null||isNaN(v) ? '—' : Number(v).toFixed(dp==null?1:dp)+'%'; }
 function arr(a){ return Array.isArray(a) ? a : []; }
 /* Kept as a shim: with one language there is no alternate tree to look in,
@@ -578,7 +600,17 @@ var CSS = (window.EQCharts && window.EQCharts.CSS ? window.EQCharts.CSS : '') + 
 .focus2{display:grid;grid-template-columns:1fr 1fr;gap:3mm 4mm;}
 .focus2 .fig{margin:0;}
 
-@page{ size:A4; margin:0; }
+/* The sheet is the page box, not A4.
+ *
+ * Tejas: "Footer Note is placed at very high. Place it to the bottom properly."
+ * He was reading a file printed on A4 — 297mm — while the page box is 263mm,
+ * so thirty-four millimetres of white sat under the disclaimer on every sheet
+ * and the footer floated a third of the way up from the bottom edge. The box
+ * is short on purpose (see --pageh below); the mistake was leaving the SHEET
+ * at A4 anyway. Declaring the sheet at the box's own size puts the footer back
+ * where it belongs, on the bottom edge. Four millimetres of slack remain so a
+ * browser that insets the printable area a little still does not fragment. */
+@page{ size:210mm 267mm; margin:0; }
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   /* A4 is 297mm. 263mm leaves 34mm of slack — enough for a browser adding its
@@ -597,13 +629,13 @@ var CSS = (window.EQCharts && window.EQCharts.CSS ? window.EQCharts.CSS : '') + 
   --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
   /* One body size for every data block in every section, set to the size
      the verdict box uses. Sections used to each carry their own size. */
-  --body:7.4pt; --bodyline:1.45;
+  --body:9.5pt; --bodyline:1.45;
 }
 html,body{ background:#E9E7E1; }
 body{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; color:var(--ink);
-      font-size:7.0pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      font-size:9.0pt; line-height:1.42; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 body.gu{ font-family:"Noto Sans Gujarati","Shruti","Gujarati Sangam MN",Helvetica,Arial,sans-serif;
-         font-size:6.2pt; line-height:1.7; }
+         font-size:7.9pt; line-height:1.7; }
 body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-height:1.4; }
 /* THE PAGE BOX IS DELIBERATELY SHORTER THAN THE SHEET.
 
@@ -627,33 +659,33 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
 .body{ flex:1; display:flex; flex-direction:column; padding:0 15mm; overflow:hidden; }
 .rh{ display:flex; justify-content:space-between; align-items:center;
      padding:7mm 15mm 3.5mm; border-bottom:.6pt solid var(--rule); }
-.rh .l{ font-size:6.2pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
-.rh .r{ font-size:6.2pt; color:var(--ink3); letter-spacing:.05em; }
+.rh .l{ font-size:7.9pt; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--navy); }
+.rh .r{ font-size:7.9pt; color:var(--ink3); letter-spacing:.05em; }
 .ch{ margin:3mm 0 2mm; }
 .ch svg{ display:block; max-width:100%; }
 .chbars{ margin:2.5mm 0; }
-.chbar{ display:flex; align-items:center; gap:3mm; margin:1.8mm 0; font-size:6.2pt; }
+.chbar{ display:flex; align-items:center; gap:3mm; margin:1.8mm 0; font-size:7.9pt; }
 .chbar .cl{ flex:0 0 34mm; color:var(--ink2); }
 .chbar .ct{ flex:1; height:4.2mm; background:#EEF1F5; border-radius:2mm; overflow:hidden; }
 .chbar .ct i{ display:block; height:100%; border-radius:0 2mm 2mm 0; }
 .chbar .cv{ flex:0 0 16mm; text-align:right; font-weight:700; }
 .chbar.me .cl{ font-weight:800; color:var(--ink); }
-.chheat{ width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:6.2pt; }
+.chheat{ width:100%; border-collapse:collapse; margin:2.5mm 0; font-size:7.9pt; }
 .chheat th{ padding:1.8mm 2mm; text-align:left; color:var(--ink3); font-weight:700; }
 .chheat td{ padding:2.2mm 2mm; text-align:center; font-weight:700; }
-.chleg{ display:flex; flex-wrap:wrap; gap:4mm; margin-top:1.5mm; font-size:6.2pt; color:var(--ink2); }
+.chleg{ display:flex; flex-wrap:wrap; gap:4mm; margin-top:1.5mm; font-size:7.9pt; color:var(--ink2); }
 .chleg i{ display:inline-block; width:3mm; height:3mm; border-radius:1mm; margin-right:1.5mm; vertical-align:-0.3mm; }
 .sc2col{ column-count:2; column-gap:7mm; margin-top:1mm; }
 .sc2blk{ break-inside:avoid; -webkit-column-break-inside:avoid; margin-bottom:3mm; }
-.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:6.3pt;
+.sc2hd{ display:flex; justify-content:space-between; align-items:baseline; font-size:8.1pt;
         font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.05em;
         border-bottom:.7pt solid var(--navy); padding-bottom:.8mm; margin-bottom:1mm; }
-.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:7.4pt; }
+.sc2row{ display:flex; align-items:center; gap:2mm; padding:.7mm 0; font-size:9.5pt; }
 .sc2row .l{ flex:1; color:var(--ink2); line-height:1.25; }
 .sc2row .t{ flex:0 0 14mm; height:2mm; background:#EEF1F5; border-radius:1mm; overflow:hidden; }
 .sc2row .t i{ display:block; height:100%; border-radius:0 1mm 1mm 0; }
 .sc2row .v{ flex:0 0 11mm; text-align:right; font-weight:700; }
-.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:6.4pt; }
+.sc2row .v em{ font-style:normal; color:var(--ink4); font-weight:500; font-size:8.2pt; }
 .rfw{ border-top:.6pt solid var(--rule); }
 /* The notice, in full, on every page — which is what it is for.
    
@@ -664,65 +696,79 @@ body.gu .en{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; line-heigh
    was never to shorten the text, it was to set it small. At 4.9pt over two
    justified lines the whole notice costs about 4mm — a third of what it did —
    and every page carries it. */
-.rfn{ padding:1.1mm 15mm 0; font-size:4.9pt; line-height:1.28; color:var(--ink4);
+.rfn{ padding:1.1mm 15mm 0; font-size:6.3pt; line-height:1.28; color:var(--ink4);
       text-align:justify; }
-body.gu .rfn{ font-size:4.8pt; }
+body.gu .rfn{ font-size:6.1pt; }
 .rfw .rf{ border-top:0; padding-top:.6mm; }
 .rf{ display:flex; justify-content:space-between; align-items:center;
-     padding:.9mm 15mm 1.8mm; border-top:.6pt solid var(--rule); font-size:6.2pt; color:var(--ink4); }
+     padding:.9mm 15mm 1.8mm; border-top:.6pt solid var(--rule); font-size:7.9pt; color:var(--ink4); }
 .rf b{ color:var(--ink2); font-weight:700; }
-h1{ font-size:12.3pt; line-height:1.1; letter-spacing:-.025em; font-weight:700; }
+h1{ font-size:15.7pt; line-height:1.1; letter-spacing:-.025em; font-weight:700; }
 .sec{ display:flex; align-items:baseline; gap:3mm; margin:5mm 0 2.5mm; }
-.sec .no{ font-size:6.2pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
-.sec .ti{ font-size:7.2pt; font-weight:700; letter-spacing:-.01em; color:var(--navy); }
+.sec .no{ font-size:7.9pt; font-weight:800; color:var(--teal); letter-spacing:.1em; }
+.sec .ti{ font-size:9.2pt; font-weight:700; letter-spacing:-.01em; color:var(--navy); }
 .sec .ln{ flex:1; height:.6pt; background:var(--rule); }
-.lead{ font-size:7.4pt; line-height:1.55; color:var(--ink2); }
+.lead{ font-size:9.5pt; line-height:1.55; color:var(--ink2); }
 body.gu .lead{ line-height:1.75; }
-.mut{ font-size:6.2pt; color:var(--ink3); line-height:1.4; }
+.mut{ font-size:7.9pt; color:var(--ink3); line-height:1.4; }
 body.gu .mut{ line-height:1.65; }
-.eyebrow{ font-size:6.6pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
+.eyebrow{ font-size:8.4pt; font-weight:800; letter-spacing:.19em; text-transform:uppercase; color:var(--teal); }
 body.gu .eyebrow{ letter-spacing:.06em; }
 /* Contents. A rule under the heading, the section number in gold, leader dots,
    the page number right-aligned. Without these the rows rendered as bare blue
    links with the number running straight into the next title. */
 .ir-toc{ margin:0; }
-.toc-h{ font-size:9.0pt; font-weight:700; color:var(--navy); margin:0 0 1.5mm; letter-spacing:.01em; }
-.toc-sub{ font-size:6.2pt; color:var(--ink3); margin:0 0 5mm; padding-bottom:2.5mm; border-bottom:1pt solid var(--navy); }
+.toc-h{ font-size:11.5pt; font-weight:700; color:var(--navy); margin:0 0 1.5mm; letter-spacing:.01em; }
+.toc-sub{ font-size:7.9pt; color:var(--ink3); margin:0 0 5mm; padding-bottom:2.5mm; border-bottom:1pt solid var(--navy); }
 .toc-row{ display:flex; align-items:baseline; gap:2.5mm; padding:2.4mm 0; border-bottom:.4pt solid var(--rule); text-decoration:none; color:var(--ink); }
-.toc-n{ font-size:6.2pt; font-weight:700; color:var(--ink4); min-width:8mm; font-variant-numeric:tabular-nums; }
-.toc-t{ font-size:6.2pt; }
+.toc-n{ font-size:7.9pt; font-weight:700; color:var(--ink4); min-width:8mm; font-variant-numeric:tabular-nums; }
+.toc-t{ font-size:7.9pt; }
 .toc-d{ flex:1; border-bottom:.4pt dotted var(--rule); transform:translateY(-1mm); }
-.toc-p{ font-size:6.2pt; font-weight:600; color:var(--ink2); font-variant-numeric:tabular-nums; min-width:8mm; text-align:right; }
+.toc-p{ font-size:7.9pt; font-weight:600; color:var(--ink2); font-variant-numeric:tabular-nums; min-width:8mm; text-align:right; }
 .srctab th:nth-child(1),.srctab td:nth-child(1){ width:auto; }
 .srctab th:nth-child(2),.srctab td:nth-child(2){ width:32mm; }
 .srctab th:nth-child(3),.srctab td:nth-child(3){ width:12mm; text-align:right; }
 .srctab th:nth-child(4),.srctab td:nth-child(4){ width:22mm; }
 .srctab th:nth-child(5),.srctab td:nth-child(5){ width:24mm; }
-table{ width:100%; border-collapse:collapse; font-size:7.4pt; }
-th{ text-align:left; font-size:6.2pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+table{ width:100%; border-collapse:collapse; font-size:9.5pt; }
+th{ text-align:left; font-size:7.9pt; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
     color:var(--ink3); padding:2mm; border-bottom:.9pt solid var(--navy); white-space:nowrap; }
-body.gu th{ font-size:6.2pt; letter-spacing:.02em; }
+body.gu th{ font-size:7.9pt; letter-spacing:.02em; }
+/* A heading that may run to two lines, and a table whose columns are declared
+   rather than inferred. A heading is nowrap by default because a wrapped
+   heading usually reads as a mistake; in a wide table it is the opposite —
+   "Growth, forecast" on one line held its column open and squeezed the column
+   that carried the sentences. These two classes are set by tbl() when the
+   caller passes headWrap or widths. */
+table.hw th{ white-space:normal; line-height:1.15; }
+table.fixw{ table-layout:fixed; }
+/* Values may break anywhere — a long unbroken figure is better broken than
+   spilling out of its column. A HEADING may not: breaking one produced
+   "READIN / G" over the reading column, which reads as a rendering fault.
+   A heading that will not fit its column wraps between words or not at all. */
+table.fixw td{ overflow-wrap:anywhere; }
+table.fixw th{ overflow-wrap:normal; word-break:normal; }
 td{ padding:1.9mm 2mm; border-bottom:.5pt solid var(--rule2); vertical-align:top; }
 td.n,th.n{ text-align:right; font-variant-numeric:tabular-nums;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 tr.hi td{ background:var(--teal2); font-weight:600; }
 tr.tot td{ border-top:.9pt solid var(--navy); font-weight:700; background:var(--panel); }
 .vb{ border:1.4pt solid var(--navy); border-radius:2mm; overflow:hidden; }
-.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:6.6pt; font-weight:800;
+.vb .h{ background:var(--navy); color:#fff; padding:2.4mm 4mm; font-size:8.4pt; font-weight:800;
         letter-spacing:.17em; text-transform:uppercase; }
-body.gu .vb .h{ letter-spacing:.05em; font-size:7.4pt; }
+body.gu .vb .h{ letter-spacing:.05em; font-size:9.5pt; }
 .vb .c{ padding:4mm; }
-.vb .v{ font-size:8.7pt; font-weight:700; letter-spacing:-.02em; line-height:1.2; color:var(--navy); }
+.vb .v{ font-size:11.1pt; font-weight:700; letter-spacing:-.02em; line-height:1.2; color:var(--navy); }
 .tiles{ display:flex; gap:2.5mm; }
 .tile{ flex:1; border:.6pt solid var(--rule); border-top:2pt solid var(--navy); border-radius:1mm;
        padding:2.6mm 3mm; background:var(--panel2); }
-.tile .k{ font-size:6.2pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
-body.gu .tile .k{ letter-spacing:.03em; font-size:6.6pt; }
-.tile .v{ font-size:9.5pt; font-weight:700; letter-spacing:-.03em; line-height:1.05; margin-top:.6mm;
+.tile .k{ font-size:7.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink3); }
+body.gu .tile .k{ letter-spacing:.03em; font-size:8.4pt; }
+.tile .v{ font-size:12.2pt; font-weight:700; letter-spacing:-.03em; line-height:1.05; margin-top:.6mm;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.tile .v small{ font-size:6.2pt; color:var(--ink4); font-weight:600; }
-.tile .s{ font-size:6.4pt; color:var(--ink2); margin-top:.4mm; }
-.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:6.2pt; }
+.tile .v small{ font-size:7.9pt; color:var(--ink4); font-weight:600; }
+.tile .s{ font-size:8.2pt; color:var(--ink2); margin-top:.4mm; }
+.bar{ display:flex; align-items:center; gap:2.5mm; margin:1.5mm 0; font-size:7.9pt; }
 .bar .bl{ flex:0 0 40mm; color:var(--ink2); }
 .bar .bt{ flex:1; height:3.1mm; background:var(--rule2); border-radius:.8mm; overflow:hidden; position:relative; }
 .bar .bf{ height:100%; background:var(--navy2); border-radius:0 .8mm .8mm 0; }
@@ -749,21 +795,21 @@ body.gu .tile .k{ letter-spacing:.03em; font-size:6.6pt; }
 .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:3mm; }
 .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:2.5mm; }
 .kv{ border:.6pt solid var(--rule); border-radius:1mm; padding:2.4mm 2.8mm; background:var(--panel2); }
-.kv .k{ font-size:6.2pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.kv .k{ font-size:7.9pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
         color:var(--ink3); line-height:1.3; min-height:6mm; }
-body.gu .kv .k{ letter-spacing:.02em; font-size:6.6pt; }
-.kv .v{ font-size:8.5pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:.5mm;
+body.gu .kv .k{ letter-spacing:.02em; font-size:8.4pt; }
+.kv .v{ font-size:10.9pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:.5mm;
         font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.kv .s{ font-size:6.2pt; color:var(--ink3); margin-top:.5mm; }
+.kv .s{ font-size:7.9pt; color:var(--ink3); margin-top:.5mm; }
 /* ---- IPO snapshot, redesigned ----------------------------------------
    A sub-heading, the fresh/OFS split as one two-colour bar, a date rail and a
    compact table. Everything here is print-safe: flat fills and borders only,
    nothing html2canvas cannot rasterise. */
-.ssub{ font-size:6.2pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+.ssub{ font-size:7.9pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
        color:var(--ink3); margin:0 0 1.4mm; }
-body.gu .ssub{ letter-spacing:.02em; font-size:6.6pt; }
+body.gu .ssub{ letter-spacing:.02em; font-size:8.4pt; }
 .fsplit{ display:flex; height:5mm; border-radius:1mm; overflow:hidden; border:.6pt solid var(--rule); }
-.fsplit i{ display:block; font-style:normal; font-size:6.2pt; font-weight:800; color:#fff;
+.fsplit i{ display:block; font-style:normal; font-size:7.9pt; font-weight:800; color:#fff;
            line-height:5mm; text-align:center; white-space:nowrap; overflow:hidden;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .fsplit i.a{ background:var(--navy2); }
@@ -778,55 +824,55 @@ body.gu .ssub{ letter-spacing:.02em; font-size:6.6pt; }
 .drail .stp:before{ left:0; right:50%; }
 .drail .stp:after{ left:50%; right:0; }
 .drail .stp:first-child:before,.drail .stp:last-child:after{ display:none; }
-.drail .stp .lb{ font-size:6.2pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+.drail .stp .lb{ font-size:7.9pt; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
                  color:var(--ink3); }
-body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:6.2pt; }
-.drail .stp .dt{ font-size:6.3pt; font-weight:700; color:var(--ink); margin-top:.4mm;
+body.gu .drail .stp .lb{ letter-spacing:.02em; font-size:7.9pt; }
+.drail .stp .dt{ font-size:8.1pt; font-weight:700; color:var(--ink); margin-top:.4mm;
                  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.drail .stp .dt small{ display:block; font-size:6.2pt; font-weight:600; color:var(--ink4);
+.drail .stp .dt small{ display:block; font-size:7.9pt; font-weight:600; color:var(--ink4);
                        letter-spacing:.04em; text-transform:uppercase; }
-.mini{ width:100%; border-collapse:collapse; font-size:6.2pt; }
-.mini th{ font-size:6.2pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+.mini{ width:100%; border-collapse:collapse; font-size:7.9pt; }
+.mini th{ font-size:7.9pt; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
           color:var(--ink3); background:var(--panel); border-bottom:.6pt solid var(--rule);
           padding:1.2mm 1.6mm; text-align:left; }
-body.gu .mini th{ letter-spacing:.02em; font-size:6.4pt; }
+body.gu .mini th{ letter-spacing:.02em; font-size:8.2pt; }
 .mini td{ padding:1.2mm 1.6mm; border-bottom:.4pt solid var(--rule2); vertical-align:middle; }
 .mini tr:last-child td{ border-bottom:0; }
 .mini .k{ color:var(--ink2); }
 .mini .n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* ---- provenance and fair value ---------------------------------------- */
-.srctag{ font-size:6.2pt; font-weight:800; color:var(--ink4); vertical-align:super;
+.srctag{ font-size:7.9pt; font-weight:800; color:var(--ink4); vertical-align:super;
          letter-spacing:.02em; margin-left:.3mm;
          font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.srckey{ font-size:6.4pt; color:var(--ink3); margin-top:2mm; }
+.srckey{ font-size:8.2pt; color:var(--ink3); margin-top:2mm; }
 .srckey b{ color:var(--ink2); }
 .srckey i{ font-style:normal; font-weight:800; color:var(--ink2); }
-.srcpill{ display:inline-block; font-size:6.2pt; font-weight:800; padding:.2mm 1.3mm;
+.srcpill{ display:inline-block; font-size:7.9pt; font-weight:800; padding:.2mm 1.3mm;
           border-radius:1mm; background:var(--panel); border:.4pt solid var(--rule);
           font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.provline{ font-size:6.2pt; color:var(--ink3); margin-top:2mm; }
+.provline{ font-size:7.9pt; color:var(--ink3); margin-top:2mm; }
 .provline b{ color:var(--ink2); font-weight:800; }
 .provline i{ font-style:normal; font-weight:800; }
 .provline .pv-yes{ color:var(--good); }
 .provline .pv-no{ color:var(--ink3); }
 .fvbox{ border:.6pt solid var(--rule); border-left:2pt solid var(--navy); border-radius:1mm;
         background:var(--panel2); padding:2mm 2.6mm; margin:2mm 0; }
-.fvbox .k{ font-size:6.2pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+.fvbox .k{ font-size:7.9pt; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
            color:var(--ink3); }
-body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
-.fvbox .v{ font-size:8.9pt; font-weight:700; letter-spacing:-.02em; margin-top:.5mm; color:var(--navy);
+body.gu .fvbox .k{ letter-spacing:.02em; font-size:8.4pt; }
+.fvbox .v{ font-size:11.4pt; font-weight:700; letter-spacing:-.02em; margin-top:.5mm; color:var(--navy);
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.fvbox .g{ display:inline-block; font-size:7.4pt; font-weight:700; margin-left:2mm; }
+.fvbox .g{ display:inline-block; font-size:9.5pt; font-weight:700; margin-left:2mm; }
 .fvbox .g.up{ color:var(--good); } .fvbox .g.dn{ color:var(--bad); }
-.fvbox .m{ font-size:6.6pt; color:var(--ink3); margin-top:.6mm; }
+.fvbox .m{ font-size:8.4pt; color:var(--ink3); margin-top:.6mm; }
 .mvrow{ display:block; border-bottom:.4pt solid var(--rule2); padding:1.4mm 0; }
 .mvrow:last-child{ border-bottom:0; }
-.mvrow .l{ font-size:6.3pt; font-weight:700; }
-.mvrow .v{ float:right; font-size:6.3pt; font-weight:700;
+.mvrow .l{ font-size:8.1pt; font-weight:700; }
+.mvrow .v{ float:right; font-size:8.1pt; font-weight:700;
            font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:6.4pt; }
-.mvrow .b{ display:block; clear:both; font-size:6.2pt; color:var(--ink3); line-height:1.4;
+.mvrow .v em{ font-style:normal; color:var(--ink4); font-size:8.2pt; }
+.mvrow .b{ display:block; clear:both; font-size:7.9pt; color:var(--ink3); line-height:1.4;
            margin-top:.3mm; }
 /* A column of the snapshot, and a table inside it that takes up the slack, so
    the two columns finish level with each other. */
@@ -837,14 +883,14 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
    — enough, in Gujarati, to push the whole section onto another page. */
 .snapcol .mini.grow{ flex:1 1 auto; }
 .snapcol .mini.grow td{ vertical-align:middle; }
-.lotb{ display:inline-block; font-size:6.2pt; font-weight:800; letter-spacing:.06em;
+.lotb{ display:inline-block; font-size:7.9pt; font-weight:800; letter-spacing:.06em;
        padding:.3mm 1.4mm; border-radius:2mm; margin-right:1.2mm;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 .lotb.r{ background:#E7F0FB; color:#1B4370; }
 .lotb.s{ background:#FCF1DA; color:#8A6208; }
 .lotb.b{ background:#EFEBFB; color:#453796; }
 .tn-good{ color:var(--good); } .tn-bad{ color:var(--bad); } .tn-warn{ color:var(--amber); }
-.pill{ display:inline-block; font-size:6.2pt; font-weight:800; letter-spacing:.07em;
+.pill{ display:inline-block; font-size:7.9pt; font-weight:800; letter-spacing:.07em;
        text-transform:uppercase; color:#fff; padding:.5mm 1.8mm; border-radius:2.5mm; white-space:nowrap;
        font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
 /* kept as aliases so any stray reference still lands on the five-step scale */
@@ -858,25 +904,25 @@ body.gu .fvbox .k{ letter-spacing:.02em; font-size:6.6pt; }
 .pie-l{ flex:0 0 52mm; }
 .pie-r{ flex:1; min-width:0; }
 .pie-r table{ margin-top:0; }
-.pie-lg{ margin-top:2mm; font-size:7.4pt; line-height:1.5; }
+.pie-lg{ margin-top:2mm; font-size:9.5pt; line-height:1.5; }
 .pie-lg div{ display:flex; align-items:baseline; gap:1.6mm; }
 .pie-lg i{ width:2.4mm; height:2.4mm; border-radius:.6mm; flex:0 0 auto; display:inline-block; }
 .pie-lg b{ flex:1; font-weight:600; color:var(--ink2); }
 /* The concentration tables were set a step down from everything else. */
-.ir-conc table{ font-size:7.4pt; }
+.ir-conc table{ font-size:9.5pt; }
 .ir-conc td, .ir-conc th{ padding-top:2.1mm; padding-bottom:2.1mm; }
 .note{ border-left:1.6pt solid var(--teal); background:var(--teal2); padding:2.4mm 3mm;
-       border-radius:0 1mm 1mm 0; font-size:6.2pt; line-height:1.5; }
+       border-radius:0 1mm 1mm 0; font-size:7.9pt; line-height:1.5; }
 body.gu .note{ line-height:1.7; }
 .note.bad{ border-left-color:var(--bad); background:#FBEEEC; }
 .note.good{ border-left-color:var(--good); background:#EDF5F0; }
 .note b{ display:block; margin-bottom:.5mm; }
 ul{ margin-left:4mm; } li{ margin:.9mm 0; }
-.blist li{ font-size:7.4pt; line-height:1.45; }
+.blist li{ font-size:9.5pt; line-height:1.45; }
 body.gu .blist li{ line-height:1.68; }
 .blist b{ color:var(--navy); }
 .donut{ width:32mm; height:32mm; border-radius:50%; flex:0 0 32mm; }
-.dlegend{ font-size:6.2pt; line-height:1.7; }
+.dlegend{ font-size:7.9pt; line-height:1.7; }
 .dlegend i{ display:inline-block; width:2.4mm; height:2.4mm; border-radius:.5mm; margin-right:1.6mm; }
 .grow{ flex:1; }
 `;
@@ -1065,14 +1111,14 @@ var FILL_AND_TOC = '<script>(function(){\n'
 + 'window.__EQ_TOC = map;\n'
 + 'var tocHost = document.querySelector("[data-toc]");\n'
 + 'if(tocHost && map.length){\n'
-+ '  var out = "<div style=@font-size:9.0pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
-+ '          + "<div style=@font-size:6.2pt;opacity:.6;margin:0 0 5mm;padding-bottom:2.5mm;border-bottom:1pt solid currentColor@>" + map.length + " sections</div>";\n'
++ '  var out = "<div style=@font-size:11.5pt;font-weight:700;margin:0 0 1.5mm@>Contents</div>"\n'
++ '          + "<div style=@font-size:7.9pt;opacity:.6;margin:0 0 5mm;padding-bottom:2.5mm;border-bottom:1pt solid currentColor@>" + map.length + " sections</div>";\n'
 + '  for(var tm = 0; tm < map.length; tm++){\n'
 + '    out += "<a href=@#" + map[tm].id + "@ style=@display:flex;align-items:baseline;gap:2.5mm;padding:2.2mm 0;border-bottom:0.4pt solid rgba(0,0,0,.14);text-decoration:none;color:inherit@>"\n'
-+ '         + "<span style=@font-size:6.2pt;font-weight:700;opacity:.55;min-width:8mm@>" + map[tm].num + "</span>"\n'
-+ '         + "<span style=@font-size:6.2pt@>" + map[tm].title + "</span>"\n'
++ '         + "<span style=@font-size:7.9pt;font-weight:700;opacity:.55;min-width:8mm@>" + map[tm].num + "</span>"\n'
++ '         + "<span style=@font-size:7.9pt@>" + map[tm].title + "</span>"\n'
 + '         + "<span style=@flex:1 1 auto;border-bottom:0.4pt dotted rgba(0,0,0,.28);transform:translateY(-1mm);min-width:6mm@></span>"\n'
-+ '         + "<span style=@font-size:6.2pt;font-weight:600;min-width:8mm;text-align:right@>" + map[tm].page + "</span></a>";\n'
++ '         + "<span style=@font-size:7.9pt;font-weight:600;min-width:8mm;text-align:right@>" + map[tm].page + "</span></a>";\n'
 + '  }\n'
 + '  tocHost.innerHTML = out.split("@").join(String.fromCharCode(34));\n'
 + '}\n'
@@ -1140,6 +1186,8 @@ function sec(no, title){
 function tblCls(opts, kv){
   var cls = [];
   if(opts && opts.cls) cls.push(opts.cls);
+  if(opts && opts.widths && opts.widths.length) cls.push('fixw');
+  if(opts && opts.headWrap) cls.push('hw');
   if(kv) cls.push('kv');
   return cls.length ? ' class="'+cls.join(' ')+'"' : '';
 }
@@ -1151,6 +1199,18 @@ function tbl(cols, rows, opts){
      width instead of letting a long value crush it. */
   var kv = opts.kv === true || (cols.length === 2 && String(cols[0]).trim() === '');
   var h = cols.map(function(c,i){ return '<th'+(num.indexOf(i)>=0?' class="n en"':'')+'>'+e(c)+'</th>'; }).join('');
+  /* Column widths, when the caller knows them.
+   *
+   * Tejas on the global peers table: "Adjust column width to allow last column
+   * What They Make more width as it has maximum data. You can put table heading
+   * in two rows to achieve this." Both halves of that are here. `opts.widths`
+   * writes a colgroup, which with table-layout:fixed is what actually decides
+   * the split; `opts.headWrap` lets a heading run to two lines instead of
+   * holding its column open to the width of "Growth, forecast" on one line. */
+  var cg = (opts.widths && opts.widths.length)
+    ? '<colgroup>' + opts.widths.map(function(w){
+        return '<col style="width:' + w + '">'; }).join('') + '</colgroup>'
+    : '';
   /* A row whose every cell is empty is a row the payload never filled. Printing
      it produced three ruled lines carrying nothing but a dash under the
      earnings-quality flags — dead space that reads as a rendering fault. Total
@@ -1178,7 +1238,7 @@ function tbl(cols, rows, opts){
      like two unrelated tables. */
   var CHUNK = (opts.chunk === false) ? Infinity : (opts.chunk || 12);
   if(live.length <= CHUNK){
-    return '<table'+tblCls(opts, kv)+'><thead><tr>'+h+'</tr></thead><tbody>'
+    return '<table'+tblCls(opts, kv)+'>'+cg+'<thead><tr>'+h+'</tr></thead><tbody>'
          + b+'</tbody></table>';
   }
   var out = '', part = 0;
@@ -1196,7 +1256,7 @@ function tbl(cols, rows, opts){
         return '<th'+(num.indexOf(j)>=0?' class="n en"':'')+'>'+e(c)
 +'</th>'; }).join('');
     }
-    out += '<table'+tblCls(opts, kv)+'><thead><tr>'+head+'</tr></thead><tbody>'
+    out += '<table'+tblCls(opts, kv)+'>'+cg+'<thead><tr>'+head+'</tr></thead><tbody>'
          + slice+'</tbody></table>';
   }
   return out;
@@ -1406,7 +1466,7 @@ function mktSize(p, lang, ind){
           + '</div><div class="v en">' + t[1] + '</div>'
           + (t[2] ? '<div class="s en">' + e(t[2]) + '</div>' : '') + '</div>';
       }).join('') + '</div>'
-    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:6.2pt">'
+    + (st ? '<div class="mut" style="margin:-1mm 0 2mm;font-size:7.9pt">'
         + e(L(lang,'mkt_study')) + ': <span class="en">' + e(st) + '</span></div>' : '');
 }
 
@@ -1787,7 +1847,7 @@ function cover(p, lang, docTitle, pages){
     '<div style="height:7mm"></div>'
     + '<div class="eyebrow en">'+EN(e(docTitle))+' &nbsp;·&nbsp; '+e(A(lang,m.ipo_type||'Mainboard'))+' &nbsp;·&nbsp; '+e(L(lang,'india'))+'</div>'
     + '<h1 class="en" style="margin-top:2mm">'+EN(e(m.company||''))+'</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:6.2pt">'+sectorHtml(p,lang)
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">'+sectorHtml(p,lang)
       + (m.sector?' &nbsp;·&nbsp; ':'')+e(dmy(m.analysis_datetime))
       /* X3 / E1 — what this analysis was built on, before anything built on it.
          The Executive Summary is a fixed four pages, so there it rides on the
@@ -1932,8 +1992,8 @@ function buildCompany(p, lang){
   var leadIn = '<div style="height:3mm"></div>'
     + '<div class="eyebrow en">' + EN(e('Company Research Report')) + ' &nbsp;·&nbsp; '
       + e(eqTitle(p)) + '</div>'
-    + '<h1 class="en" style="margin-top:1.5mm;font-size:11.2pt">' + EN(e(S(c.name) || S(c.symbol))) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:6.2pt">' + e(S(c.symbol))
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:14.3pt">' + EN(e(S(c.name) || S(c.symbol))) + '</h1>'
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">' + e(S(c.symbol))
       + (c.exchange ? ' · ' + e(S(c.exchange)) : '') + (c.sector ? ' · ' + e(S(c.sector)) : '')
       + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt)) + '</div>'
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -2020,6 +2080,10 @@ function buildCompany(p, lang){
   var three = eqThreeStatement(c, p);
   if(three) out += S3('The three statements, as reported') + three
     + eqComment(c, 'statements');
+  /* And then the measures that actually decide whether this business is good,
+     which are a property of the industry rather than of the spreadsheet. */
+  var indp = eqIndustryPanel(c, p);
+  if(indp) out += S3('What this industry is judged on') + indp;
   var dup = eqDupont(c);
   if(dup) out += S3('Return on capital, deconstructed') + dup + eqRoicChart(c);
   var ccy = eqCapitalCycle(c);
@@ -2046,7 +2110,59 @@ function buildCompany(p, lang){
         : '');
 
   var mo = c.model;
-  if(mo && mo.model && mo.model.available){
+  /* A lender's projections are not printed anywhere, for the reason the engine
+     records: the driver model charges interest below the operating line and
+     projects a loss whatever the bank does. Printing them with a caveat
+     attached is how a −₹65,547 Crs forecast for a profitable bank reached the
+     page in the first place. */
+  var projOff2 = (mo && mo.model && mo.model.projectionsUsable === false)
+    ? S(mo.model.projectionsReason) : '';
+  var lf2 = c.lenderForecast;
+  if(projOff2 && lf2 && lf2.available){
+    /* A bank's forecast, built from the bank's own reported ratios. Every one
+       of them is printed beside the projection, because a ratio held flat is
+       an assumption a reader is entitled to argue with — and a bank model that
+       quietly improves its cost-to-income is doing the analyst's job for them. */
+    var lfl = fyLabels(c, arr(lf2.years).length);
+    out += S3('Forecast')
+      + '<p class="note">' + e(projOff2) + '</p>'
+      + eqComment(c, 'lendermodel')
+      + tbl(['Assumption','Rate','Where it comes from'], arr(lf2.assumptions).map(function(a){
+          return { cells:[ e(S(a.name)), n(a.value,2) + e(S(a.unit)), e(S(a.basis)) ] };
+        }), { num:[1] })
+      + '<div style="height:2mm"></div>'
+      + tbl([(moneyUnit(p) || '') + ', except EPS in ₹'].concat(lfl.map(function(x){ return S(x); })),
+          [ ['Interest income','interestIncome',true],
+            ['Net interest income','netInterestIncome'],
+            ['Net total income','netTotalIncome'],
+            ['Operating expenses','operatingExpenses'],
+            ['Pre-provision operating profit','preProvisionOperatingProfit',true],
+            ['Provisions','provisions'],
+            ['Profit before tax','profitBeforeTax'],
+            ['Profit after tax','netProfit',true] ].map(function(d){
+            return { cells:[(d[2] ? '<b>'+d[0]+'</b>' : d[0])].concat(arr(lf2.years).map(function(y){
+              var v = isNum_(y[d[1]]) ? n(y[d[1]],0) : '&mdash;';
+              return d[2] ? '<b>'+v+'</b>' : v; })) };
+          }).concat([{ cells:['EPS diluted'].concat(arr(lf2.years).map(function(y){
+              return isNum_(y.epsDiluted) ? '₹' + n(y.epsDiluted,2) : '&mdash;'; })) }]),
+          { num:[1,2,3] })
+      + '<p class="note">' + e(S(lf2.note)) + '</p>'
+      /* And why there is still no discounted value, which the reader is owed
+         in the same place. Taking the lender branch used to skip this. */
+      + ((mo && mo.valuation && !mo.valuation.available && S(mo.valuation.reason))
+          ? '<div class="note"><b>No intrinsic value is computed here.</b> '
+            + e(S(mo.valuation.reason)) + '</div>' : '');
+  } else if(projOff2){
+    /* No forecast, and the reader is owed both reasons in the same place: why
+       the manufacturer's model does not apply, and why there is no discounted
+       value either. Printing one and not the other reads as an omission. */
+    out += S3('Forecast')
+      + '<div class="note warn"><b>No forecast is built for this company.</b> '
+      + e(projOff2) + (lf2 && lf2.reason ? ' ' + e(S(lf2.reason)) : '') + '</div>'
+      + ((mo && mo.valuation && !mo.valuation.available && S(mo.valuation.reason))
+          ? '<div class="note"><b>No intrinsic value is computed here.</b> '
+            + e(S(mo.valuation.reason)) + '</div>' : '');
+  } else if(mo && mo.model && mo.model.available){
     var m = mo.model;
     out += S3('Forecast') + eqComment(c, 'model') + figForecast(c) + figCashflow(c)
       + tbl(['Year','Revenue','EBITDA','Margin','PAT','EPS diluted','FCFF'],
@@ -2076,7 +2192,7 @@ function buildCompany(p, lang){
     if(mo.valuation && mo.valuation.available){
       out += S3('Intrinsic value') + figSensitivity(c)
         + tbl(['Measure','Value'], [
-            { cells:['Value per share', '<b>' + n(mo.valuation.perShare,2) + '</b>'] },
+            { cells:['Value per share', '<b>₹' + n(mo.valuation.perShare,2) + '</b>'] },
             { cells:['Enterprise value', n(mo.valuation.enterpriseValue,0)] },
             { cells:['In the forecast period', n(mo.valuation.pvExplicit,0)] },
             { cells:['In the terminal', n(mo.valuation.pvTerminal,0) + ' ('
@@ -2178,7 +2294,7 @@ function buildCompany(p, lang){
   }
 
   out += S3('Multibagger arithmetic') + figMultibagger(c) + eqMultibagger(c, lang);
-  out += S3('Liquidity and position sizing') + eqLiquidity(c, lang);
+  out += S3('Liquidity and position sizing') + eqLiquidity(c, lang, p);
 
   if(c.ownership && typeof c.ownership === 'object'){
     var ow = c.ownership;
@@ -2272,9 +2388,9 @@ function buildCompanyExec(p, lang){
   var leadIn = '<div style="height:3mm"></div>'
     + '<div class="eyebrow en">' + EN(e('Executive Summary')) + ' &nbsp;·&nbsp; '
       + e(eqTitle(p)) + '</div>'
-    + '<h1 class="en" style="margin-top:1.5mm;font-size:11.2pt">'
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:14.3pt">'
       + EN(e(S(c.name) || S(c.symbol))) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:6.2pt">' + e(S(c.symbol))
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">' + e(S(c.symbol))
       + (c.exchange ? ' · ' + e(S(c.exchange)) : '')
       + (c.sector ? ' · ' + e(S(c.sector)) : '')
       + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt)) + '</div>'
@@ -2425,8 +2541,15 @@ function sentence(txt, fallback){
    caption. Empty when the run did not resolve one, so nothing is asserted. */
 function moneyUnit(p){
   var r = (eqRep(p).run || {}).reporting;
-  return (r && r.label) ? S(r.label) : '';
+  if(!r) return '';
+  /* "₹ Crs" rather than "INR crore": the form a reader of Indian accounts
+     expects in a column header. */
+  var sym = (String(r.currency || 'INR').toUpperCase() === 'INR') ? '₹' : S(r.currency);
+  var sh = unitShort(r.unit);
+  return sh ? (sym + ' ' + sh) : sym;
 }
+/* The reporting block itself, for money() at a call site. */
+function rep$(p){ return (eqRep(p).run || {}).reporting || null; }
 function eqRep(p){ return (p && p.report) || {}; }
 function eqMeta(p){ return (p && p.meta) || {}; }
 function eqCo(p, i){ var l = eqRep(p).full || []; return l[Math.max(0, Math.min(l.length-1, i||0))] || {}; }
@@ -2497,7 +2620,7 @@ function eqCover(p, lang, docLabel, titleFontPt){
     + '<div class="eyebrow en">' + EN(e(docLabel)) + ' &nbsp;·&nbsp; India &nbsp;·&nbsp; listed equity</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:' + (titleFontPt || 19) + 'pt">'
       + EN(e(eqTitle(p))) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:6.2pt">'
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">'
       + e(S(run.horizon) || '') + ' &nbsp;·&nbsp; ' + e(dmy(run.payloadGeneratedAt))
       + (run.searchesRun ? ' &nbsp;·&nbsp; ' + countOf(run.searchesRun, 'search', 'searches') : '') + '</div>'
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -2816,15 +2939,16 @@ function eqScenarios(c, lang){
   var rows = arr(v.scenarios).map(function(s){
     return { cells:[
       e(S(s.scenario)),
-      s.fairValue == null ? '&mdash;' : n(s.fairValue,2),
+      s.fairValue == null ? '&mdash;' : '₹' + n(s.fairValue,2),
       s.upside && s.upside.available ? eqSignedPct(s.upside.value) : '&mdash;',
       s.probability == null ? '&mdash;' : Math.round(s.probability*100) + '%',
       '<span class="mut">' + e(S(s.assumptions)) + '</span>'
     ]};
   });
-  var out = tbl(['Scenario','Fair value','Against price','Probability','Assumptions'], rows, { num:[1,2,3] });
+  var out = tbl(['Scenario','Fair value a share','Against price','Probability','Assumptions'],
+    rows, { num:[1,2,3] });
   var kv = [];
-  if(v.currentPrice != null) kv.push(['Price', n(v.currentPrice,2) + ' ' + e(S(v.currency) || 'INR')
+  if(v.currentPrice != null) kv.push(['Price', '₹' + n(v.currentPrice,2)
     + (v.priceAsOf ? ' as at ' + e(S(v.priceAsOf)) : ' <span class="neg">undated</span>')]);
   if(v.marginOfSafety && v.marginOfSafety.available) kv.push(['Margin of safety to base', eqSignedPct(v.marginOfSafety.value)]);
   if(v.asymmetry && v.asymmetry.available && v.asymmetry.ratio != null)
@@ -2937,11 +3061,11 @@ function eqLitigation(c, lang){
 
 /* Liquidity, expressed as the thing that actually binds: how long a position
    takes to build. */
-function eqLiquidity(c, lang){
+function eqLiquidity(c, lang, p){
   var l = c.liquidity;
   if(!l || !l.available) return '<div class="note">' + e(S(l && l.reason) || 'No liquidity data supplied.') + '</div>';
   var out = tbl(['Measure','Value'], [
-    { cells:['Average daily value', n(l.avgDailyValue,0) + ' ' + e(S(l.currency))] },
+    { cells:['Average daily traded value', money(l.avgDailyValue, rep$(p))] },
     { cells:['Impact cost', l.impactCostPct == null ? '&mdash;' : n(l.impactCostPct,2) + '%'] },
     { cells:['Free float', l.freeFloatPct == null ? '&mdash;' : n(l.freeFloatPct,1) + '%'] }
   ], { num:[1] })
@@ -3062,8 +3186,10 @@ function figForecast(c){
   var K=CH_(); if(!K) return '';
   var m=c.model&&c.model.model;
   if(!m||!m.available) return '';
+  /* Not for a lender: the same projections the statements refuse. */
+  if(m.projectionsUsable === false) return '';
   var ys=arr(m.years);
-  return K.columnLine({ title:'Forecast revenue (INR Crore) and EBITDA margin (%)',
+  return K.columnLine({ title:'Forecast revenue (₹ Crs) and EBITDA margin (%)',
     source:'Driver model, built by the application',
     categories:fyLabels(c, ys.length),
     bars:{ name:'Revenue', values:ys.map(function(y){ return y.revenue; }) },
@@ -3203,8 +3329,12 @@ function eqTearSheet(p, c, lang){
 
   /* The four numbers a reader looks for first, in the order they look. */
   var tiles = [];
-  if(isNum_(price)) tiles.push({ k:'Price', v:n(price,2), s: v.priceAsOf ? 'as at ' + e(S(v.priceAsOf)) : '' });
-  if(isNum_(target)) tiles.push({ k:'Base case', v:n(target,0), s:'the research’s own base scenario' });
+  /* A share price is in rupees a share, not in the reporting unit — ₹110.15,
+     never ₹110.15 Crs. */
+  if(isNum_(price)) tiles.push({ k:'Price', v:'₹' + n(price,2),
+    s: v.priceAsOf ? 'a share, as at ' + e(S(v.priceAsOf)) : 'a share' });
+  if(isNum_(target)) tiles.push({ k:'Base case', v:'₹' + n(target,0),
+    s:'a share, on the research’s own base scenario' });
   if(isNum_(up)) tiles.push({ k:'Upside', v:(up>=0?'+':'') + n(up,1) + '%', s:'against the current price',
     cls: up>=0 ? 'ts-pos' : 'ts-neg' });
   if(isNum_(ov.score)) tiles.push({ k:'Overall', v:n(ov.score,1),
@@ -3231,20 +3361,16 @@ function eqTearSheet(p, c, lang){
      rupees, a holding in percent — so the unit belongs on the row rather than
      on the table. Bare figures are exactly what Tejas could not read: "what is
      that? amount in crore, amount in lacs or just the quantity number." */
-  var mu = moneyUnit(p);
-  addStat('Market capitalisation', isNum_(sn.marketCap)
-    ? n(sn.marketCap,0) + (mu ? ' <span class="mut">' + e(mu) + '</span>' : '') : null);
+  addStat('Market capitalisation', isNum_(sn.marketCap) ? money(sn.marketCap, rep$(p)) : null);
   /* Percentages reach the renderer in percentage points — the engine
      normalises a payload that arrived as fractions before anything reads it.
      This page multiplied by 100 on top of that, so a 29.9% free float printed
      as 2,990% and a 45% twelve-month return as +4,500%. */
   addStat('Free float', isNum_(sn.freeFloatPct) ? n(sn.freeFloatPct,1) + '%' : null);
   addStat('52-week range', (isNum_(sn.week52Low) && isNum_(sn.week52High))
-    ? n(sn.week52Low,2) + ' – ' + n(sn.week52High,2)
-      + ' <span class="mut">' + e(S((eqRep(p).run||{}).reporting
-          && (eqRep(p).run||{}).reporting.currency) || 'INR') + ' a share</span>' : null);
+    ? '₹' + n(sn.week52Low,2) + ' – ₹' + n(sn.week52High,2) : null);
   addStat('Average daily traded value', isNum_(sn.avgDailyValue)
-    ? n(sn.avgDailyValue,0) + (mu ? ' <span class="mut">' + e(mu) + '</span>' : '') : null);
+    ? money(sn.avgDailyValue, rep$(p)) : null);
   var perf = sn.performance || {};
   addStat('12-month return', isNum_(perf.m12) ? eqSignedPct(perf.m12) : null);
   addStat('Against ' + e(S(perf.benchmark || 'the index')),
@@ -3266,28 +3392,49 @@ function eqTearSheet(p, c, lang){
     var line = function(label, key, dp){
       return { cells: [e(label)].concat(rows.map(function(r){ return n(r[key], dp==null?0:dp); })) };
     };
-    /* A bank has no EBITDA.
+    /* A BANK'S OPERATING PROFIT IS DERIVED, NOT READ.
    
-       This printed "EBITDA 1,23,290" against "Revenue 1,28,206" for PNB — a
-       96% margin — because it subtracted a lender's operating costs from its
-       interest income and called the remainder EBITDA. For a bank, interest
-       expense is the cost of the product, not a financing charge below the
-       operating line, so an EBITDA that excludes it is not a margin at all.
-       The reported line a reader wants there is pre-provision operating profit,
-       which is net interest income plus fee income less operating costs, and
-       which the payload gives directly as ebit for a lender. */
+       This printed "EBITDA 1,23,290" against "Revenue 1,28,206" for PNB. I
+       relabelled it "Pre-provision operating profit" and read `ebit` instead,
+       which printed 1,22,190 — no better, because the field itself held a
+       manufacturer's formula: revenue plus other income less operating costs,
+       with the bank's interest expense left below the line. An operating
+       profit of ₹1.22 lakh crore on ₹1.28 lakh crore of interest income is not
+       a number a bank can produce, and Tejas said so twice.
+   
+       For a lender, interest expense IS the cost of the product. So the line
+       is computed from its components rather than taken from any field:
+   
+         net interest income = interest income − interest expense
+         net total income    = net interest income + other income
+         PPOP                = net total income − operating expenses
+   
+       which gives PNB ₹29,290 Crs, the figure in its filing. The engine's
+       audit derives it (src/core/audit.js) and refuses the payload's own
+       operating lines, saying so in the report's gaps. */
     var lender = !!c.lender;
-    var money = moneyUnit(p);
+    var unitTxt = moneyUnit(p);
+    var LL = {};
+    arr(c.lenderLines).forEach(function(x){ if(x && x.period) LL[S(x.period)] = x; });
+    var derived = function(label, key, dp){
+      return { cells: [e(label)].concat(rows.map(function(r){
+        var x = LL[S(r.period)];
+        return x && isNum_(x[key]) ? n(x[key], dp == null ? 0 : dp) : '&mdash;';
+      })) };
+    };
     var body = lender
-      ? [ line('Interest income', 'revenue'),
-          line('Pre-provision operating profit', 'ebit'),
+      ? [ derived('Interest income', 'interestIncome'),
+          derived('Net interest income', 'netInterestIncome'),
+          derived('Pre-provision operating profit', 'preProvisionOperatingProfit'),
           line('Profit after tax', 'netProfit'),
           line('EPS diluted', 'epsDiluted', 2) ]
       : [ line('Revenue', 'revenue'), line('EBITDA', 'ebitda'),
           line('Profit after tax', 'netProfit'), line('EPS diluted', 'epsDiluted', 2) ];
     return '<div class="ts-sec">Key financials, as reported'
-      + (money ? ' <span class="ts-unit">' + e(money) + ', except EPS</span>' : '') + '</div>'
-      + tbl(head2, body, { num:[1,2,3] });
+      + (unitTxt ? ' <span class="ts-unit">' + e(unitTxt) + ', except EPS in ₹</span>' : '') + '</div>'
+      + tbl(head2, body, { num:[1,2,3] })
+      + (lender ? '<div class="ts-note">Interest expense is deducted above the operating line, '
+          + 'as it is for any lender.</div>' : '');
   })();
 
   /* The price chart. It exists only now that the series travels with the
@@ -3320,10 +3467,10 @@ function eqTearSheet(p, c, lang){
     var rows = arr(v.scenarios).filter(function(x){ return x && isNum_(x.fairValue); });
     if(rows.length < 2) return '';
     return '<div class="ts-sec">The range</div>'
-      + tbl(['Case','Value','Probability','Against price'], rows.map(function(x){
+      + tbl(['Case','Value a share','Probability','Against price'], rows.map(function(x){
           var d = (isNum_(price) && price > 0) ? ((x.fairValue - price) / price) * 100 : null;
           return { cells: [ e(S(x.scenario).replace(/^./, function(m){ return m.toUpperCase(); })),
-            n(x.fairValue, 0),
+            '₹' + n(x.fairValue, 0),
             isNum_(x.probability) ? n(x.probability * 100, 0) + '%' : '\u2014',
             isNum_(d) ? eqSignedPct(d) : '\u2014' ] };
         }), { num:[1,2,3] });
@@ -3429,8 +3576,9 @@ function figCashflow(c){
   var K=CH_(); if(!K) return '';
   var m=c.model&&c.model.model;
   if(!m||!m.available) return '';
+  if(m.projectionsUsable === false) return '';
   var ys=arr(m.years);
-  return K.lines({ title:'Free cash flow (INR Crore) and earnings per share (INR)',
+  return K.lines({ title:'Free cash flow (₹ Crs) and earnings per share (₹)',
     source:'Driver model, built by the application',
     categories:fyLabels(c, ys.length),
     series:[{ name:'FCFF', values:ys.map(function(y){ return y.fcff; }) },
@@ -3463,7 +3611,7 @@ function figSensitivity(c){
                 ? ', so every combination on this grid does.'
                 : '; the thesis depends on which half of the grid you believe.'));
   }
-  return K.heatgrid({ title:'Value per share across discount rate and terminal growth (INR)',
+  return K.heatgrid({ title:'Value per share across discount rate and terminal growth, ₹',
     source:'Computed by the application',
     note:note,
     columns:arr(g.discountRates).map(function(r){ return (r*100).toFixed(1)+'% discount rate'; }),
@@ -3522,7 +3670,11 @@ function figRisks(c){
                label:'R'+(i+1),
                color:r.severity==='severe'?K.palette.s1:K.palette.navy2 };
     }) })
-    + '<table class="ledger"><tbody>' + rs.map(function(r,i){
+    /* The key to the plot, marked as a key. It is a table of two columns and
+       no heading on purpose — "R1 — Systemic deposit war" needs no column
+       titles — so the orphan check must not read it as a table that lost its
+       header on a page break. */
+    + '<table class="ledger nohead"><tbody>' + rs.map(function(r,i){
         return '<tr><th scope="row">R'+(i+1)+'</th><td>'+e(S(r.risk))+'</td></tr>'; }).join('')
     + '</tbody></table>';
 }
@@ -3571,8 +3723,21 @@ function focusPage(p, forCompany){
    first in the document and the rankings come after. Each one refuses when its
    block is absent, returning a stated gap rather than an empty heading. */
 
-function gapNote(what){
-  return '<div class="note"><b>Not researched.</b> ' + e(what) + '</div>';
+function gapNote(what, lead){
+  return '<div class="note"><b>' + e(lead || 'Not researched.') + '</b> ' + e(what) + '</div>';
+}
+/* The same note, for a caller that has already escaped its own pieces.
+ *
+ * gapNote escapes what it is given, which is right for a plain sentence and
+ * wrong for one assembled from e()-escaped names and an em dash: the note
+ * printed "&mdash;" and "&amp;" as text. A caller that builds markup says so
+ * and takes responsibility for escaping its own values.
+ *
+ * The lead matters too. Every gap in every document opened "Not researched.",
+ * which is true of a missing register and wrong of a metric the accounts
+ * simply do not support — so each caller now says what kind of gap it is. */
+function gapNoteRich(html, lead){
+  return '<div class="note"><b>' + e(lead || 'Not researched.') + '</b> ' + html + '</div>';
 }
 
 /* ---------- the world ---------- */
@@ -3600,33 +3765,177 @@ function eqWorld(p, lang){
   ], { num:[1] });
   out += figGlobalGrowth(rep);
   if(arr(g.forces).length) out += '<h4>What is reshaping it</h4>' + eqList(g.forces);
-  if(arr(g.peers).length){
-    out += '<h4>Global peers</h4>' + tbl(['Company','Country','Market cap','5-year return','Forward PE','Growth, past','Growth, forecast','What they make'],
-      arr(g.peers).map(function(x){
-        return { cells:[ '<span class="en">'+e(S(x.name))+'</span>', e(S(x.country)),
-          eqNum(x.marketCap,0), eqPct(x.return5y), eqNum(x.forwardPe), eqPct(x.growthPast),
-          eqPct(x.growthForecast), '<span class="mut">'+e(S(x.makes))+'</span>' ]};
-      }), { num:[2,3,4,5,6] });
+  var peers = arr(g.peers);
+  if(peers.length){
+    var scaled = peers.some(function(x){ return S(x.marketCapCurrency) || S(x.marketCapUnit); });
+    out += '<h4>Global peers</h4>'
+      + tbl(['Company','Country','Market cap','5-year return','Forward PE',
+             'Growth, past','Growth, forecast','What they make'],
+        peers.map(function(x){
+          return { cells:[ '<span class="en">'+e(S(x.name))+'</span>', e(S(x.country)),
+            peerCap(x, g), eqPct(x.return5y), eqNum(x.forwardPe), eqPct(x.growthPast),
+            eqPct(x.growthForecast), '<span class="mut">'+e(S(x.makes))+'</span>' ]};
+        }),
+        /* The last column carries whole sentences and every other column
+           carries one number, so the split is declared rather than left to the
+           browser, and the headings are allowed a second line. */
+        { num:[2,3,4,5,6], headWrap:true, chunk:false,
+          widths:['15%','9%','11%','9%','8%','9%','10%','29%'] })
+      + '<div class="mut" style="margin-top:1.5mm">Market capitalisation is stated in the '
+      + 'currency and scale each peer reports in'
+      + (scaled ? '' : ', which this run did not give &mdash; the figures below are '
+        + 'shown as supplied and have not been converted or scaled')
+      + '.</div>';
+    if(peers.length < 5){
+      out += gapNoteRich('Only ' + countOf(peers.length, 'global peer', 'global peers')
+        + ' came back. A sector is judged against the companies that do the same thing '
+        + 'elsewhere, and one comparator is an anecdote: the research brief asks for at '
+        + 'least five, spread across more than one country. Read the comparison as '
+        + 'incomplete until the rest arrive.', 'Too few peers.');
+    }
   }
   return out;
 }
+/* A peer's market capitalisation, with the currency and the scale attached.
+ *
+ * Tejas: "Market cap of J P Morgan Chase is without Currency like US $ and
+ * Million / Billion." It was printed as a bare 712, which is neither a number
+ * a reader can check nor one they can compare with the Indian names three
+ * pages earlier. The payload may state both; when it does not, nothing is
+ * invented — the figure prints with the scale marked as unstated. */
+function peerCap(x, g){
+  if(x == null || typeof x.marketCap !== 'number') return '&mdash;';
+  var cur = S(x.marketCapCurrency) || S(g && g.peerCurrency) || '';
+  var unit = S(x.marketCapUnit) || S(g && g.peerCapUnit) || '';
+  var sym = { USD:'US$', 'US$':'US$', 'USD ':'US$', EUR:'&euro;', GBP:'&pound;',
+    JPY:'&yen;', CNY:'CN&yen;', INR:'&#8377;' }[cur.toUpperCase()] || e(cur);
+  var scale = { billion:'bn', bn:'bn', billions:'bn', million:'mn', mn:'mn',
+    millions:'mn', trillion:'tn', tn:'tn', crore:'Crs', lakh:'Lacs' }[unit.toLowerCase()]
+    || (unit ? e(unit) : '');
+  var body = n(x.marketCap, 0) + (scale ? ' ' + scale : '');
+  if(!cur && !unit) return '<span class="en">' + body + '</span>'
+    + '<span class="mut"> scale not stated</span>';
+  return '<span class="en">' + (sym ? sym + ' ' : '') + body + '</span>';
+}
 
 /* ---------- macro ---------- */
+/* How old is a reading?
+ *
+ * Tejas: "You have fetched very very old data. Example, GDP 8.2 but Period is
+ * FY24. Same for Inflation, Rupee against Dollar, credit growth, capacity
+ * utilisation. Mostly data are for period FY24 or FY25. Use the latest
+ * available number." The research brief now insists on the latest print
+ * (rule 10a), but a brief can be ignored and a reader cannot tell FY24 from
+ * FY27 at a glance in a column of four-character strings. So the document
+ * works the age out for itself and says it.
+ *
+ * The period arrives as a human string, because that is how the sources write
+ * it. Four shapes cover what actually comes back:
+ *   FY26, FY2026            an Indian fiscal year, ending 31 March
+ *   Q1 FY27, Q3FY26         a fiscal quarter
+ *   Aug 2026, August 2026   a calendar month
+ *   2026-08, 06 Aug 2026    an ISO-ish or dated reading
+ * Anything else is left alone: an unparsed period is reported as unknown
+ * rather than guessed at, because a wrong age is worse than no age. */
+var MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8,
+  oct:9, nov:10, dec:11 };
+function periodEnd(period){
+  var t = String(period == null ? '' : period).trim();
+  if(!t) return null;
+  var m;
+  /* A dated reading: 6 Aug 2026, 2026-08-06. */
+  if((m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(t)))
+    return new Date(Number(m[1]), Number(m[2]), 0);
+  if((m = /(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/.exec(t))){
+    var mi = MONTHS[m[2].slice(0,3).toLowerCase()];
+    if(mi != null) return new Date(Number(m[3]), mi, Number(m[1]));
+  }
+  /* A fiscal quarter: Q1 FY27 ends 30 June of the fiscal year's first half. */
+  if((m = /^Q([1-4])\s*(?:of\s*)?FY\s*(\d{2,4})/i.exec(t))){
+    var fy = Number(m[2]); if(fy < 100) fy += 2000;
+    var q = Number(m[1]);
+    /* FY27 runs Apr 2026 to Mar 2027: Q1 ends Jun 2026, Q4 ends Mar 2027. */
+    var endMonth = [5, 8, 11, 2][q - 1];
+    var endYear = q === 4 ? fy : fy - 1;
+    return new Date(endYear, endMonth + 1, 0);
+  }
+  /* A fiscal year: FY26 ends 31 March 2026. */
+  if((m = /^FY\s*(\d{2,4})$/i.exec(t))){
+    var y = Number(m[1]); if(y < 100) y += 2000;
+    return new Date(y, 3, 0);
+  }
+  /* A calendar month: Aug 2026. */
+  if((m = /^([A-Za-z]{3,})\s+(\d{4})$/.exec(t))){
+    var ix = MONTHS[m[1].slice(0,3).toLowerCase()];
+    if(ix != null) return new Date(Number(m[2]), ix + 1, 0);
+  }
+  /* A bare calendar year. */
+  if((m = /^(19|20)\d{2}$/.exec(t))) return new Date(Number(t), 11, 31);
+  return null;
+}
+/* Months between a period and the run date, and whether that is too many.
+   Four quarters is the line: a macro reading a year old is describing a
+   different economy from the one the report is about. */
+function periodAge(period, asOf){
+  var end = periodEnd(period);
+  if(!end) return { known:false, months:null, stale:false };
+  var now = asOf instanceof Date ? asOf : (asOf ? new Date(asOf) : new Date());
+  if(isNaN(now.getTime())) now = new Date();
+  var months = (now.getFullYear() - end.getFullYear()) * 12
+    + (now.getMonth() - end.getMonth());
+  return { known:true, months:months, stale: months >= 12, warm: months >= 6 };
+}
+function runAsOf(p){
+  var rep = eqRep(p) || {};
+  return S(p && p.meta && p.meta.analysis_datetime)
+    || S(rep.run && rep.run.reportBuiltAt) || S(rep.run && rep.run.generatedAt) || null;
+}
+/* The period, with its age beside it. */
+function agedPeriod(period, asOf){
+  var t = S(period);
+  if(!t) return '<span class="neg">undated</span>';
+  var a = periodAge(t, asOf);
+  if(!a.known) return '<span class="en">' + e(t) + '</span>';
+  if(a.months < 0) return '<span class="en">' + e(t) + '</span>';
+  var how = a.months < 1 ? 'current'
+    : a.months < 12 ? a.months + (a.months === 1 ? ' month old' : ' months old')
+    : (Math.floor(a.months / 12) + (a.months < 24 ? ' year' : ' years') + ' old');
+  return '<span class="en">' + e(t) + '</span> <span class="'
+    + (a.stale ? 'neg' : 'mut') + '">' + how + '</span>';
+}
 function eqMacro(p, lang){
   var m=eqRep(p).macro;
   if(!m) return gapNote('No macro frame was supplied. Doc 01 makes Indian and global macroeconomics mandatory coverage.');
+  var asOf = runAsOf(p);
   var labels={ gdpGrowth:'GDP growth', inflation:'Inflation', policyRate:'Policy rate',
     currency:'Rupee against the dollar', creditGrowth:'Credit growth',
     capacityUtilisation:'Capacity utilisation' };
+  var stale = [];
   var rows=Object.keys(labels).filter(function(k){ return m[k]; }).map(function(k){
     var x=m[k];
+    var a = periodAge(S(x.period), asOf);
+    if(a.known && a.stale) stale.push(labels[k]);
     return { cells:[ labels[k],
       x.value==null?'&mdash;':'<b>'+n(x.value,2)+'</b>',
-      e(S(x.period)) || '<span class="neg">undated</span>',
+      agedPeriod(x.period, asOf),
       '<span class="mut">'+e(S(x.source))+'</span>' ]};
   });
   if(!rows.length) return gapNote('The macro block carried no readings.');
-  return tbl(['Measure','Reading','Period','Source'], rows, { num:[1] });
+  var out = tbl(['Measure','Reading','Period','Source'], rows, { num:[1] });
+  /* The age is beside every reading, but a block that is stale across the
+     board is a finding about the research run rather than about the economy,
+     and belongs in words. */
+  if(stale.length){
+    out += gapNoteRich('The age of these readings is the first thing to check. '
+      + plural(stale.length, 'This reading is', 'These readings are')
+      + ' more than a year old: ' + e(stale.join(', ')) + '. '
+      + 'India publishes GDP by quarter, CPI monthly, the policy rate at each '
+      + 'MPC meeting, the rupee daily and credit growth fortnightly, so a '
+      + 'reading a year old is not the latest print &mdash; it is the last one '
+      + 'the research happened to find. Re-run the sector study before leaning '
+      + 'on the cycle read that follows.', 'The macro block is stale.');
+  }
+  return out;
 }
 
 /* ---------- budget ---------- */
@@ -3707,8 +4016,10 @@ function eqGeopolitics(p, lang){
     { cells:['Supply chain concentration', e(S(g.concentration))] }
   ]);
   if(arr(g.tradeData).length){
+    var asOfG = runAsOf(p);
     out += tbl(['Flow','Partner','Value','Year','Source'], arr(g.tradeData).map(function(x){
-      return { cells:[e(S(x.flow)), e(S(x.partner)), eqNum(x.value,0), e(S(x.year)),
+      return { cells:[e(S(x.flow)), e(S(x.partner)), eqNum(x.value,0),
+        agedPeriod(x.year, asOfG),
         '<span class="mut">'+e(S(x.source))+'</span>'] }; }), { num:[2] });
   }
   return out;
@@ -3758,7 +4069,7 @@ function eqTam(p, lang){
     .filter(function(k){ return t[k[0]]; })
     .map(function(k){
       var x=t[k[0]];
-      return { cells:[ k[1], eqNum(x.value,0)+' '+e(S(x.unit)), e(S(x.year)),
+      return { cells:[ k[1], eqNum(x.value,0)+' '+e(S(x.unit)), agedPeriod(x.year, runAsOf(p)),
         '<span class="mut">'+e(S(x.basis))+'</span>', '<span class="mut">'+e(S(x.source))+'</span>' ]};
     });
   if(!rows.length) return gapNote('The market sizing block carried no figures.');
@@ -3787,25 +4098,103 @@ function eqPrograms(p, lang){
   }).join('');
 }
 
+/* ---------- the industry intelligence panel ---------- */
+/* What this industry is actually judged on.
+ *
+ * Tejas: "Include world class industry focused intelligence Engine which can
+ * understand the financial information in a more meaningful way in our
+ * analysis and make data more meaningful." The engine is src/core/industry.js;
+ * this prints what it found, and — the part that makes it worth having — what
+ * it could not find, by name, with what that figure would have told the
+ * reader. A report that silently omits ARPU and one that says "ARPU was not
+ * established, and without it the revenue line cannot be split into price and
+ * volume" are different documents. */
+function eqIndustryPanel(c, p){
+  var ind = c && c.industry;
+  if(!ind) return '';
+  var out = '<h4>' + e(S(ind.label)) + ' &mdash; the measures this industry is judged on</h4>'
+    + '<p class="storyp">' + e(S(ind.intro)) + '</p>';
+  if(arr(ind.metrics).length){
+    out += tbl(['Measure','Reading','Unit','Period','Basis','Why it matters'],
+      arr(ind.metrics).map(function(m){
+        var dp = Math.abs(m.value) >= 1000 ? 0 : 2;
+        return { cells:[ e(S(m.name)), '<b>' + n(m.value, dp) + '</b>', e(S(m.unit)),
+          agedPeriod(m.period, runAsOf(p)),
+          m.basis === 'derived'
+            ? '<span class="mut">derived from the accounts</span>'
+            : '<span class="mut">' + (e(S(m.source)) || 'stated') + '</span>',
+          '<span class="mut">' + e(S(m.why)) + '</span>' ]};
+      }),
+      { headWrap:true, num:[1],
+        widths:['20%','9%','9%','12%','14%','36%'] })
+      + '<div class="mut" style="margin-top:1.5mm">A derived figure is computed from the '
+      + 'reported accounts and can be checked against them; a stated one comes from the '
+      + 'research with its source beside it.</div>';
+  }
+  if(arr(ind.missing).length){
+    out += gapNoteRich('Not established for this company: '
+      + e(arr(ind.missing).map(function(m){ return S(m.name); }).join(', ')) + '.',
+      'What this industry is judged on, and was not measured.')
+      + tbl(['Not established','What it would have told the reader'],
+        arr(ind.missing).map(function(m){
+          return { cells:[ e(S(m.name)), '<span class="mut">' + e(S(m.why)) + '</span>' ]};
+        }), { headWrap:true, widths:['26%','74%'] });
+  }
+  return out;
+}
+
 /* ---------- competition ---------- */
+/* The naming rule, in one place.
+ *
+ * Tejas: "Populate the Market Share graph of the sector with as many players
+ * as you can. Make a Rule that the company name appears if it has more than
+ * 5% of market share." So every player the research established a share for is
+ * plotted, but only those above the line are named; the rest are one slice
+ * with a count, because eleven slices of two percent each are a colour wheel,
+ * not an exhibit. The table underneath still lists every one of them by name —
+ * the rule governs the chart, not the record. */
+var SHARE_NAMED_PCT = 5;
 function figCompetition(rep){
   var K=CH_(); var c=rep.competition; if(!K||!c||!arr(c.players).length) return '';
-  var pl=arr(c.players).filter(function(x){ return typeof x.share==='number'; });
+  var pl=arr(c.players).filter(function(x){ return typeof x.share==='number' && x.share>0; })
+    .slice().sort(function(a,b){ return b.share-a.share; });
   if(!pl.length) return '';
+  var named=pl.filter(function(x){ return x.share > SHARE_NAMED_PCT; });
+  var small=pl.filter(function(x){ return x.share <= SHARE_NAMED_PCT; });
   var known=pl.reduce(function(a,x){ return a+x.share; },0);
-  var slices=pl.map(function(x){ return { label:S(x.name), value:x.share }; });
-  if(known<99) slices.push({ label:'Everyone else', value:Math.max(0,100-known), color:K.palette.s3 });
-  return K.donut({ title:'Market share, % of the sector', source:S(pl[0].source)+', '+S(pl[0].basis)+' basis', slices:slices });
+  var slices=named.map(function(x){ return { label:S(x.name), value:x.share }; });
+  var tail=small.reduce(function(a,x){ return a+x.share; },0);
+  if(tail>0) slices.push({ label: countOf(small.length, 'player', 'players')
+    + ' below ' + SHARE_NAMED_PCT + '%', value:tail, color:K.palette.s3 });
+  if(known<99) slices.push({ label:'Unaccounted for', value:Math.max(0,100-known),
+    color:K.palette.s2 });
+  var basis=S(pl[0].basis), src=S(pl[0].source), asOf=S(pl[0].asOf);
+  return K.donut({ title:'Market share, % of the sector',
+    source:[src, basis ? basis+' basis' : '', asOf].filter(Boolean).join(', '),
+    note:'Named above ' + SHARE_NAMED_PCT + '% of the market; '
+      + (small.length ? 'the ' + countOf(small.length, 'player', 'players')
+          + ' below that line ' + plural(small.length, 'is', 'are') + ' grouped. '
+        : '')
+      + 'Every player is listed by name in the table below.',
+    slices:slices });
 }
 function eqCompetition(p, lang){
   var c=eqRep(p).competition;
   if(!c) return gapNote('No competition block was supplied, so market share has nowhere to appear.');
+  var asOf=runAsOf(p);
   var out=figCompetition(eqRep(p));
-  if(arr(c.players).length){
-    out += tbl(['Player','Listed','Share','Basis','As at','Source'], arr(c.players).map(function(x){
-      return { cells:[ e(S(x.name)), x.listed?'Yes':'No', eqPct(x.share),
-        e(S(x.basis))||'<span class="neg">not stated</span>', e(S(x.asOf)),
-        '<span class="mut">'+e(S(x.source))+'</span>' ]}; }), { num:[2] });
+  var players=arr(c.players).filter(function(x){ return x && S(x.name); })
+    .slice().sort(function(a,b){
+      var av=typeof a.share==='number'?a.share:-1, bv=typeof b.share==='number'?b.share:-1;
+      return bv-av; });
+  if(players.length){
+    out += tbl(['Player','Listed','Share','Basis','As at','Source'],
+      players.map(function(x){
+        return { cells:[ e(S(x.name)), x.listed?'Yes':'No', eqPct(x.share),
+          e(S(x.basis))||'<span class="neg">not stated</span>', agedPeriod(x.asOf, asOf),
+          '<span class="mut">'+e(S(x.source))+'</span>' ]}; }),
+      { num:[2] });
+    out += eqShareRead(players, asOf);
   }
   out += tbl(['','Reading'], [
     { cells:['Concentration', e(S(c.concentration))] },
@@ -3813,6 +4202,92 @@ function eqCompetition(p, lang){
     { cells:['Substitution', e(S(c.substitution))] },
     { cells:['Pricing behaviour', e(S(c.pricingBehaviour))] }
   ]);
+  out += eqLeaderMoats(players);
+  return out;
+}
+/* What the share table says, in words.
+ *
+ * A column of percentages is a reading, not a finding. This states how
+ * concentrated the market actually is, how much of it the research managed to
+ * account for, and how old the measurement is — the three things a reader has
+ * to know before the moat commentary below means anything. */
+function eqShareRead(players, asOf){
+  var withShare=players.filter(function(x){ return typeof x.share==='number' && x.share>0; })
+    .slice().sort(function(a,b){ return b.share-a.share; });
+  if(withShare.length<2) return '';
+  var known=withShare.reduce(function(a,x){ return a+x.share; },0);
+  var top3=withShare.slice(0,3);
+  var cr3=top3.reduce(function(a,x){ return a+x.share; },0);
+  var above=withShare.filter(function(x){ return x.share > SHARE_NAMED_PCT; });
+  var hhi=withShare.reduce(function(a,x){ return a+x.share*x.share; },0);
+  var shape = cr3>=70 ? 'a market run by three companies'
+    : cr3>=50 ? 'a market where three companies hold the balance of power'
+    : above.length<=5 ? 'a market with a handful of scale players and a long tail'
+    : 'a fragmented market where no group of three sets the terms';
+  var ageLine='';
+  var stalest=null;
+  withShare.forEach(function(x){
+    var a=periodAge(S(x.asOf), asOf);
+    if(a.known && (stalest==null || a.months>stalest.months)) stalest={ months:a.months, asOf:S(x.asOf) };
+  });
+  if(stalest && stalest.months>=12){
+    ageLine=' The measurement is ' + e(stalest.asOf) + ', which is '
+      + Math.floor(stalest.months/12) + (stalest.months<24?' year':' years')
+      + ' old; share moves with every reporting period, so read the ranking as '
+      + 'the last one established rather than the one holding today.';
+  }
+  return '<p class="storyp">' + countOf(withShare.length, 'player carries', 'players carry')
+    + ' a measured share here, and ' + countOf(above.length, 'of them clears', 'of them clear')
+    + ' ' + SHARE_NAMED_PCT + '% — which is why ' + plural(above.length, 'it is', 'they are')
+    + ' named on the chart and the rest are grouped. The three largest hold '
+    + n(cr3,1) + '% between them and the Herfindahl index of the measured shares is '
+    + n(hhi,0) + ', so this is ' + shape + '. '
+    + (known<95
+        ? 'The research accounted for ' + n(known,1) + '% of the market, so '
+          + n(Math.max(0,100-known),1) + '% sits with companies it did not reach; '
+          + 'a share ranking with that much unaccounted for ranks who was found, '
+          + 'not who is largest.'
+        : 'The shares account for ' + n(known,1) + '% of the market, so the '
+          + 'ranking is close to complete.')
+    + ageLine + '</p>';
+}
+/* Why the leaders lead.
+ *
+ * Tejas: "add more commentary on MOAT and why they are leaders and other stuff
+ * of Top 3 market leaders by share." Share is the outcome; the moat is the
+ * reason it persists, and a sector report that prints the first without the
+ * second has explained nothing. The research is asked for both against each of
+ * the three largest; where it did not supply them the section says so rather
+ * than inventing a reason. */
+function eqLeaderMoats(players){
+  var withShare=players.filter(function(x){ return typeof x.share==='number' && x.share>0; })
+    .slice().sort(function(a,b){ return b.share-a.share; }).slice(0,3);
+  if(!withShare.length) return '';
+  var any=withShare.some(function(x){ return S(x.moat) || S(x.whyLeader); });
+  var out='<h4>Why the three largest lead, and what protects it</h4>';
+  if(!any){
+    return out + gapNoteRich('The research established who holds the share but not why. '
+      + 'A leader without a moat is a leader until someone prices below it: the '
+      + 'question the next run has to answer for '
+      + e(withShare.map(function(x){ return S(x.name); }).join(', '))
+      + ' is what each one owns that a competitor cannot buy — distribution, a '
+      + 'deposit franchise, a licence, a switching cost, a cost position — and '
+      + 'whether that thing has been getting stronger or weaker.', 'No moat established.');
+  }
+  out += withShare.map(function(x, i){
+    return '<div class="ir-box"><h4>' + (i+1) + '. ' + e(S(x.name))
+      + ' <span class="mut">' + n(x.share,1) + '% of the market</span></h4>'
+      + tbl(['','Reading'], [
+          { cells:['Why it leads', e(S(x.whyLeader))] },
+          { cells:['The moat', e(S(x.moat))] },
+          { cells:['Basis of the share', e(S(x.basis))] },
+          { cells:['Listed', x.listed ? 'Yes' : 'No'] }
+        ]) + '</div>';
+  }).join('');
+  var missing=withShare.filter(function(x){ return !S(x.moat); });
+  if(missing.length) out += gapNoteRich('No moat was established for '
+    + e(missing.map(function(x){ return S(x.name); }).join(', '))
+    + '. The share is recorded; what defends it is not.', 'Partly established.');
   return out;
 }
 
@@ -4015,18 +4490,13 @@ function eqSnapshot(c, lang, p){
   if(!s) return '';
   var v=c.valuation||{};
   var q=arr(c.shareholding)[0]||{};
-  var mu2 = moneyUnit(p);
-  var ccy2 = S((eqRep(p).run||{}).reporting && (eqRep(p).run||{}).reporting.currency) || 'INR';
-  var withUnit = function(v, u){ return v + (u ? ' <span class="mut">' + e(u) + '</span>' : ''); };
   return tbl(['Measure','Value'], [
-    { cells:['Price', v.currentPrice==null?'&mdash;'
-        : withUnit(n(v.currentPrice,2), (S(v.currency)||ccy2) + ' a share')] },
-    { cells:['Market capitalisation', s.marketCap==null?'&mdash;':withUnit(n(s.marketCap,0), mu2)] },
+    { cells:['Price a share', v.currentPrice==null?'&mdash;':'₹' + n(v.currentPrice,2)] },
+    { cells:['Market capitalisation', money(s.marketCap, rep$(p))] },
     { cells:['Free float', eqPct(s.freeFloatPct)] },
-    { cells:['Average daily traded value',
-        s.avgDailyValue==null?'&mdash;':withUnit(n(s.avgDailyValue,0), mu2)] },
-    { cells:['52-week range', withUnit(eqNum(s.week52Low,2)+' to '+eqNum(s.week52High,2),
-        ccy2 + ' a share')] },
+    { cells:['Average daily traded value', money(s.avgDailyValue, rep$(p))] },
+    { cells:['52-week range', (s.week52Low==null||s.week52High==null) ? '&mdash;'
+        : '₹' + n(s.week52Low,2) + ' to ₹' + n(s.week52High,2)] },
     { cells:['Promoter holding', eqPct(q.promoter)] },
     { cells:['Pledged', q.pledged==null?'<span class="mut">not stated</span>'
         : (q.pledged>0?'<span class="neg">'+n(q.pledged,2)+'%</span>':'0%')] }
@@ -4103,7 +4573,7 @@ function figCapitalAllocation(c){
     if(Math.abs(retained) > 0.5) items.push({ label:'Retained in business', value:-retained });
   }
   return K.waterfall({
-    title:'Where the operating cash went — INR Crore',
+    title:'Where the operating cash went — ₹ Crs',
     source:S(t.period) + ' · cash from operations, after tax and before capital spending',
     items:items });
 }
@@ -4299,7 +4769,8 @@ function eqComment(c, key){
       /* Readings that sit next to an exhibit and say what it means. A chart
          states a fact; this is the part a reader is paying for. */
       statements:'statementsCommentary', price:'priceCommentary',
-      ownership:'ownershipCommentary', screen:'screenCommentary' }[key];
+      ownership:'ownershipCommentary', screen:'screenCommentary',
+      lendermodel:'lenderModelCommentary' }[key];
     if(!fn || typeof EQ.commentary[fn] !== 'function') return '';
     return eqSay(EQ.commentary[fn](c));
   }catch(err){ return ''; }
@@ -4320,12 +4791,39 @@ function eqThreeStatement(c, p){
     return (ka == null || kb == null) ? 0 : ka - kb;
   });
 
-  /* The forecast, mapped onto the same line names. */
+  /* The forecast, mapped onto the same line names — where it is usable.
+  
+     For a lender it is not: the driver model charges interest below the
+     operating line, which projected a loss of ₹65,547 Crs a year for a bank
+     that earns ₹16,904 Crs, and those columns were printed in this very
+     table. The engine marks them and they are omitted with the reason given
+     rather than shown with a disclaimer nobody reads. */
   var proj = [];
+  var projOff = (c.model && c.model.model && c.model.model.projectionsUsable === false)
+    ? S(c.model.model.projectionsReason) : '';
+  /* A lender is forecast from its own reported ratios instead — see
+     lenderForecast in src/core/audit.js. The engine builds it; this only maps
+     it onto the same line names as the reported years. */
+  var lf = c.lenderForecast;
+  if(projOff && lf && lf.available){
+    var lfLabels = fyLabels(c, arr(lf.years).length);
+    proj = arr(lf.years).map(function(y, i){
+      return { period: lfLabels[i] || ('Y' + y.year), projected: true, lender: true,
+        revenue: y.interestIncome, netProfit: y.netProfit, tax: y.tax,
+        profitBeforeTax: y.profitBeforeTax, epsDiluted: y.epsDiluted,
+        __lender: y };
+    });
+    projOff = '';
+  }
   try{
-    var my = arr(c.model && c.model.model && c.model.model.years);
+    /* The manufacturer's projections, only where they are the right ones. A
+       lender's have already been built above from its own ratios, and mapping
+       the driver model over the top would overwrite them with the loss-making
+       columns this whole change exists to remove. */
+    var my = (projOff || proj.length) ? []
+      : arr(c.model && c.model.model && c.model.model.years);
     var labels = fyLabels(c, my.length);
-    proj = my.map(function(y, i){
+    if(my.length) proj = my.map(function(y, i){
       return { period: labels[i], projected: true,
         revenue:y.revenue, costOfGoodsSold:y.cogs, ebitda:y.ebitda,
         depreciation:y.depreciation, ebit:y.ebit, interestExpense:y.interest,
@@ -4358,7 +4856,46 @@ function eqThreeStatement(c, p){
   }
   var L = function(defs){ return defs.map(function(d){ return line(d[0], d[1], d[2]); }).filter(Boolean); };
 
-  var income = L([['Revenue','revenue',true],['Other income','otherIncome'],
+  /* A lender's income statement is a different statement, not the same one
+     with different labels. Interest expense sits above the operating line, the
+     operating result is pre-provision operating profit, and there is no EBITDA
+     and no EBIT anywhere in it — printing them is what put an operating profit
+     of ₹1.22 lakh crore on a bank earning ₹1.28 lakh crore of interest income.
+     Every line here is derived from components by the engine's audit. */
+  var lender = !!c.lender;
+  var LL = {};
+  arr(c.lenderLines).forEach(function(x){ if(x && x.period) LL[S(x.period)] = x; });
+  /* A reported year reads from the derived lender lines; a forecast year
+     carries its own. Both are keyed the same way, so one row builder serves
+     the whole table. */
+  var lval = function(r, key){
+    if(r.__lender && isNum_(r.__lender[key])) return r.__lender[key];
+    var x = LL[S(r.period)];
+    return (x && isNum_(x[key])) ? x[key] : null;
+  };
+  var dline = function(label, key, bold){
+    var any = rows.some(function(r){ return isNum_(lval(r, key)); });
+    if(!any) return null;
+    return { cells:[(bold ? '<b>'+label+'</b>' : label)].concat(rows.map(function(r){
+      var v0 = lval(r, key);
+      if(!isNum_(v0)) return '&mdash;';
+      var v = n(v0, 0);
+      return bold ? '<b>'+v+'</b>' : v;
+    })) };
+  };
+  var income = lender
+    ? [ dline('Interest income','interestIncome',true),
+        dline('Interest expense','interestExpense'),
+        dline('Net interest income','netInterestIncome',true),
+        dline('Other income','otherIncome'),
+        dline('Net total income','netTotalIncome',true),
+        dline('Operating expenses','operatingExpenses'),
+        dline('Pre-provision operating profit','preProvisionOperatingProfit',true),
+        dline('Provisions and contingencies','provisions'),
+        line('Profit before tax','profitBeforeTax',true),
+        line('Tax','tax'), line('Net profit','netProfit',true),
+        line('EPS diluted','epsDiluted') ].filter(Boolean)
+    : L([['Revenue','revenue',true],['Other income','otherIncome'],
     ['Cost of goods sold','costOfGoodsSold'],['Gross profit','grossProfit'],
     ['Employee cost','employeeCost'],['Other expenses','otherExpenses'],
     ['EBITDA','ebitda',true],['Depreciation','depreciation'],['EBIT','ebit',true],
@@ -4400,8 +4937,10 @@ function eqThreeStatement(c, p){
      any set of accounts. Without it these are 45 rows of bare numbers and
      nothing on the page says whether they are crore, lakh or rupees. */
   var unit = moneyUnit(p);
-  return tbl([unit ? unit + ', except EPS' : ''].concat(periods), body, { num:num })
-    + '<p class="note">' + note + '</p>';
+  return tbl([unit ? unit + ', except EPS in ₹' : ''].concat(periods), body, { num:num })
+    + '<p class="note">' + note + '</p>'
+    + (projOff ? '<div class="note warn"><b>No forecast columns for this company.</b> '
+        + e(projOff) + '</div>' : '');
 }
 
 /* Risks placed on the two axes that decide what to do about one: how likely it
@@ -4531,7 +5070,7 @@ function eqSectorMixChart(c){
   });
   return K.columns({ categories: d.map(function(p0){ return S(p0.period); }),
     series: series, stacked: true,
-    title: 'Revenue by operating line — INR crore',
+    title: 'Revenue by operating line — ₹ Crs',
     source: 'Company filings',
     note: 'Each band is one operating line. What matters is how the proportions move, '
       + 'not the total height.' });
@@ -4757,6 +5296,62 @@ function eqEsg(c, lang){
    because the register work is the last thing done — the leading companies are
    still covered in full, each carrying the reason it cannot be recommended.
    The alternative is a report that ranks twelve banks and then analyses none. */
+/* The three the screen nominated, and whether their research has come back.
+ *
+ * Tejas: "Point 21, Can we add full financial information for 7/8 years ... of
+ * Top 3 or Nominated Top 3. Example here Nominated SBI, Indian Bank and
+ * Maharashtra Bank." The sector report he was reading carried a full section
+ * on Punjab National Bank and never named the three it had nominated, because
+ * the section is driven by which companies have come back from a full research
+ * run and only PNB had. That is defensible — the statements exist for PNB and
+ * not for the others — but printing one without saying who the three are reads
+ * as the report having chosen PNB.
+ *
+ * So the nominated three are named first, each with whether its research and
+ * therefore its statements are in this document yet. A reader then knows what
+ * is here, what is missing, and what to run next. */
+function eqNominatedRoll(rep, covered){
+  var sc = rep && rep.screen;
+  var nom = arr(sc && (sc.nominated || sc.chosen || sc.top3));
+  if(!nom.length) nom = arr(rep && rep.top3);
+  if(!nom.length) return '';
+  var have = {};
+  arr(covered).forEach(function(c){
+    have[String(S(c.symbol) || S(c.name)).toUpperCase()] = c;
+  });
+  var rows = nom.map(function(x, i){
+    var key = String(S(x.symbol) || S(x.name)).toUpperCase();
+    var c = have[key];
+    var stmts = c && arr(c.financials && c.financials.annual).length;
+    return { cells:[ String(i+1),
+      '<b>' + e(S(x.name) || S(x.symbol)) + '</b>',
+      '<span class="en">' + e(S(x.symbol)) + '</span>',
+      x.score != null ? n(x.score,1) : '&mdash;',
+      c ? '<span class="pos">researched in full</span>'
+        : '<span class="neg">not yet researched</span>',
+      stmts ? countOf(stmts, 'audited year', 'audited years') + ' below'
+        : '<span class="mut">pending that run</span>' ]};
+  });
+  var missing = nom.filter(function(x){
+    return !have[String(S(x.symbol) || S(x.name)).toUpperCase()]; });
+  return '<h4>The three the screen nominated</h4>'
+    + tbl(['#','Company','Symbol','Screen score','Full research','Statements'],
+        rows, { num:[0,3], chunk:false, headWrap:true })
+    + (missing.length
+        ? gapNote('The full statements below cover only the '
+            + countOf(nom.length - missing.length, 'company', 'companies')
+            + ' whose research has come back. '
+            + e(missing.map(function(x){ return S(x.name) || S(x.symbol); }).join(', '))
+            + ' ' + plural(missing.length, 'has', 'have')
+            + ' been nominated but not yet researched, so '
+            + plural(missing.length, 'its', 'their')
+            + ' profit and loss account, balance sheet and cash flow statement are not in '
+            + 'this document. Run the company research for '
+            + plural(missing.length, 'it', 'each of them')
+            + ' and re-import: the statements appear here automatically.',
+            'Statements pending for the rest.')
+        : '');
+}
 function eqCovered(rep){
   var t = arr(rep.top3);
   if(t.length) return { list: t, allBarred: false };
@@ -5248,7 +5843,7 @@ function buildScorecard(p, lang){
   var head = '<div class="sc-top"><div style="height:4mm"></div>'
     + '<div class="eyebrow">' + e(L(lang,'score_card')) + ' &nbsp;·&nbsp; '
       + EN(e(S(m.sector) || '')) + '</div>'
-    + '<h1 class="en" style="margin-top:1.5mm;font-size:10.1pt">' + EN(e(S(co.name) || S(co.symbol) || '')) + '</h1>'
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:12.9pt">' + EN(e(S(co.name) || S(co.symbol) || '')) + '</h1>'
     + '<div class="mut en" style="margin-top:1mm">' + e(S(co.symbol) || '')
       + (co.exchange ? ' · ' + e(S(co.exchange)) : '')
       + ' &nbsp;·&nbsp; ' + e(dmy(m.analysis_datetime)) + '</div>'
@@ -5494,8 +6089,8 @@ function buildScorecard(p, lang){
               one column's line breaks. Labels, scores, weights and every
               other document stay at var(--body); this column alone steps
               down one notch. */
-           + '.sctab td:nth-child(5){ font-size:6.2pt; line-height:1.4; }\n'
-           + '.fortab td:nth-child(4){ font-size:6.2pt; line-height:1.4; }\n'
+           + '.sctab td:nth-child(5){ font-size:7.9pt; line-height:1.4; }\n'
+           + '.fortab td:nth-child(4){ font-size:7.9pt; line-height:1.4; }\n'
            /* The forensic table has four columns, not five, and its last one
               carries a sentence rather than a figure. Left on the five-column
               geometry it inherited a 42mm first column and an 11mm fourth,
@@ -5530,7 +6125,7 @@ function buildScorecard(p, lang){
            + '.sc-blk .sec{margin:3.6mm 0 2mm}\n.sc-blk .bar{margin:0}\n'
            + '.sc-blk td,.sc-blk th{padding-top:1.5mm;padding-bottom:1.5mm}\n'
            + '.sc-blk p.mut{margin:0 0 1.5mm}\n'
-           + '.sc-blk .ti{font-size:7.2pt}\n'
+           + '.sc-blk .ti{font-size:9.2pt}\n'
            + 'body.gu .sc-blk td,body.gu .sc-blk th{padding-top:1.9mm;padding-bottom:1.9mm}\n'
            /* The card is contractually two pages. Rather than spilling onto a
               third, the type is stepped down one notch at a time until all
@@ -5542,14 +6137,14 @@ function buildScorecard(p, lang){
            + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th,'
            + 'body.gu[data-dense="2"] .sc-blk td,body.gu[data-dense="2"] .sc-blk th{padding-top:1.15mm;padding-bottom:1.15mm}\n'
            + '[data-dense="2"] .sc-blk .sec{margin:3mm 0 1.6mm}\n'
-           + '[data-dense="2"] .sc-blk .ti{font-size:6.6pt}\n'
-           + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th{font-size:6.2pt}\n'
+           + '[data-dense="2"] .sc-blk .ti{font-size:8.4pt}\n'
+           + '[data-dense="2"] .sc-blk td,[data-dense="2"] .sc-blk th{font-size:7.9pt}\n'
            + '[data-dense="3"] .sc-blk td,[data-dense="3"] .sc-blk th,'
-           + 'body.gu[data-dense="3"] .sc-blk td,body.gu[data-dense="3"] .sc-blk th{padding-top:.85mm;padding-bottom:.85mm;font-size:6.2pt}\n'
+           + 'body.gu[data-dense="3"] .sc-blk td,body.gu[data-dense="3"] .sc-blk th{padding-top:.85mm;padding-bottom:.85mm;font-size:7.9pt}\n'
            + '[data-dense="3"] .sc-blk .sec{margin:2.2mm 0 1.2mm}\n'
-           + '[data-dense="3"] .sc-blk .ti{font-size:6.2pt}\n'
-           + '[data-dense="3"] .sc-top .tile .v{font-size:8.4pt}\n'
-           + '[data-dense="3"] .sc-top h1{font-size:9.0pt}\n';
+           + '[data-dense="3"] .sc-blk .ti{font-size:7.9pt}\n'
+           + '[data-dense="3"] .sc-top .tile .v{font-size:10.8pt}\n'
+           + '[data-dense="3"] .sc-top h1{font-size:11.5pt}\n';
 
   var FIT = '<script>(function(){'
     /* This document packs itself; the generic guard must not scale it again. */
@@ -6211,7 +6806,7 @@ function coverHead(p, lang, docTitleKey, titleFontPt){
       + e(A(lang, m.ipo_type || 'Mainboard')) + ' &nbsp;·&nbsp; ' + e(L(lang, 'india')) + '</div>'
     + '<h1 class="en" style="margin-top:1.5mm;font-size:' + (titleFontPt || 19) + 'pt">'
       + EN(e(m.company || '')) + '</h1>'
-    + '<div class="mut" style="margin-top:1mm;font-size:6.2pt">' + sectorHtml(p, lang)
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">' + sectorHtml(p, lang)
       + (m.sector ? ' &nbsp;·&nbsp; ' : '') + e(dmy(m.analysis_datetime)) + '</div>'
     + provStamp(p, lang)
     + '<div style="height:2.5mm;background:var(--gold);width:26mm;border-radius:1mm;margin:3mm 0 4mm"></div>'
@@ -6341,7 +6936,7 @@ function packDoc(p, lang, cfg){
     + '\n.storybox{ border:0.6pt solid var(--rule); border-left:3pt solid var(--gold);'
       + ' background:var(--paper2, transparent); padding:3mm 3.5mm; margin:3mm 0 4mm;'
       + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
-    + '.storyh{ font-size:8.2pt; font-weight:800; letter-spacing:-.01em; margin-bottom:2mm; }\n'
+    + '.storyh{ font-size:10.5pt; font-weight:800; letter-spacing:-.01em; margin-bottom:2mm; }\n'
     + '.storyp{ font-size:var(--body); line-height:var(--bodyline); margin:0 0 2mm; }\n'
     + '.storyp:last-child{ margin-bottom:0; }\n'
     /* The pillar bridge is one line of orientation, not a box competing with
@@ -6352,24 +6947,24 @@ function packDoc(p, lang, cfg){
        not from continuous prose interleaved with wide tables. */
     + '.tearsheet{ font-size:var(--body); line-height:var(--bodyline); }\n'
     + '.ts-head{ border-bottom:1.6pt solid var(--gold); padding-bottom:2mm; margin-bottom:3mm; }\n'
-    + '.ts-name{ font-size:15pt; font-weight:800; letter-spacing:-.02em; line-height:1.1; }\n'
-    + '.ts-sub{ font-size:7.4pt; color:var(--ink3); margin-top:1mm; }\n'
+    + '.ts-name{ font-size:19.2pt; font-weight:800; letter-spacing:-.02em; line-height:1.1; }\n'
+    + '.ts-sub{ font-size:9.5pt; color:var(--ink3); margin-top:1mm; }\n'
     + '.ts-stance{ border-left:2.4pt solid var(--gold); padding:1.6mm 0 1.6mm 3mm;'
-      + ' margin:0 0 3mm; font-size:8.4pt; }\n'
+      + ' margin:0 0 3mm; font-size:10.8pt; }\n'
     + '.ts-stance.ts-pos{ border-left-color:var(--pos); }\n'
     + '.ts-stance.ts-neg{ border-left-color:var(--neg); }\n'
     + '.ts-tiles{ display:flex; gap:3mm; margin:0 0 4mm; }\n'
     + '.ts-tile{ flex:1 1 0; min-width:0; border:0.6pt solid var(--line);'
       + ' border-radius:1.4mm; padding:2mm 2.4mm; }\n'
-    + '.ts-k{ font-size:6.4pt; font-weight:800; letter-spacing:.06em;'
+    + '.ts-k{ font-size:8.2pt; font-weight:800; letter-spacing:.06em;'
       + ' text-transform:uppercase; color:var(--ink3); }\n'
-    + '.ts-v{ font-size:13pt; font-weight:800; letter-spacing:-.02em; margin-top:.6mm;'
+    + '.ts-v{ font-size:16.6pt; font-weight:800; letter-spacing:-.02em; margin-top:.6mm;'
       + ' font-variant-numeric:tabular-nums; }\n'
     + '.ts-v.ts-pos{ color:var(--pos); } .ts-v.ts-neg{ color:var(--neg); }\n'
-    + '.ts-s{ font-size:6.2pt; color:var(--mut); margin-top:.6mm; line-height:1.3; }\n'
+    + '.ts-s{ font-size:7.9pt; color:var(--mut); margin-top:.6mm; line-height:1.3; }\n'
     + '.ts-cols{ display:flex; gap:6mm; align-items:flex-start; }\n'
     + '.ts-col{ flex:1 1 50%; min-width:0; }\n'
-    + '.ts-sec{ font-size:6.8pt; font-weight:800; letter-spacing:.06em;'
+    + '.ts-sec{ font-size:8.7pt; font-weight:800; letter-spacing:.06em;'
       + ' text-transform:uppercase; color:var(--ink3); margin:0 0 1.4mm;'
       + ' padding-bottom:.8mm; border-bottom:0.5pt solid var(--line); }\n'
     + '.ts-col .ts-sec{ margin-top:4mm; } .ts-col .ts-sec:first-child{ margin-top:0; }\n'
@@ -6377,15 +6972,16 @@ function packDoc(p, lang, cfg){
        reader learns what the column of figures is in without a separate line
        of furniture. */
     + '.ts-unit{ font-weight:500; letter-spacing:0; text-transform:none;'
-      + ' color:var(--ink4); font-size:6.2pt; }\n'
-    + '.ts-th{ margin:0 0 0 4mm; padding:0; font-size:7.6pt; line-height:1.42; }\n'
+      + ' color:var(--ink4); font-size:7.9pt; }\n'
+    + '.ts-note{ font-size:7.7pt; color:var(--ink4); margin-top:1mm; }\n'
+    + '.ts-th{ margin:0 0 0 4mm; padding:0; font-size:9.7pt; line-height:1.42; }\n'
     + '.ts-th li{ margin:0 0 1.6mm; padding-left:1mm; }\n'
-    + '.ts-br{ margin:0 0 0 4mm; padding:0; font-size:7.2pt; line-height:1.4; color:var(--ink2); }\n'
+    + '.ts-br{ margin:0 0 0 4mm; padding:0; font-size:9.2pt; line-height:1.4; color:var(--ink2); }\n'
     + '.ts-br li{ margin:0 0 1.2mm; padding-left:1mm; }\n'
     + '.ts-risk{ margin-top:4mm; border-left:2.2pt solid var(--neg); padding:1.4mm 0 1.4mm 3mm;'
-      + ' font-size:7.4pt; }\n'
+      + ' font-size:9.5pt; }\n'
     + '.ts-foot{ margin-top:4mm; padding-top:2mm; border-top:0.5pt solid var(--line);'
-      + ' font-size:6.2pt; color:var(--mut); line-height:1.35; }\n'
+      + ' font-size:7.9pt; color:var(--mut); line-height:1.35; }\n'
     + '.ir-tear{ padding:0; }\n'
     /* The scenario banner is the one block on the page that must not be
        skimmed past, so it is ruled on all four sides rather than on one. */
@@ -6393,12 +6989,12 @@ function packDoc(p, lang, cfg){
       + ' font-size:var(--body); line-height:var(--bodyline);'
       + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
     + '.scnban table.kv{ margin:2mm 0 1.4mm; }\n'
-    + '.scnban .mut{ font-size:6.8pt; }\n'
+    + '.scnban .mut{ font-size:8.7pt; }\n'
     + '.bridgebox .storyp{ font-size:var(--body); line-height:var(--bodyline);'
       + ' color:var(--ink3); font-style:italic; }\n'
     + '\n.saybox{ border-left:2.2pt solid var(--gold); padding:1.6mm 0 1.6mm 3mm;'
       + ' margin:2.5mm 0 3mm; break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
-    + '.sayh{ font-size:6.6pt; font-weight:800; letter-spacing:.02em; text-transform:uppercase;'
+    + '.sayh{ font-size:8.4pt; font-weight:800; letter-spacing:.02em; text-transform:uppercase;'
       + ' color:var(--gold); margin-bottom:1mm; }\n'
     + '.sayt{ font-size:var(--body); line-height:var(--bodyline); }\n'
     + '\n.ir-blk{ break-inside:avoid; margin-bottom:4mm; }\n'
@@ -6408,7 +7004,7 @@ function packDoc(p, lang, cfg){
     + '.ir-blk td,.ir-blk th{ padding-top:1.7mm; padding-bottom:1.7mm; }\n'
     + 'body.gu .ir-blk td,body.gu .ir-blk th{ padding-top:1.45mm; padding-bottom:1.45mm; }\n'
     + '.ir-blk .sec{ margin:5mm 0 2.5mm; }\n'
-    + '.ir-blk .ti{ font-size:7.8pt; }\n'
+    + '.ir-blk .ti{ font-size:10.0pt; }\n'
     + '.ir-blk .note{ font-size:var(--body); line-height:var(--bodyline); margin-top:2mm; }\n'
     /* Everything a section can put on the page, at one size. The sections were
        written at different times and each set its own, which is why a table on
@@ -6430,21 +7026,21 @@ function packDoc(p, lang, cfg){
     + 'body.gu .ir-ul li{ line-height:1.75; }\n'
     + '.ir-grp{ break-inside:avoid; margin:5mm 0 1mm; }\n'
     + '.ir-grp:first-child{ margin-top:0; }\n'
-    + '.ir-grph{ font-size:8.4pt; font-weight:800; letter-spacing:-.01em; color:var(--gold);'
+    + '.ir-grph{ font-size:10.8pt; font-weight:800; letter-spacing:-.01em; color:var(--gold);'
     + ' padding-bottom:2mm; border-bottom:1.6pt solid var(--gold); }\n'
-    + 'body.gu .ir-grph{ font-size:7.8pt; }\n'
-    + '.ir-sub{ font-size:6.2pt; font-weight:800; color:var(--navy); letter-spacing:.03em;'
+    + 'body.gu .ir-grph{ font-size:10.0pt; }\n'
+    + '.ir-sub{ font-size:7.9pt; font-weight:800; color:var(--navy); letter-spacing:.03em;'
     + ' text-transform:uppercase; margin:3.5mm 0 1.5mm; }\n'
     + '.ir-toc{ margin-top:2mm; column-count:2; column-gap:8mm; }\n'
     + '.ir-toc-row{ display:flex; gap:3mm; align-items:baseline; padding:1mm 0;'
-    + ' border-bottom:.4pt solid var(--rule); font-size:6.6pt; text-decoration:none; color:inherit;'
+    + ' border-bottom:.4pt solid var(--rule); font-size:8.4pt; text-decoration:none; color:inherit;'
     + ' break-inside:avoid; -webkit-column-break-inside:avoid; }\n'
     + '.ir-toc-row span{ color:var(--ink4); font-weight:700; flex:0 0 6.5mm; }\n'
     + '.ir-toc-row b{ flex:1; font-weight:600; }\n'
     + '.ir-toc-row .ir-toc-pg{ font-style:normal; color:var(--ink4); font-weight:700;'
     + ' flex:0 0 6mm; text-align:right; }\n'
-    + '.ir-toc.tight{ column-count:3; column-gap:5mm; font-size:6.2pt; }\n'
-    + '.ir-toc.tight .ir-toc-row{ break-inside:avoid; padding:.7mm 0; }\n'    + '.ir-toc.tight .ir-toc-row b{ font-size:6.2pt; }\n'    + '.ir-toc-grp{ font-size:6.3pt; font-weight:800; color:var(--gold); letter-spacing:.02em;'
+    + '.ir-toc.tight{ column-count:3; column-gap:5mm; font-size:7.9pt; }\n'
+    + '.ir-toc.tight .ir-toc-row{ break-inside:avoid; padding:.7mm 0; }\n'    + '.ir-toc.tight .ir-toc-row b{ font-size:7.9pt; }\n'    + '.ir-toc-grp{ font-size:8.1pt; font-weight:800; color:var(--gold); letter-spacing:.02em;'
     + ' margin:3mm 0 1mm; padding-bottom:.8mm; border-bottom:1pt solid var(--gold);'
     + ' break-inside:avoid; -webkit-column-break-inside:avoid;'
     /* A group heading must never be the last thing in a column. "Financials"
@@ -6462,18 +7058,18 @@ function packDoc(p, lang, cfg){
       + ' -webkit-column-break-before:avoid; }\n'
     + '.misscols{ column-count:2; column-gap:7mm; margin-top:1mm; }\n'
     + '.misscols li{ break-inside:avoid; -webkit-column-break-inside:avoid;'
-    + ' margin-bottom:1.1mm; font-size:6.2pt; line-height:1.42; }\n'
+    + ' margin-bottom:1.1mm; font-size:7.9pt; line-height:1.42; }\n'
     + '.ir-toc-grp:first-child{ margin-top:0; }\n'
     + '.ir-scoreblk{ margin-bottom:2.5mm; }\n'
     + '.ir-scorehd{ display:flex; justify-content:space-between; align-items:baseline;'
-    + ' font-size:6.4pt; font-weight:800; color:var(--navy); padding:1.5mm 0 1mm;'
+    + ' font-size:8.2pt; font-weight:800; color:var(--navy); padding:1.5mm 0 1mm;'
     + ' border-bottom:.8pt solid var(--navy); }\n'
-    + '.ir-score{ width:100%; border-collapse:collapse; font-size:6.2pt; }\n'
+    + '.ir-score{ width:100%; border-collapse:collapse; font-size:7.9pt; }\n'
     + '.ir-score td{ padding:1.3mm 2mm; border-bottom:.4pt solid var(--rule); vertical-align:top; }\n'
     + '.ir-score td.nm{ width:33mm; }\n'
     + '.ir-score td.bar-c{ width:22mm; }\n'
     + '.ir-score td.n{ text-align:right; white-space:nowrap; width:15mm; font-weight:700; }\n'
-    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:6.2pt; }\n'
+    + '.ir-score td.n .mx{ color:var(--ink4); font-weight:500; font-size:7.9pt; }\n'
     + '.ir-score .mini{ display:block; height:2.4mm; background:#EEF1F5; border-radius:1.2mm;'
     + ' overflow:hidden; }\n'
     + '.ir-score .mini i{ display:block; height:100%; border-radius:0 1.2mm 1.2mm 0; }\n'
@@ -6482,9 +7078,9 @@ function packDoc(p, lang, cfg){
        scoring section onto a third page. Tightening only the scoring tables
        keeps it to the two pages the brief calls for without touching the rest
        of the document. */
-    + 'body.gu .ir-score{ font-size:6.3pt; }\n'
+    + 'body.gu .ir-score{ font-size:8.1pt; }\n'
     + 'body.gu .ir-score td{ padding:.85mm 1.6mm; line-height:1.42; }\n'
-    + 'body.gu .ir-scorehd{ font-size:6.2pt; padding:1mm 0 .7mm; }\n'
+    + 'body.gu .ir-scorehd{ font-size:7.9pt; padding:1mm 0 .7mm; }\n'
     + 'body.gu .ir-scoreblk{ margin-bottom:1.8mm; }\n'
     /* `.body` is a flex column, so a page that fills up shrinks its children
        rather than overflowing. That silently squashed the recommendation box on
@@ -6613,54 +7209,28 @@ function packDoc(p, lang, cfg){
        white space beside prose but not beside exhibits. That changes the look
        of every report, so it is a decision to be taken deliberately rather
        than slipped in under a layout pass. */
-    /* measurePass — give continuous prose a readable line length.
+    /* measurePass is gone, and the type size is why.
 
-       Measured on the finished documents, the prose ran at a median of 125
-       characters per line and reached 149. Typography has settled on 55 to 75
-       for continuous text, and past about 90 the eye starts losing its return
-       to the left margin — you finish a line and re-read the one you just
-       finished. At 173mm and 7.4pt this report was half again past that.
+       It existed to hold continuous prose to a readable line length: at 7.0pt
+       over a 173mm measure the text ran to a median of 125 characters a line,
+       half again past the 55-75 typography has settled on, so any paragraph
+       longer than 200 characters was capped at a 112mm measure.
 
-       Two columns was the obvious fix and was measured and rejected four
-       different ways: prose is only 7-10% of these documents by height, the
-       other 90% is tables that need the full measure, individual paragraphs
-       are three lines tall so they split into stubs, and larger type moves the
-       median only from 125 to 103 because the cause is the measure and not the
-       size. What is left is to narrow the measure itself — white space beside
-       prose, never beside an exhibit, which is what institutional reports
-       actually do.
+       Tejas read the result and called it what it was: "Remove two columns as
+       it is wastage of space. We don't have visual graphics on right side. So
+       allocate full space horizontally by removing two columns." He is right.
+       A narrowed paragraph with nothing beside it is not a column, it is a
+       margin — and on sections 1, 2, 3, 4, 20, 21, 23, 24 and 25 of the sector
+       report there was never an exhibit to put there.
 
-       It runs over the finished DOM rather than in each function that emits
-       prose, because a per-emitter rule has to be remembered by every future
-       emitter and was already missing the whole sector report. And it measures
-       rather than guesses: a block is narrowed only if it is genuinely wider
-       than the readable measure and genuinely carries prose.
+       The measure problem it was solving has been solved from the other end.
+       Body type is now 9.0pt rather than 7.0pt, which puts the same 173mm
+       measure at roughly 95 characters a line — the top of the readable band
+       rather than well past it. Narrowing on top of that would buy a little
+       and cost the whole width of the page.
 
-       It runs BEFORE pairPass, because narrowing a block changes its height
-       and therefore what can be paired beside it. */
-    + 'var PROSE_MM=112;'   /* about 80 characters a line at 7.4pt */
-    + '(function measurePass(){'
-      + 'var MM=3.7795275591;'
-      + 'var sel="p.storyp,.sayt,.note,.rec,.mut,.fig-n,blockquote,li,p";'
-      + 'var hit=[];'
-      + '[].slice.call(document.querySelectorAll(sel)).forEach(function(el){'
-        /* Prose only: never a container of blocks, never anything holding an
-           exhibit, and never inside the rail or the tear sheet, both of which
-           are already narrow by construction. */
-        + 'if(el.querySelector("table,.fig,svg,div,p,ul,ol")) return;'
-        + 'if(el.closest(".ir-rail,.tearsheet,.scnban,table,figure")) return;'
-        /* Short runs are labels and captions, not prose. Narrowing a two-line
-           note gains nothing and leaves a ragged page. */
-        + 'if(((el.textContent||"").trim().length) < 200) return;'
-        + 'var w=el.getBoundingClientRect().width/MM;'
-        + 'if(w <= PROSE_MM + 6) return;'
-        + 'hit.push(el);'
-      + '});'
-      /* Applied after measuring: setting a width reflows the page, and a
-         second element measured mid-reflow reports a width that is already
-         out of date. */
-      + 'hit.forEach(function(el){ el.style.maxWidth=PROSE_MM+"mm"; });'
-    + '})();'
+       pairPass below stays. It is a different thing: it puts prose beside an
+       exhibit that actually exists, so neither half is dead space. */
     + 'var PAIR_MAX_MM=118;'   /* neither half may be taller than this        */
     + 'var PAIR_MIN_MM=16;'    /* below this, stacking wastes nothing anyway  */
     + '(function pairPass(){'
@@ -7391,9 +7961,11 @@ function buildSector(p, lang){
   if(top.length){
     out += S2(coverage.allBarred ? 'What full research found' : 'The Top 3, researched in full')
       + eqBarredBanner(coverage, rep)
+      + eqNominatedRoll(rep, top)
       + '<p class="note">Each of these has its own research report, which carries the argument, '
       + 'the forecast, the valuation, the accounting review and the registers in full. What '
-      + 'follows is the summary and how it compares with the screen that nominated them.</p>';
+      + 'follows is the summary, the full profit and loss account, balance sheet and cash '
+      + 'flow statement, and how the research compares with the screen that nominated them.</p>';
   }
   top.forEach(function(c){
     var nm = S(c.name) || S(c.symbol);
@@ -7426,24 +7998,33 @@ function buildSector(p, lang){
         { num:[1,2,3] })
       + eqScreenVersusFull(c, scr);
 
-    /* The reported accounts, briefly — the thing a reader comparing three
-       companies actually wants side by side. */
-    var ann = arr(c.financials && c.financials.annual);
-    if(ann.length){
-      var rows3 = ann.slice(-3);
-      var mu3 = moneyUnit(p);
-      var lend = !!c.lender;
-      var lineB = function(label, key, dp){
-        return { cells:[e(label)].concat(rows3.map(function(r){
-          return typeof r[key] === 'number' ? n(r[key], dp==null?0:dp) : '&mdash;'; })) };
-      };
-      out += tbl([(mu3 ? mu3 + ', except EPS' : 'As reported')]
-          .concat(rows3.map(function(r){ return S(r.period || ''); })), [
-        lineB(lend ? 'Interest income' : 'Revenue', 'revenue'),
-        lineB(lend ? 'Pre-provision operating profit' : 'EBITDA', lend ? 'ebit' : 'ebitda'),
-        lineB('Profit after tax', 'netProfit'),
-        lineB('EPS diluted', 'epsDiluted', 2)
-      ], { num:[1,2,3] });
+    /* The accounts in full, not a four-line extract.
+     *
+     * Tejas: "Can we add full financial information for 7/8 years - 3 Audited
+     * latest and 4/5 projected like Profit and Loss Statement, Balance Sheet
+     * and Cash Flow of Top 3 or Nominated Top 3. Modify the prompt and build a
+     * robust system for generation of full Financial Statements what we have
+     * talked about and developed for company research."
+     *
+     * That system already exists — eqThreeStatement is what the company report
+     * prints — so the sector study calls it rather than keeping a second,
+     * shorter and wronger version of the same thing. And it WAS wronger: the
+     * four-line extract read `ebit` straight off the payload for a bank and
+     * labelled it pre-provision operating profit, which is the same defect
+     * Tejas found on the tear sheet twice ("EBIDTA for PNB is calculated wrong
+     * again here"). eqThreeStatement derives a lender's operating lines from
+     * their components through the engine's audit, so a bank's interest
+     * expense sits above the operating line where it belongs and no EBITDA is
+     * printed for a bank at all. */
+    out += eqIndustryPanel(c, p);
+    var fullStmt = eqThreeStatement(c, p);
+    if(fullStmt){
+      out += '<h4>' + e(nm) + ' &mdash; the three statements</h4>' + fullStmt;
+    } else {
+      out += gapNoteRich('No financial series came back for ' + e(nm)
+        + ', so the profit and loss account, the balance sheet and the cash flow '
+        + 'statement cannot be printed. Three audited years are the minimum the '
+        + 'research brief asks for.', 'No statements.');
     }
 
     /* The case, in the research's own words, and what would break it. */
