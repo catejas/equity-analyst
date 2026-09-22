@@ -7,6 +7,8 @@ import { multibaggerGrid, HORIZONS } from './multibagger.js';
 import { confidence } from './integrity.js';
 import { validatePayload, DIRECT_DIMENSIONS } from './payload-schema.js';
 import { screenShortlist, SCREEN_WEIGHTS, MIN_RATED } from './screen.js';
+import { auditCompany, lenderLines, lenderForecast } from './audit.js';
+import { industryPanel } from './industry.js';
 import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
 import { panel as technicalPanel } from './indicators.js';
@@ -63,6 +65,7 @@ export function reportingUnits(payload, note) {
 }
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const arr = (v) => (Array.isArray(v) ? v : []);
 
 function upside(fairValue, currentPrice) {
   if (!isNum(fairValue) || !isNum(currentPrice) || currentPrice <= 0) {
@@ -323,9 +326,28 @@ function runModel(c) {
   }
 
   if (isLender(c)) {
+    /* The model's PROJECTED INCOME STATEMENT is not usable for a lender
+       either, and for the same reason the valuation is not.
+   
+       buildModel charges interest as a financing cost below EBIT, which is
+       right for a manufacturer and wrong for a bank, where interest expense is
+       the cost of the product. Run on PNB it projected an EBIT of ₹14,514 Crs
+       against interest of ₹87,261 Crs and printed a loss of ₹65,547 Crs a year
+       in the three statements — for a bank that earned ₹16,904 Crs. The
+       declined DCF was never the whole of the problem; the projections behind
+       it were being printed regardless.
+   
+       So they are marked unusable and the documents omit them, with the reason
+       carried alongside. The reported years are unaffected. */
+    const projectionsUsable = false;
+    const projectionsReason = 'The driver model charges interest below the operating line, which '
+      + 'is how a manufacturer is modelled and not how a bank is. Applied to a lender it '
+      + 'subtracts the cost of deposits twice over and projects a loss whatever the business '
+      + 'does, so the forecast columns are not shown. The reported years stand; the valuation '
+      + 'runs on the research\'s own book-value scenarios.';
     return {
       drivers,
-      model: built,
+      model: Object.assign({}, built, { projectionsUsable, projectionsReason }),
       valuation: { available: false,
         reason: 'A discounted free-cash-flow value is not computed for a lender. Deposits are the '
           + 'funding a bank runs on, not debt to be netted off, so an FCFF discount treats the '
@@ -424,7 +446,7 @@ function liquidityAssessment(c) {
   };
 }
 
-function scoreCompany(c, horizonKey) {
+function scoreCompany(c, horizonKey, run) {
   const bq = readPillar('businessQuality', c.businessQuality);
   const gm = readPillar('growthMultibagger', c.growthMultibagger);
   const vo = readPillar('valuationOpportunity', c.valuationOpportunity);
@@ -492,6 +514,56 @@ function scoreCompany(c, horizonKey) {
        margin, which is what you get when you subtract a bank's operating costs
        from its interest income and call the remainder EBITDA. */
     lender: isLender(c),
+
+    /* THE AUDIT. Every derived figure, re-derived from its own components.
+     *
+     * The tear sheet printed "Pre-provision operating profit 1,22,190" against
+     * "Interest income 1,28,206" for PNB. The payload's `ebit` held a
+     * manufacturer's formula — revenue plus other income less operating costs,
+     * with a bank's interest expense left below the line — and nothing in the
+     * application disagreed, because nothing was checking.
+     *
+     * Now everything is checked, and a figure that fails is withheld rather
+     * than printed. Errors go into the gaps so the reader sees what was
+     * refused and why; nothing is silently corrected. */
+    audit: auditCompany(c, { lender: isLender(c),
+      modelYears: modelled?.model?.available ? modelled.model.years : null }),
+
+    /* A lender's income statement, derived rather than read: net interest
+       income, net total income, pre-provision operating profit, provisions.
+       The payload's own operating lines are not trustworthy for a bank and are
+       not used. */
+    lenderLines: isLender(c)
+      ? orderedAnnual(c.financials).map((r) => lenderLines(r)).filter(Boolean)
+      : null,
+
+    /* And a bank's forecast, built the way a bank is forecast — from its own
+       reported ratios rather than from a driver block written for a factory.
+       Withholding the manufacturer's projections was only half a fix: five
+       years of statements were asked for, and a lender getting none of them is
+       a different defect rather than the absence of one. */
+    lenderForecast: isLender(c)
+      ? lenderForecast(orderedAnnual(c.financials), 5)
+      : null,
+    /* The metrics that matter for THIS industry, rather than the same eleven
+     * ratios for every company.
+     *
+     * Tejas: "Include world class industry focused intelligence Engine which
+     * can understand the financial information in a more meaningful way in our
+     * analysis and make data more meaningful." A bank read on EBITDA margin
+     * and a telco read on receivable days are both correctly computed and both
+     * beside the point. industry.js classifies the business and then derives,
+     * reads or names as missing the measures an analyst covering it would
+     * actually ask for — NIM and CASA for a lender, ARPU and churn for a
+     * telco, the order book for a contractor, utilisation for IT services.
+     *
+     * The lender lines are handed in rather than recomputed: the audit has
+     * already derived a bank's operating lines, and two derivations of the
+     * same figure is how the tear sheet and the statements came to disagree. */
+    industry: industryPanel(c, run, {
+      lenderLines: isLender(c)
+        ? orderedAnnual(c.financials).map((r) => lenderLines(r)).filter(Boolean)
+        : null }),
     business: c.business ?? null,
     thesis: c.thesis ?? null,
     pillars,
@@ -823,7 +895,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
 
   const horizonKey = payload.run?.horizon || '3-5';
   const horizon = HORIZONS.find((h) => h.key === horizonKey) || HORIZONS[1];
-  const scored = payload.companies.map((c) => scoreCompany(c, horizonKey));
+  const scored = payload.companies.map((c) => scoreCompany(c, horizonKey, payload.run));
   const ranked = rankUniverse(scored);
 
   const lenses = {
@@ -842,6 +914,19 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
      said nothing, because the gap loop below only reads the Top 3 and Reliance
      had been excluded from it — so the one company whose numbers were wrong
      was the one company not checked. */
+  /* What the arithmetic audit refused.
+   *
+   * A figure the application declines to print is a fact about the research,
+   * and the reader is owed it in the same place as every other gap. Errors are
+   * reported for every company, not only the Top 3 — the one company whose
+   * numbers are wrong is rarely the one being recommended. */
+  for (const c of scored) {
+    for (const f of (c.audit?.findings || [])) {
+      if (f.severity !== 'error') continue;
+      gaps.push(`${c.symbol}${f.period ? ' ' + f.period : ''}: ${f.message}`);
+    }
+  }
+
   for (const c of scored) {
     const m = c.model?.model;
     if (!m?.available) continue;

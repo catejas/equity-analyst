@@ -716,3 +716,54 @@ export function ownershipCommentary(c) {
   }
   return { title: 'What the register says', text: bits.join(' ') };
 }
+
+/* A bank's forecast, in words.
+ *
+ * The manufacturer's model commentary does not apply to a lender — its
+ * projections are not built and not printed. What replaces it has to do the
+ * same job: say what the forecast assumes, say where each assumption came
+ * from, and name the reported figure it starts from, so a reader can check the
+ * anchor rather than take it.
+ */
+export function lenderModelCommentary(c) {
+  const f = c?.lenderForecast;
+  if (!f) return null;
+  if (!f.available) {
+    return { title: 'What the forecast assumes',
+      text: 'No forecast is built for this company. ' + (f.reason || '') };
+  }
+  const rows = arr(c.lenderLines);
+  const last = rows.length ? rows[rows.length - 1] : null;
+  const get = (name) => (f.assumptions || []).find((a) => a.name.startsWith(name));
+  const growth = get('Interest income growth');
+  const cti = get('Cost-to-income');
+  const credit = get('Credit cost');
+  const years = arr(f.years);
+  const end = years.length ? years[years.length - 1] : null;
+
+  const bits = [];
+  if (last) {
+    /* The anchor, named. A forecast whose base year is not tied to a reported
+       figure is a forecast of something else. */
+    bits.push(`The base year ties to reported interest income of `
+      + `${Math.round(last.interestIncome).toLocaleString('en-IN')} in ${last.period}, which is `
+      + 'where the projection starts.');
+  }
+  if (growth) {
+    bits.push(`Interest income is grown at ${one(growth.value)}% — ${growth.basis}. `
+      + 'Nothing in the forecast assumes it accelerates.');
+  }
+  if (cti && credit) {
+    bits.push(`Cost-to-income is held at ${one(cti.value)}% and the credit cost at `
+      + `${one(credit.value)}% of interest income, both at what this bank has actually `
+      + 'reported. Those two are where a bank forecast is usually flattered, so they are '
+      + 'held rather than improved — if you think either should fall, the forecast below '
+      + 'is conservative by exactly that much.');
+  }
+  if (end && isNum(end.netProfit) && last && isNum(last.profitBeforeTax)) {
+    bits.push(`On those assumptions profit after tax reaches `
+      + `${Math.round(end.netProfit).toLocaleString('en-IN')} by the third projected year.`);
+  }
+  if (!bits.length) return null;
+  return { title: 'What the forecast assumes', text: bits.join(' ') };
+}

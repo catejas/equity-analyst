@@ -10,6 +10,17 @@ import { FLAG_CATEGORIES, KILL_SWITCH_CATEGORIES } from './ranking.js';
 import { HORIZONS } from './multibagger.js';
 import { registerChecklist } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
+import { INDUSTRY_METRIC_SETS } from './industry.js';
+
+/* The metric keys, listed for the research brief, built from the engine's own
+   sets so the prompt and the engine cannot drift apart. Asking for a key the
+   engine does not read, or reading one the prompt never asked for, is the
+   commonest way a schema and its consumer come unstuck. */
+const INDUSTRY_KEY_LIST = Object.keys(INDUSTRY_METRIC_SETS).map((fam) => {
+  const lines = INDUSTRY_METRIC_SETS[fam]
+    .map((m) => '    "' + m.key + '"  ' + m.name + ' (' + m.unit + ')').join('\n');
+  return '  ' + fam + '\n' + lines;
+}).join('\n\n');
 
 const list = (arr) => arr.join(', ');
 
@@ -200,6 +211,24 @@ has no inventory, a lender has no gross block worth stating. Do not write zero
 for a line you did not find: zero is a reading, and a reading you did not take
 is a lie about the accounts. Omit the key instead.
 
+IF THE COMPANY IS A LENDER, four more lines are required on every year, because
+without them a bank's accounts cannot be read at all:
+
+  "interestExpense": 0,   what it paid for deposits and borrowings — the single
+                          largest line in a bank's accounts, and the one that
+                          decides whether the margin is real
+  "advances": 0,          the loan book
+  "deposits": 0,          the funding
+  "otherIncome": 0        fee, treasury and recovery income
+
+Do not send an "ebitda" or an "ebit" for a lender. There is no such line in a
+bank's accounts: interest expense is the cost of the product, not a financing
+charge, and a figure that subtracts operating costs from interest income and
+calls the remainder EBITDA produces a 96% margin, which is not a margin. The
+application derives net interest income, net total income, pre-provision
+operating profit and provisions from the components above and refuses anything
+that does not reconcile.
+
 Where the company reports both standalone and consolidated, use consolidated
 and say so in "basis". Use the company's own reporting units, consistently,
 and state them nowhere else — the application reads them as given.
@@ -338,8 +367,15 @@ free cash flow, the cash conversion cycle, receivable days, net debt to EBITDA,
 interest cover, accruals and cash conversion — from "financials.annual". It
 computes nothing it was not given, and prints "missing input" by name for every
 gap, so a series carrying only a revenue line produces a page of blanks where
-the financial section should be. Fill every field listed in the schema for AT
-LEAST THE LAST TWO FULL YEARS, on ONE basis, stated on every row.
+the financial section should be. Fill every field listed in the schema for THE
+LAST THREE AUDITED YEARS — three, not two — on ONE basis, stated on every row.
+
+Three is the minimum because the report prints a full profit and loss account,
+a full balance sheet and a full cash flow statement side by side, and two
+columns show a change while three show a direction. The projected columns
+beside them are built by the application from the driver model you supply, so
+set "model.years" to 5: three audited years and five projected is the eight-year
+view the finished statement carries.
 
 These figures are published. They are not a matter of judgement and there is no
 acceptable reason to leave them null without having looked. Where to find them,
@@ -374,6 +410,33 @@ financial series both carry a figure for the same year, they must agree — the
 application reads the forensic line items as a fallback for anything the series
 omits, so a contradiction between them silently changes which number a metric
 was computed from.
+
+═══════════════════════════════════════════════════════════════════
+4c. THE INDUSTRY METRICS — WHAT THIS INDUSTRY IS ACTUALLY JUDGED ON
+═══════════════════════════════════════════════════════════════════
+
+The generic ratios — EBITDA margin, ROCE, receivable days, net debt to EBITDA —
+are computed for every company and are nearly useless on their own. Nobody
+underwrites a bank on its EBITDA margin or a telco on its receivable days. The
+measures that decide whether a business is good are a property of the industry:
+net interest margin and CASA for a lender, ARPU and churn for a telco, the order
+book and book-to-bill for a contractor, same-store sales growth for a retailer,
+utilisation and attrition for IT services.
+
+The application classifies the company from the sector and sub-sector, derives
+every one of these it can from the accounts you supply, and reads the rest from
+"industryMetrics". Anything it can neither derive nor read is printed in the
+report as a named gap with what it would have told the reader — so a missing
+ARPU is visible, not silent.
+
+Use these exact keys. Find the ones that apply to this company's industry:
+
+${INDUSTRY_KEY_LIST}
+
+Each reading carries its own period and source, like everything else here. Take
+the latest reported period — a quarter where the company reports quarterly, a
+year where it does not — and say which it is. Do not convert or rebase: give the
+figure in the unit the company itself publishes it in, and name that unit.
 
 ═══════════════════════════════════════════════════════════════════
 5. FORENSIC INPUTS
@@ -445,11 +508,20 @@ order.
 five and three years. The structural forces reshaping it. A table of global
 peers with market capitalisation, five-year return, forward multiple, growth
 history and forecast, and a plain sentence on what each one actually makes.
-Then where India sits, and the trade flowing each way.
+AT LEAST FIVE PEERS, drawn from more than one country: one comparator is an
+anecdote, not a comparison, and a reader cannot tell whether an Indian multiple
+is high or low against a single foreign name. Pick the five largest listed
+companies in the world doing the same thing, and say for each one what it
+makes in a sentence, not a category. Every market capitalisation MUST carry
+its currency and its scale in "marketCapCurrency" and "marketCapUnit" — "USD"
+and "billion", not a bare number; a figure with no currency is unusable and
+will print as unstated. Then where India sits, and the trade flowing each way.
 
 **India.** Growth, inflation, the policy rate, the currency, credit growth and
 capacity utilisation, each with its period and source. An undated macro figure
-is not usable.
+is not usable, and a stale one is worse: search for each of the six and return
+the LATEST PUBLISHED PRINT as at today, by quarter or by month, not the last
+completed fiscal year. See rule 10a below for where each one is published.
 
 **The Union Budget.** The allocations that touch this sector, over five years,
 each with what was announced and what was actually spent. The gap between the
@@ -571,7 +643,11 @@ including pledged shares.
     "cagr": { "y15": 0, "y10": 0, "y5": 0, "y3": 0 },
     "forces": ["what is reshaping the industry"],
     "indiaPosition": "",
-    "peers": [ { "name": "", "country": "", "marketCap": 0, "return5y": 0,
+    // At least five, from more than one country. marketCapCurrency and
+    // marketCapUnit are not optional: "USD" + "billion". A market cap with no
+    // currency and no scale cannot be compared with anything.
+    "peers": [ { "name": "", "country": "", "marketCap": 0,
+      "marketCapCurrency": "USD", "marketCapUnit": "billion", "return5y": 0,
       "forwardPe": 0, "growthPast": 0, "growthForecast": 0, "makes": "" } ] },
 
   "macro": {
@@ -613,8 +689,14 @@ including pledged shares.
 
   "competition": { "concentration": "", "entryBarriers": "", "substitution": "",
     "pricingBehaviour": "",
+    // EVERY player you can establish a share for, not just the leaders — the
+    // chart names the ones above 5% and groups the rest, so a long tail costs
+    // nothing and a short list understates concentration. asOf must be the
+    // latest period for which every player has reported (rule 10a).
+    // moat and whyLeader are asked for on the three largest by share: what the
+    // advantage actually is, and why it has held.
     "players": [ { "name": "", "listed": true, "share": 0, "basis": "volume or value",
-      "asOf": "", "source": "" } ] },
+      "asOf": "", "source": "", "moat": "", "whyLeader": "" } ] },
 
   "sectorValuation": { "currentMultiple": 0, "metric": "", "tenYearMedian": 0,
     "tenYearHigh": 0, "tenYearLow": 0, "source": "" },
@@ -745,6 +827,16 @@ including pledged shares.
       "baseRates": { "claim": "the growth or margin assumption being made",
         "historicalShare": 0.0, "source": "how often companies in this situation sustained it" },
 
+      // THE INDUSTRY METRICS. The measures an analyst covering THIS industry
+      // asks for, which are not the same as the generic ratios. The
+      // application derives whatever the accounts already contain and reads
+      // the rest from here; anything neither derived nor supplied is printed
+      // as a named gap in the report, so an omission is visible rather than
+      // silent. One entry per reading, each with its period and its source —
+      // the same standard as every other figure in this payload.
+      "industryMetrics": [ { "key": "", "value": 0, "unit": "", "period": "",
+        "source": "" } ],
+
       "financials": {
         "annual": [ { "period": "FY26", "basis": "consolidated",
 
@@ -839,6 +931,38 @@ including pledged shares.
 10. Every figure carries its period and its source. An undated number is not
     evidence, and the application will print it as undated.
 
+10a. AND IT MUST BE THE LATEST PRINT. This is a standing instruction, not a
+    preference. For every dated figure in the report — the macro block, market
+    size, industry structure and cycle, geopolitics and trade, market share,
+    and anything else carrying a period — search for the most recent published
+    reading as at TODAY'S DATE and return that one. Do not answer from what you
+    remember: a model's recollection of "GDP growth" settles on the last figure
+    it was trained on, which is how a report dated in one year came back
+    carrying FY24 across the whole macro block.
+
+    Concretely, for each of these, go and look:
+      GDP growth            the latest quarterly national accounts release
+                            (MoSPI), by quarter, not the last full fiscal year
+      inflation             the latest monthly CPI print (MoSPI), by month
+      policy rate           the rate set at the most recent MPC meeting (RBI),
+                            with the meeting date
+      rupee                 the spot rate on or near the run date (RBI
+                            reference rate), not a fiscal-year average
+      credit growth         the latest RBI fortnightly or monthly
+                            sectoral-deployment release
+      capacity utilisation  the latest RBI OBICUS round
+      market size           the most recent published estimate, with its
+                            publication date, not a study quoted second-hand
+      market share          the latest full reporting period for which every
+                            player has reported
+
+    State the period exactly as the source states it — "Q1 FY27", "Aug 2026",
+    "MPC 6 Aug 2026" — so the report can show the reader how old each number
+    is. A figure more than four quarters old must either be replaced with a
+    newer one or be accompanied, in run.researchNotes, by the reason no newer
+    reading exists. The application computes each reading's age from its period
+    and prints it; a stale block is visible in the finished document.
+
 11. Return the payload as the last thing in your reply, in one fenced json code
     block, so it carries a copy button. Nothing after the closing fence.
 
@@ -902,8 +1026,9 @@ become one — but returning it empty leaves every number in the report with no
 context to be read against.` : `Search until each block below has something in it. These are not optional
 extras; each one is a named section of the finished report:
 
-  the world        global market size, its growth over 15/10/5/3 years, and a
-                   handful of global peers with what each of them makes
+  the world        global market size, its growth over 15/10/5/3 years, and at
+                   least FIVE global peers, each with its market cap stated in
+                   a named currency and scale, and what it makes
   macro            six readings, each with its period and its source
   budget           the allocations touching this sector over five years, with
                    what was announced AND what was actually spent
@@ -915,7 +1040,9 @@ extras; each one is a named section of the finished report:
   value chain      every node, and the listed companies sitting at each one
   tam              three figures, each with a basis and a source
   programmes       the contracts driving demand, traced to listed suppliers
-  competition      share by player, with the basis stated
+  competition      share by player, with the basis stated, for as many players
+                   as you can establish — and for the three largest, what the
+                   moat is and why they lead
 
 Roughly twenty-five searches. Before you stop, make sure every company on the
 shortlist carries all four ratings with evidence — that is what the application
