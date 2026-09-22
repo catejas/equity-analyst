@@ -14,13 +14,56 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
  * payload contributes its company and nothing else, so a later company import
  * can never quietly rewrite the sector work.
  */
+/* Is a company reply answering the question this run asked?
+ *
+ * A company prompt is built from the selected sector run, so the reply's run
+ * block should name that same sector. When it names a different one, the AI
+ * answered about something else — which is exactly what happened: a prompt
+ * that said "Sector: Banking" came back describing SpiceJet, run block stamped
+ * "Aviation / Airlines", and that company was then folded into the Public
+ * Sector Banks study. The document that came out carried a banking header over
+ * an aviation title, which is what Tejas saw.
+ *
+ * Names are compared loosely — case, punctuation and the odd "sector" suffix
+ * differ between runs without meaning anything. A company reply that states no
+ * sector at all is accepted: silence is not a contradiction. Only a stated,
+ * different sector is a mismatch, and only the sector is checked, never the
+ * sub-sector: a PSB study may legitimately pull in a comparator from another
+ * sub-sector of the same sector. */
+const norm = (s) => String(s == null ? '' : s).toLowerCase()
+  .replace(/\bsectors?\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+
+export function sectorMismatch(baseRun, coRun) {
+  const want = norm(baseRun && baseRun.sector);
+  const got = norm(coRun && coRun.sector);
+  if (!want || !got) return null;
+  if (want === got) return null;
+  return { expected: String(baseRun.sector), found: String(coRun.sector),
+    foundSub: (coRun && coRun.subSector) || null };
+}
+
 export function composePayload(sector, companyPayloads = []) {
   const base = sector && isObj(sector) ? JSON.parse(JSON.stringify(sector)) : { run: {} };
   base.companies = [];
+  if (!isObj(base.run)) base.run = {};
+  const foreign = [];
 
   const seen = new Set();
   for (const p of companyPayloads) {
     if (!isObj(p) || !Array.isArray(p.companies)) continue;
+    /* A reply about a different sector contributes nothing — not its company,
+       and not its sector research either. Dropping it silently would only move
+       the confusion, so it is recorded and the report prints it. */
+    const bad = sectorMismatch(base.run, p.run);
+    if (bad) {
+      for (const c of p.companies) {
+        if (isObj(c) && (c.symbol || c.name)) {
+          foreign.push({ symbol: String(c.symbol || ''), name: String(c.name || c.symbol || ''),
+            sector: bad.found, subSector: bad.foundSub, expected: bad.expected });
+        }
+      }
+      continue;
+    }
     for (const c of p.companies) {
       if (!isObj(c) || !c.symbol) continue;
       if (seen.has(c.symbol)) continue;   /* first import of a symbol wins */
@@ -38,6 +81,8 @@ export function composePayload(sector, companyPayloads = []) {
 
   /* Order the companies by the sector's own shortlist, so rank 1 in the app is
      rank 1 in the research even before scoring runs. */
+  if (foreign.length) base.run.foreignImports = foreign;
+
   const nominated = top3For(base).list;
   if (nominated.length && base.companies.length > 1) {
     const order = new Map(nominated.map((x, i) => [String(x.symbol || x.name).toUpperCase(), i]));

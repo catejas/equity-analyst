@@ -14,6 +14,11 @@ import { DISCLOSURE_CHECKS } from './forensic.js';
 import { repairPayload } from './repair.js';
 import { SCREEN_KEYS, MIN_RATED } from './screen.js';
 
+/* A count and its noun agree. A sub-sector run often screens one company, and
+   the warnings a reader saw first read "Only 1 companies were screened" and
+   "forensic.decade has 1 years". */
+const count = (n, one, many) => `${n} ${(n === 1 || n === -1) ? one : (many || one + 's')}`;
+
 export const PAYLOAD_SCHEMA_VERSION = '5.0.0';
 
 export const DIRECT_DIMENSIONS = Object.freeze([
@@ -156,7 +161,9 @@ export function validatePayload(payload, { repair = true } = {}) {
       payload.shortlist = payload.shortlist.filter((x) => !(x && x.__drop));
       if (payload.shortlist.length !== before) w('shortlist had entries with neither a name nor a symbol; those were dropped.');
       if (payload.shortlist.length && payload.shortlist.length < 6) {
-        w(`Only ${payload.shortlist.length} companies were screened, so the three are chosen from a thin field.`);
+        w(`Only ${count(payload.shortlist.length, 'company', 'companies')} `
+          + `${payload.shortlist.length === 1 ? 'was' : 'were'} screened, so the three are `
+          + 'chosen from a thin field.');
       }
     }
   } else if (isObj(run) && (!isArr(payload.companies) || !payload.companies.length)) {
@@ -250,7 +257,8 @@ export function validatePayload(payload, { repair = true } = {}) {
       } else if (!isArr(fx.decade)) {
         e(`${at}: forensic.decade must be an array of years.`);
       } else if (fx.decade.length < 5) {
-        w(`${at}: forensic.decade has ${fx.decade.length} years; five is the minimum and ten is what proves anything.`);
+        w(`${at}: forensic.decade has ${count(fx.decade.length, 'year')}; five is the `
+          + 'minimum and ten is what proves anything.');
       }
       if (given(fx.disclosures)) {
         if (!isObj(fx.disclosures)) e(`${at}: forensic.disclosures must be an object.`);

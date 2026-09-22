@@ -89,16 +89,27 @@ for (const name of order) {
    independent check on the engine's arithmetic, and toclinks.py reads the
    printed PDF, which no JavaScript suite can do. */
 if (!only.length) {
-  for (const name of ['arith.py', 'toclinks.py']) {
+  /* toclinks reads one PDF per run, so it is run once per document. It used
+     to be run once, against a hard-coded path — which meant three of the four
+     documents' contents links were never checked at all, and the vector
+     writer's output never once. */
+  const PY = [['arith.py', []],
+    ['toclinks.py', ['/tmp/vec-co1.pdf', 'co1']],
+    ['toclinks.py', ['/tmp/vec-sector.pdf', 'sector']],
+    ['toclinks.py', ['/tmp/vec-exec.pdf', 'exec']],
+    ['toclinks.py', ['/tmp/vec-score.pdf', 'score']],
+    ['toclinks.py', ['/tmp/toc-plain.pdf', 'co1']]];
+  for (const [file, args] of PY) {
+    const name = args.length ? `${file} ${args[1] || ''}`.trim() : file;
     const py = await new Promise((res) => {
-      const p = spawn('python3', [path.join(DIR, name)], { cwd: ROOT });
+      const p = spawn('python3', [path.join(DIR, file), ...args], { cwd: ROOT });
       let out = ''; p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
       p.on('close', (code) => res({ code, out }));
     });
     const ok = py.code === 0;
     results.push({ name, ok });
-    console.log(`${name.padEnd(16)} ${ok ? 'pass' : 'FAIL'}`);
-    if (!ok) console.log(py.out.split('\n').slice(-8).join('\n'));
+    console.log(`${name.padEnd(22)} ${ok ? 'pass' : 'FAIL'}`);
+    if (!ok) console.log(py.out.split('\n').slice(-10).join('\n'));
   }
 }
 

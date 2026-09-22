@@ -90,6 +90,64 @@ for (const kind of ['co1', 'co2', 'co3', 'sector', 'exec', 'score']) {
   console.log(`  wrote /tmp/doc-${kind}.html  ${(html.length / 1024).toFixed(0)} KB`);
 }
 
+/* What the contents page says, taken from the finished DOM. The PDF check
+   compares its link destinations against this rather than against text scraped
+   back out of the PDF: a two-column contents defeats every text extractor,
+   which is how a link test came to compare a row's page number with the next
+   column's section number and report 42 of 42 wrong. Here the answer is not
+   in doubt — the anchor names the section, and the packer has already written
+   the page it landed on into the row. */
+for (const kind of ['co1', 'sector', 'exec', 'score']) {
+  const pv = await b.newPage({ viewport: { width: 1000, height: 1400 } });
+  await pv.setContent(fs.readFileSync(`/tmp/doc-${kind}.html`, 'utf8'), { waitUntil: 'networkidle' });
+  await pv.waitForTimeout(1000);
+  const rows = await pv.evaluate(() => {
+    const pageOf = new Map();
+    document.querySelectorAll('.page').forEach((pg, i) => pageOf.set(pg, i + 1));
+    return [...document.querySelectorAll('a[href^="#"]')].map((a) => {
+      const target = document.getElementById(a.getAttribute('href').slice(1));
+      /* The page cell is addressed by the anchor it belongs to. It is
+         usually inside the row's <a>, but not in every builder, so the
+         data-for attribute — which the packer writes the page number into —
+         is the reliable way to find it. */
+      /* The page cell is addressed by the section, but not by the anchor's
+         own id: the anchor is "#sec-7" and the cell is data-for="s7". Looking
+         it up by the href verbatim found nothing and recorded every printed
+         page number as null. */
+      const id = a.getAttribute('href').slice(1);
+      const no = (/(\d+)$/.exec(id) || [])[1];
+      const cell = a.querySelector('.ir-toc-pg')
+        || (no && document.querySelector(`.ir-toc-pg[data-for="s${no}"]`))
+        || document.querySelector(`.ir-toc-pg[data-for="${id}"]`);
+      const r = a.getBoundingClientRect();
+      return {
+        href: a.getAttribute('href'),
+        title: (a.querySelector('b') || a).textContent.trim().slice(0, 60),
+        /* What the reader sees at the end of the row. The dedicated cell is
+           the usual carrier, but not every builder emits one, so the row's
+           own trailing digits are the fallback — that is the number on the
+           page either way. */
+        /* What the reader sees at the right-hand end of the row. Two
+           builders exist: one marks the cell with a class, the other lays the
+           row out as four plain spans — section number, title, leader dots,
+           page — so the last element is the page number. Reading the row's
+           trailing digits instead put "Why This Company Is Barred from the
+           Top 3" on page 324, because that title ends in a numeral. */
+        printed: (() => {
+          const box = cell && cell.textContent.trim() ? cell : a.lastElementChild;
+          const t = box ? box.textContent.trim() : '';
+          return /^\d{1,3}$/.test(t) ? Number(t) : null;
+        })(),
+        actual: target ? (pageOf.get(target.closest('.page')) || null) : null,
+        x: Math.round(r.left), y: Math.round(r.top),
+      };
+    }).filter((x) => x.actual !== null);
+  });
+  await pv.close();
+  fs.writeFileSync(`/tmp/toc-${kind}.json`, JSON.stringify(rows));
+  console.log(`  wrote /tmp/toc-${kind}.json  ${rows.length} contents links`);
+}
+
 /* And the printed PDF, which toclinks.py reads. Printing is the only way to
    see what the link annotations and the destination table actually contain —
    the DOM says nothing about either. */

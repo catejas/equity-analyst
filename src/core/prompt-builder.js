@@ -557,6 +557,9 @@ including pledged shares.
   ],
 
   "global": { "marketSize": 0, "unit": "", "source": "",
+    // EVERY rate in this payload is in PERCENTAGE POINTS, never a fraction:
+    // eleven percent is 11, not 0.11. This was answered both ways by different
+    // tools and the charts had no way to tell them apart.
     "cagr": { "y15": 0, "y10": 0, "y5": 0, "y3": 0 },
     "forces": ["what is reshaping the industry"],
     "indiaPosition": "",

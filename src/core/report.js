@@ -596,6 +596,82 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   const check = validatePayload(payload);
   if (!check.valid) return { ok: false, errors: check.errors, warnings: check.warnings, report: null };
 
+  /* Percentages that arrived as fractions.
+   *
+   * Two AI tools answered the same fields two different ways. One gave
+   * global.cagr.y15 = 5.5 meaning 5.5%; the other gave 0.11 meaning 11%, and
+   * with it promoter holding 0.7008, free float 0.299, GDP growth 0.072. The
+   * application printed them as given, so a state-owned bank whose promoter is
+   * the Government of India at 70% appeared in the research report as
+   * "Promoter holding 0.7%", and India's economy as growing at 0.07% a year.
+   * For a reader checking a bank against its filings those are not small
+   * errors; they are the kind that ends trust in the whole document.
+   *
+   * The scale is decided for the payload as a whole, not field by field,
+   * because a research reply is internally consistent even when it disagrees
+   * with the schema. Every percentage field named below is collected; the
+   * payload is treated as fraction-scaled only when there are at least five of
+   * them and EVERY one is below 1 in absolute value. One value of 5.5 or 70 is
+   * enough to settle that the payload is already in percentage points, and
+   * then nothing is touched — a genuine 0.08% credit cost is left alone.
+   *
+   * Nothing is rescaled silently: the change is recorded as a gap, so the
+   * reader knows which numbers the application reinterpreted and can check
+   * them against the source. */
+  const PCT_AT = (pl) => {
+    const out = [];
+    const take = (obj, key) => {
+      if (obj && typeof obj[key] === 'number' && isFinite(obj[key])) out.push([obj, key]);
+    };
+    const g = pl.global?.cagr;
+    if (g) for (const k of ['y15', 'y10', 'y5', 'y3']) take(g, k);
+    const m = pl.macro;
+    /* currency is a rate in rupees, not a percentage, and is never included. */
+    if (m) for (const k of ['gdpGrowth', 'inflation', 'policyRate', 'creditGrowth',
+      'capacityUtilisation', 'unemployment', 'fiscalDeficit']) take(m[k], 'value');
+    for (const c of (pl.companies || [])) {
+      const o = c.ownership;
+      if (o) {
+        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledgedPct']) take(o, k);
+        for (const q of (o.quarters || [])) for (const k of ['promoter', 'fii', 'dii', 'public']) take(q, k);
+      }
+      /* The quarter-by-quarter shareholding is a second, separate block in the
+         payload, and the snapshot table reads it rather than ownership — which
+         is why "Promoter holding 0.7%" survived a fix that had already
+         corrected the ownership figures. `pledged` is included: nil is the
+         usual answer and a zero never decides the scale either way. */
+      for (const q of (c.shareholding || [])) {
+        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledged']) take(q, k);
+      }
+      /* The liquidity block carries its own copy of the free float, and the
+         position-sizing section reads that one. Three blocks state the same
+         percentage; all three have to be on the same scale. */
+      if (c.liquidity) for (const k of ['freeFloatPct', 'impactCostPct']) take(c.liquidity, k);
+      const sn = c.snapshot;
+      if (sn) {
+        take(sn, 'freeFloatPct');
+        const pf = sn.performance;
+        if (pf) for (const k of ['m3', 'm6', 'm12', 'm3Relative', 'm6Relative', 'm12Relative']) take(pf, k);
+      }
+    }
+    return out;
+  };
+  const unitGaps = [];
+  {
+    payload = JSON.parse(JSON.stringify(payload));
+    const spots = PCT_AT(payload);
+    const live = spots.filter(([o, k]) => o[k] !== 0);
+    if (live.length >= 5 && live.every(([o, k]) => Math.abs(o[k]) < 1)) {
+      /* Rounded, because 0.072 * 100 is 7.199999999999999 in binary floating
+         point and that is not a number to print in a research report. */
+      for (const [o, k] of spots) o[k] = Math.round(o[k] * 100 * 1e6) / 1e6;
+      unitGaps.push(`Every percentage in this payload arrived as a fraction — promoter holding as `
+        + `${(live[0][0][live[0][1]] / 100).toFixed(4)}-style decimals rather than percentage `
+        + `points. All ${spots.length} of them have been multiplied by 100 so the report reads in `
+        + 'percent. Check them against the filings before quoting any of them.');
+    }
+  }
+
   /* A partial run carries the sector work and no companies. It is saved so the
      rest of a split reply can be merged into it; the documents it can build say
      so plainly rather than coming out empty without explanation. */
@@ -643,7 +719,8 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
     bestValueGarp: rankByLens(scored, 'bestValueGarp').slice(0, 3),
   };
 
-  const gaps = [];
+  const gaps = [...unitGaps];
+
 
   /* A base year that does not tie to reported revenue is a fact about the
      company's model, not about its rank. Reliance's model was out by 91% and
@@ -690,6 +767,9 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
         searchesRun: payload.run.searchesRun ?? null,
         noiseBand: NOISE_BAND,
         scenario: payload.run.scenario ?? null,
+        /* Company replies that were about a different sector and so never
+           entered this study. Carried so the document can say so. */
+        foreignImports: payload.run.foreignImports ?? null,
       },
       industryMap: payload.industryMap ?? null,
       universe: payload.universe ?? null,
