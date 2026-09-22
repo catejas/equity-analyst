@@ -20,7 +20,7 @@
  *      hides the gap.
  */
 
-import { MULTIBAGGER_TESTS } from './models.js';
+import { MULTIBAGGER_TESTS, orderedAnnual } from './models.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -505,4 +505,214 @@ export function closingNarrative(c) {
     );
   }
   return { title: 'What would change this conclusion', paragraphs: paras };
+}
+
+/* ===================== READINGS AGAINST EXHIBITS =====================
+ *
+ * Tejas: "I don't find rich commentary yet, lots of charts and numbers but no
+ * commentary of what that mean."
+ *
+ * A chart states a fact. A reading says what the fact implies and what would
+ * change it, and it is the reading a reader is actually paying for. Everything
+ * below sits next to a specific exhibit and names the figures in it — the same
+ * three rules as the rest of this file: never generic, always say what would
+ * change it, return null rather than pad.
+ */
+
+/* The screen's own distribution. A ranking says who won; this says by how
+   much, and whether the order means anything. */
+export function screenCommentary(report) {
+  const sc = report?.screen;
+  if (!sc || !arr(sc.ranked).length) return null;
+  const rated = arr(sc.ranked).filter((r) => r.sufficient && isNum(r.score));
+  if (rated.length < 2) return null;
+  const top = rated[0];
+  const bottom = rated[rated.length - 1];
+  const chosen = arr(sc.top3);
+  const cut = chosen.length ? chosen[chosen.length - 1] : null;
+  const next = rated[chosen.length] || null;
+  const spread = top.score - bottom.score;
+
+  const bits = [];
+  bits.push(`${rated.length} of ${sc.counts.shortlisted} shortlisted companies were rated on all `
+    + `four pillars and could be ranked. The screen runs from ${one(top.score)} at the top `
+    + `(${top.name}) to ${one(bottom.score)} at the bottom (${bottom.name}) — a spread of `
+    + `${one(spread)} points.`);
+
+  if (cut && next && isNum(cut.score) && isNum(next.score)) {
+    const margin = cut.score - next.score;
+    bits.push(margin < 3
+      ? `The cut is narrow: ${cut.name} takes the third place by ${one(margin)} points over `
+        + `${next.name}, which is inside the noise of any rating scale. Treat the third slot as `
+        + 'contested rather than settled — if one rating moved by three points the order changes.'
+      : `The cut is clear: ${cut.name} takes the third place by ${one(margin)} points over `
+        + `${next.name}. It would take a material change in the evidence to displace it.`);
+  }
+
+  /* Which pillar actually did the separating. A screen where every company
+     scores the same on three pillars is a screen decided by the fourth, and
+     the reader should know which one that was. */
+  const keys = ['businessQuality', 'growthMultibagger', 'valuationOpportunity', 'riskQuality'];
+  const labels = { businessQuality: 'business quality', growthMultibagger: 'growth',
+    valuationOpportunity: 'valuation', riskQuality: 'risk and quality control' };
+  let widest = null; let widestRange = -1;
+  for (const k of keys) {
+    const vals = rated.map((r) => {
+      const x = r.ratings?.[k];
+      return (x && typeof x === 'object') ? x.score : x;
+    }).filter(isNum);
+    if (vals.length < 2) continue;
+    const range = Math.max(...vals) - Math.min(...vals);
+    if (range > widestRange) { widestRange = range; widest = k; }
+  }
+  if (widest && widestRange > 0) {
+    bits.push(`${labels[widest][0].toUpperCase()}${labels[widest].slice(1)} did most of the `
+      + `separating, ranging ${one(widestRange, 0)} points across the shortlist. That is the `
+      + 'pillar to argue with if you disagree with the three.');
+  }
+
+  const unrated = sc.counts.shortlisted - rated.length;
+  if (unrated > 0) {
+    bits.push(`${unrated} shortlisted ${unrated === 1 ? 'company was' : 'companies were'} rated on `
+      + 'too few pillars to be compared and ranked below every fully rated one. That is a gap in '
+      + 'the research, not a verdict on the company.');
+  }
+
+  return { title: 'What the screen actually separated', text: bits.join(' ') };
+}
+
+/* The reported accounts. Three years of numbers, and what the direction of
+   travel in them is. */
+export function statementsCommentary(c) {
+  /* Oldest year first. The payload lists them newest first, and reading them
+     in that order produced "moved from 1,28,206 in FY26 to 96,000 in FY24,
+     compounding at -13.5% a year" — a growing bank described as shrinking. */
+  const rows = orderedAnnual(c?.financials).filter((r) => isNum(r.revenue));
+  if (rows.length < 2) return null;
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const years = rows.length - 1;
+  const lender = !!c.lender;
+  const topLine = lender ? 'Interest income' : 'Revenue';
+  const growth = first.revenue > 0
+    ? (Math.pow(last.revenue / first.revenue, 1 / years) - 1) * 100 : null;
+
+  const bits = [];
+  bits.push(`${topLine} moved from ${Math.round(first.revenue).toLocaleString('en-IN')} in `
+    + `${first.period} to ${Math.round(last.revenue).toLocaleString('en-IN')} in ${last.period}`
+    + (isNum(growth) ? `, compounding at ${one(growth)}% a year over ${years} `
+      + `${years === 1 ? 'year' : 'years'}.` : '.'));
+
+  /* Margin — but only where a margin means something.
+   *
+     For a lender it does not. Dividing pre-provision operating profit by gross
+     interest income gave "95.3%", because a bank's biggest cost sits below
+     that line, and a 95% margin is not a number any reader should be handed.
+     What a bank is judged on instead is whether profit grew faster than the
+     book it was earned on. */
+  if (lender) {
+    if (isNum(first.netProfit) && isNum(last.netProfit) && first.netProfit > 0) {
+      const pg = (Math.pow(last.netProfit / first.netProfit, 1 / years) - 1) * 100;
+      const cmp = isNum(growth) ? pg - growth : null;
+      bits.push(`Profit after tax compounded at ${one(pg)}% against interest income at `
+        + `${one(growth)}%`
+        + (cmp === null ? '.'
+          : cmp > 1 ? `, ${one(cmp)} points faster — the bank is earning more on each rupee of `
+            + 'income, which is operating leverage or a falling credit cost and the sections '
+            + 'below say which.'
+          : cmp < -1 ? `, ${one(Math.abs(cmp))} points slower. Income grew and profit did not `
+            + 'keep up, so cost of funds, operating cost or provisions absorbed it.'
+          : ' — profit and income grew together, so nothing in the cost structure changed.'));
+    }
+    if (isNum(last.netProfit) && isNum(last.totalAssets) && last.totalAssets > 0) {
+      const roa = (last.netProfit / last.totalAssets) * 100;
+      bits.push(`Return on assets is ${one(roa, 2)}% in ${last.period}, which is the figure a `
+        + 'bank is actually compared on — above 1% is strong for an Indian public sector bank.');
+    }
+  } else {
+    const opKey = 'ebitda';
+    if (isNum(first[opKey]) && isNum(last[opKey]) && first.revenue > 0 && last.revenue > 0) {
+      const m0 = (first[opKey] / first.revenue) * 100;
+      const m1 = (last[opKey] / last.revenue) * 100;
+      const move = m1 - m0;
+      bits.push(`EBITDA margin went from ${one(m0)}% to ${one(m1)}%, `
+        + (Math.abs(move) < 0.5 ? 'essentially flat — the business grew without changing shape.'
+          : move > 0 ? `${one(move)} points of expansion. Margin expansion is the assumption most `
+            + 'often asserted and least often evidenced, so the mechanism behind it is what to test.'
+          : `${one(Math.abs(move))} points of contraction, which the growth above does not offset `
+            + 'unless it continues.'));
+    }
+  }
+
+  /* Profit against cash, which is where an accounting problem shows first. */
+  if (isNum(last.netProfit) && isNum(last.cashFromOperations) && last.netProfit > 0) {
+    const conv = (last.cashFromOperations / last.netProfit) * 100;
+    bits.push(conv < 60
+      ? `Cash from operations was only ${one(conv, 0)}% of reported profit in ${last.period}. `
+        + 'Profit that does not arrive as cash is the single most common early sign of an '
+        + 'accounting problem; the working-capital line is where to look for it.'
+      : `Cash from operations covered ${one(conv, 0)}% of reported profit in ${last.period}, so `
+        + 'the earnings are arriving as cash.');
+  }
+
+  return { title: 'What three years of accounts say', text: bits.join(' ') };
+}
+
+/* The share price line, against what the business did underneath it. */
+export function priceCommentary(c) {
+  const perf = c?.snapshot?.performance;
+  if (!perf || !isNum(perf.m12)) return null;
+  const bits = [];
+  const rel = isNum(perf.m12Relative) ? perf.m12Relative : null;
+  bits.push(`The shares are ${perf.m12 >= 0 ? 'up' : 'down'} ${one(Math.abs(perf.m12))}% over `
+    + 'twelve months'
+    + (rel === null ? '.'
+      : `, ${one(Math.abs(rel))} points ${rel >= 0 ? 'ahead of' : 'behind'} `
+        + `${perf.benchmark || 'the index'}.`));
+
+  const sn = c.snapshot || {};
+  if (isNum(sn.week52High) && isNum(sn.week52Low) && sn.week52High > sn.week52Low) {
+    const px = c.valuation?.currentPrice;
+    if (isNum(px)) {
+      const pos = ((px - sn.week52Low) / (sn.week52High - sn.week52Low)) * 100;
+      bits.push(`It sits ${one(pos, 0)}% of the way up its 52-week range. `
+        + (pos > 80 ? 'Buying at the top of the range does not make a thesis wrong, but it does '
+            + 'mean the market has already been told most of it.'
+          : pos < 20 ? 'A price near the bottom of its range is either the opportunity or the '
+            + 'market pricing something the research has not found. The risks section is where '
+            + 'that question gets settled.'
+          : 'That is the middle of the range, which tells you nothing on its own — the valuation '
+            + 'section is what decides whether it is cheap.'));
+    }
+  }
+  return { title: 'What the price has already done', text: bits.join(' ') };
+}
+
+/* Who owns it, and what changed. */
+export function ownershipCommentary(c) {
+  const q = arr(c?.shareholding);
+  if (!q.length) return null;
+  const now = q[0];
+  const then = q.length > 1 ? q[q.length - 1] : null;
+  if (!isNum(now.promoter)) return null;
+  const bits = [];
+  bits.push(`The promoter holds ${one(now.promoter)}%`
+    + (isNum(now.fii) && isNum(now.dii)
+      ? `, with FIIs at ${one(now.fii)}% and DIIs at ${one(now.dii)}%.` : '.'));
+  if (then && isNum(then.promoter)) {
+    const move = now.promoter - then.promoter;
+    if (Math.abs(move) >= 0.2) {
+      bits.push(`Promoter holding has ${move > 0 ? 'risen' : 'fallen'} `
+        + `${one(Math.abs(move))} points since ${then.period}. `
+        + (move < 0 ? 'A falling promoter stake is worth a reason: dilution from a capital raise '
+            + 'is a different fact from a sale, and the two read identically in this table.'
+          : 'Promoters adding to a holding they already control is the most direct signal of '
+            + 'confidence available, provided it was bought rather than allotted.'));
+    }
+  }
+  if (isNum(now.pledged) && now.pledged > 0) {
+    bits.push(`${one(now.pledged)}% of the promoter holding is pledged, which links the share `
+      + 'price to the promoter\'s own solvency and is the risk that compounds fastest in a fall.');
+  }
+  return { title: 'What the register says', text: bits.join(' ') };
 }

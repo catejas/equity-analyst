@@ -6,6 +6,7 @@ import { rankUniverse, rankByLens } from './ranking.js';
 import { multibaggerGrid, HORIZONS } from './multibagger.js';
 import { confidence } from './integrity.js';
 import { validatePayload, DIRECT_DIMENSIONS } from './payload-schema.js';
+import { screenShortlist, SCREEN_WEIGHTS, MIN_RATED } from './screen.js';
 import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
 import { panel as technicalPanel } from './indicators.js';
@@ -18,6 +19,49 @@ import * as metrics from './metrics.js';
 import { PILLARS } from './scoring.js';
 
 const r2 = (n) => (Number.isFinite(n) ? Math.round((n + Number.EPSILON) * 100) / 100 : null);
+
+/* What the money figures are in.
+ *
+ * Nothing in the payload said. Tejas read a report full of bare numbers and
+ * asked the only question that matters about them: "what is that? amount in
+ * crore, amount in lacs or just the quantity number." There was no answer on
+ * the page, because there was no answer in the data.
+ *
+ * The schema now asks for it. Where a payload predates that, the figures are
+ * still labelled — as INR crore, which is what an Indian listed company
+ * reports in and what these payloads have in fact always contained — and the
+ * assumption is recorded as a gap rather than made silently. An unlabelled
+ * number and a number labelled by assumption are different things, and the
+ * reader is entitled to know which one is in front of them.
+ */
+const UNIT_LABEL = {
+  crore: 'crore', cr: 'crore', lakh: 'lakh', lac: 'lakh', lacs: 'lakh',
+  million: 'million', mn: 'million', billion: 'billion', bn: 'billion',
+  thousand: 'thousand', absolute: '', units: '', unit: '', one: '',
+};
+
+export function reportingUnits(payload, note) {
+  const r = payload?.run?.reporting || {};
+  const rawUnit = String(r.unit ?? '').trim().toLowerCase();
+  const stated = Object.prototype.hasOwnProperty.call(UNIT_LABEL, rawUnit);
+  const currency = String(r.currency ?? '').trim().toUpperCase() || 'INR';
+  const unit = stated ? UNIT_LABEL[rawUnit] : 'crore';
+  if (!stated && typeof note === 'function') {
+    note('The payload did not state what its money figures are in. They are '
+      + 'printed as INR crore, which is how Indian listed companies report and '
+      + 'what the figures in this payload are consistent with — but it is an '
+      + 'assumption, not a statement, so check it against the filings.');
+  }
+  return {
+    currency,
+    unit,
+    stated,
+    /* What goes in a column header: "INR crore", or just "INR" for absolutes. */
+    label: unit ? `${currency} ${unit}` : currency,
+    basis: String(r.basis ?? '').trim() || null,
+  };
+}
+
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
 function upside(fairValue, currentPrice) {
@@ -441,6 +485,13 @@ function scoreCompany(c, horizonKey) {
     name: c.name,
     exchange: c.exchange ?? null,
     sector: c.sector ?? null,
+    /* Banks, NBFCs and insurers do not have an EBITDA, a free cash flow or a
+       net-debt position in the sense the rest of the model means them. The
+       documents need to know that to label their own rows: the tear sheet was
+       printing "EBITDA 1,23,290" against "Revenue 1,28,206" for PNB — a 96%
+       margin, which is what you get when you subtract a bank's operating costs
+       from its interest income and call the remainder EBITDA. */
+    lender: isLender(c),
     business: c.business ?? null,
     thesis: c.thesis ?? null,
     pillars,
@@ -618,59 +669,121 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
    * Nothing is rescaled silently: the change is recorded as a gap, so the
    * reader knows which numbers the application reinterpreted and can check
    * them against the source. */
-  const PCT_AT = (pl) => {
-    const out = [];
-    const take = (obj, key) => {
-      if (obj && typeof obj[key] === 'number' && isFinite(obj[key])) out.push([obj, key]);
+  /* The scale is decided per BLOCK, not for the whole payload.
+   *
+   * A composed run is several replies stitched together: the sector study from
+   * one, each company from another. They need not agree with each other, and
+   * in practice they do not — a Banking sector payload that gave growth as 5.5
+   * for 5.5% was merged with a PNB payload that gave promoter holding as
+   * 0.7008 for 70%. Judging the whole payload at once meant the sector's
+   * honest 5.5 vetoed the correction the company needed, and the report went
+   * out saying the Government of India owns 0.7% of Punjab National Bank.
+   *
+   * So each block is judged on its own evidence: the run-level figures
+   * together, and each company separately. Within a block the rule is
+   * unchanged — at least five non-zero values, and every one of them below 1
+   * in absolute value. A single value of 5.5 or 70 settles that its block is
+   * already in percentage points, and nothing in it is touched. */
+  const pctBlocks = (pl) => {
+    const blocks = [];
+    const bag = (label) => { const spots = []; blocks.push({ label, spots }); return spots; };
+    const take = (spots, obj, key) => {
+      if (obj && typeof obj[key] === 'number' && isFinite(obj[key])) spots.push([obj, key]);
     };
+
+    const run = bag('the sector research');
     const g = pl.global?.cagr;
-    if (g) for (const k of ['y15', 'y10', 'y5', 'y3']) take(g, k);
+    if (g) for (const k of ['y15', 'y10', 'y5', 'y3']) take(run, g, k);
     const m = pl.macro;
     /* currency is a rate in rupees, not a percentage, and is never included. */
-    if (m) for (const k of ['gdpGrowth', 'inflation', 'policyRate', 'creditGrowth',
-      'capacityUtilisation', 'unemployment', 'fiscalDeficit']) take(m[k], 'value');
+    if (m) {
+      for (const k of ['gdpGrowth', 'inflation', 'policyRate', 'creditGrowth',
+        'capacityUtilisation', 'unemployment', 'fiscalDeficit']) take(run, m[k], 'value');
+    }
+
     for (const c of (pl.companies || [])) {
+      const spots = bag(String(c.name || c.symbol || 'a company') + "'s research");
       const o = c.ownership;
       if (o) {
-        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledgedPct']) take(o, k);
-        for (const q of (o.quarters || [])) for (const k of ['promoter', 'fii', 'dii', 'public']) take(q, k);
+        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledgedPct']) take(spots, o, k);
+        for (const q of (o.quarters || [])) {
+          for (const k of ['promoter', 'fii', 'dii', 'public']) take(spots, q, k);
+        }
       }
       /* The quarter-by-quarter shareholding is a second, separate block in the
          payload, and the snapshot table reads it rather than ownership — which
          is why "Promoter holding 0.7%" survived a fix that had already
-         corrected the ownership figures. `pledged` is included: nil is the
-         usual answer and a zero never decides the scale either way. */
+         corrected the ownership figures. */
       for (const q of (c.shareholding || [])) {
-        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledged']) take(q, k);
+        for (const k of ['promoter', 'fii', 'dii', 'public', 'pledged']) take(spots, q, k);
       }
       /* The liquidity block carries its own copy of the free float, and the
          position-sizing section reads that one. Three blocks state the same
          percentage; all three have to be on the same scale. */
-      if (c.liquidity) for (const k of ['freeFloatPct', 'impactCostPct']) take(c.liquidity, k);
+      if (c.liquidity) {
+        for (const k of ['freeFloatPct', 'impactCostPct']) take(spots, c.liquidity, k);
+      }
       const sn = c.snapshot;
       if (sn) {
-        take(sn, 'freeFloatPct');
+        take(spots, sn, 'freeFloatPct');
         const pf = sn.performance;
-        if (pf) for (const k of ['m3', 'm6', 'm12', 'm3Relative', 'm6Relative', 'm12Relative']) take(pf, k);
+        if (pf) {
+          for (const k of ['m3', 'm6', 'm12', 'm3Relative', 'm6Relative', 'm12Relative']) {
+            take(spots, pf, k);
+          }
+        }
       }
     }
-    return out;
+    return blocks;
   };
+
   const unitGaps = [];
   {
     payload = JSON.parse(JSON.stringify(payload));
-    const spots = PCT_AT(payload);
-    const live = spots.filter(([o, k]) => o[k] !== 0);
-    if (live.length >= 5 && live.every(([o, k]) => Math.abs(o[k]) < 1)) {
+    for (const { label, spots } of pctBlocks(payload)) {
+      const live = spots.filter(([o, k]) => o[k] !== 0);
+      if (live.length < 5) continue;
+      if (!live.every(([o, k]) => Math.abs(o[k]) < 1)) continue;
       /* Rounded, because 0.072 * 100 is 7.199999999999999 in binary floating
          point and that is not a number to print in a research report. */
       for (const [o, k] of spots) o[k] = Math.round(o[k] * 100 * 1e6) / 1e6;
-      unitGaps.push(`Every percentage in this payload arrived as a fraction — promoter holding as `
-        + `${(live[0][0][live[0][1]] / 100).toFixed(4)}-style decimals rather than percentage `
-        + `points. All ${spots.length} of them have been multiplied by 100 so the report reads in `
-        + 'percent. Check them against the filings before quoting any of them.');
+      unitGaps.push(`Every percentage in ${label} arrived as a fraction — promoter holding as `
+        + '0.7008-style decimals rather than percentage points. All '
+        + `${spots.length} of them have been multiplied by 100 so the report reads in percent. `
+        + 'Check them against the filings before quoting any of them.');
     }
   }
+
+  /* THE SCREEN. What the sector run actually did.
+   *
+   * This never reached the report before, and its absence is why the sector
+   * study read as a report about one company. The document had only `full` to
+   * work from — the companies that came back from a full research run — so a
+   * Banking study whose screen had nominated SBI, Indian Bank and Bank of
+   * Maharashtra printed page after page about PNB, which is simply the company
+   * that happened to be researched next.
+   *
+   * The screen is the sector study's subject: twelve companies rated on four
+   * pillars against written anchors, ranked, and three nominated. A sector
+   * report that does not show it is not showing its own work. It is built here,
+   * before the partial branch, because a sector-only run — the run that has
+   * nothing BUT a screen — is exactly the one that needs it most. */
+  const screen = (() => {
+    if (!Array.isArray(payload.shortlist) || !payload.shortlist.length) return null;
+    const sc = screenShortlist(payload.shortlist);
+    return {
+      ...sc,
+      weights: SCREEN_WEIGHTS,
+      minRated: MIN_RATED,
+      /* Stated here so the document does not have to know the rule. */
+      basis: 'Each shortlisted company is rated 0-100 on four pillars against the same written '
+        + 'anchors, with a sentence of evidence carrying a figure behind every rating. The four '
+        + 'carry equal weight. A company rated on fewer than '
+        + `${MIN_RATED} of them cannot be compared with one rated on all four, so it ranks below `
+        + 'every fully rated company however high it scores. The three highest fully rated '
+        + 'companies are nominated for full research.',
+    };
+  })();
 
   /* A partial run carries the sector work and no companies. It is saved so the
      rest of a split reply can be merged into it; the documents it can build say
@@ -693,6 +806,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
              application must never produce. */
           scenario: payload.run.scenario ?? null },
         industryMap: payload.industryMap ?? null, universe: payload.universe ?? null,
+        screen,
         global: payload.global ?? null, macro: payload.macro ?? null, budget: payload.budget ?? null,
         policy: payload.policy ?? null, policyEvolution: payload.policyEvolution ?? null,
         regulation: payload.regulation ?? null, geopolitics: payload.geopolitics ?? null,
@@ -720,6 +834,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   };
 
   const gaps = [...unitGaps];
+  const reporting = reportingUnits(payload, (m) => gaps.push(m));
 
 
   /* A base year that does not tie to reported revenue is a fact about the
@@ -763,6 +878,8 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
         reportBuiltAt: asOf.toISOString(),
         methodologyVersion: METHODOLOGY_VERSION,
         payloadSchemaVersion: payload.run.schemaVersion,
+        /* Every money figure in every document is in these units. */
+        reporting,
         researchNotes: payload.run.researchNotes ?? null,
         searchesRun: payload.run.searchesRun ?? null,
         noiseBand: NOISE_BAND,
@@ -773,6 +890,8 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
       },
       industryMap: payload.industryMap ?? null,
       universe: payload.universe ?? null,
+
+      screen,
 
       /* Research content. None of it touches a score; all of it is what makes
          the documents worth reading. Passed through unchanged, because the

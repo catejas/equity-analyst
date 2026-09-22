@@ -139,6 +139,17 @@ for (const kind of ['co1', 'sector', 'exec', 'score']) {
           return /^\d{1,3}$/.test(t) ? Number(t) : null;
         })(),
         actual: target ? (pageOf.get(target.closest('.page')) || null) : null,
+        /* How far down its page the section starts, as a FRACTION of the page
+           height, so the PDF check can assert the link lands on the section
+           rather than on the top of the page it happens to be on. A fraction
+           rather than a length because the DOM measures in CSS pixels and the
+           PDF in points, and the two differ by the page scale. */
+        offsetFrac: (() => {
+          if (!target) return null;
+          const pg = target.closest('.page').getBoundingClientRect();
+          if (!(pg.height > 0)) return null;
+          return (target.getBoundingClientRect().top - pg.top) / pg.height;
+        })(),
         x: Math.round(r.left), y: Math.round(r.top),
       };
     }).filter((x) => x.actual !== null);

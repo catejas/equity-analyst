@@ -537,6 +537,14 @@ including pledged shares.
     "tool": "the name of the AI tool producing this payload — Claude, ChatGPT, Gemini, Perplexity, or whatever you are",
     "searchesRun": 0,
 
+    // WHAT THE MONEY FIGURES ARE IN. Required. Every money amount anywhere in
+    // this payload — financials, forensic line items, market cap, valuations —
+    // is in THIS unit and no other. Indian listed companies report in INR
+    // crore, so that is almost always the answer. Do not mix units; do not
+    // give some figures in crore and others in absolute rupees. Share counts
+    // are in the same unit, so a company with 1.1bn shares is 1148 in crore.
+    "reporting": { "currency": "INR", "unit": "crore", "basis": "consolidated" },
+
     "researchNotes": "what you could and could not establish, and why"
   },
   "industryMap": {
