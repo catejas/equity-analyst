@@ -69,9 +69,25 @@ ok('and its operating line', /Pre-provision operating profit/.test(seen));
 ok('EBITDA is not printed for a bank',
   !/\bEBITDA\b/.test(seen.split('The Three Statements')[0] || ''),
   'checked everything before the full statements');
-ok('the key financials state their unit', /INR crore, except EPS/i.test(seen));
-ok('the market capitalisation states its unit', /1,26,600\s*INR crore/.test(seen));
-ok('a price states that it is per share', /INR a share/.test(seen));
+/* The form Tejas asked for: "Add Rupee symbol before the amount and use Crs
+   for Crores and Lacs for Lacs." A bare 1,26,600 is a number a reader has to
+   guess the size of; ₹1,26,600 Crs is one they can check against a filing. */
+ok('the key financials state their unit', /₹ Crs, except EPS in ₹/.test(seen));
+ok('the market capitalisation carries the symbol and the scale',
+  /₹1,26,600 Crs/.test(seen));
+ok('so does the average daily traded value', /₹350 Crs/.test(seen));
+ok('a share price carries the symbol and no scale', /₹110\.15/.test(seen)
+  && /a share/.test(seen) && !/₹110\.15 Crs/.test(seen));
+ok('the 52-week range is in rupees a share', /₹72\.30 – ₹142\.50/.test(seen));
+ok('"Crs" is used rather than "crore"', !/INR crore/i.test(seen));
+
+/* A payload stated in lakh must print Lacs, not Crs. */
+{
+  const lakh = JSON.parse(JSON.stringify(PNB));
+  lakh.run.reporting = { currency: 'INR', unit: 'lakh', basis: 'consolidated' };
+  const u = reportingUnits(lakh);
+  ok('a lakh payload resolves as lakh', u.unit === 'lakh' && u.stated === true, u.label);
+}
 
 console.log(fail ? `\nFAIL  ${fail} of ${ran}` : `\nPASS  ${ran} checks`);
 process.exit(fail ? 1 : 0);

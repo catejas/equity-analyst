@@ -22,17 +22,33 @@ const ROOT = path.resolve(DIR, '..');
 
 /* Fixture builders first, then everything that reads a fixture. */
 const FIRST = ['gen-fixtures'];
-/* Files that are tools or generators rather than assertions. */
-const NOT_TESTS = new Set(['run-all', 'gen-fixtures', 'gen-test', 'gen-write',
-  'measure', 'scmeasure', 'probe', 'readit', 'loadpage', 'picker', 'audit', 'flow']);
+/* Files that are tools or generators rather than assertions.
+ *
+ * Named WITH their extension. This was a set of bare names, and `audit` on it
+ * — meant for the tool audit.py — silently excluded a new tests/audit.mjs
+ * carrying 25 assertions. The suite reported 75 of 75 passing and never ran
+ * it. That is the same failure this runner was written to end: 24 suites once
+ * sat unrun while everything reported green.
+ *
+ * So exclusions are exact filenames, and anything skipped is printed. */
+const NOT_TESTS = new Set([
+  'run-all.mjs', 'gen-fixtures.mjs', 'gen-test.mjs', 'gen-write.mjs', 'gen-bank.mjs',
+  'measure.mjs', 'scmeasure.mjs', 'probe.mjs', 'readit.mjs', 'loadpage.mjs',
+  'picker.mjs', 'audit.py', 'flow.py']);
 /* Anything starting with an underscore is a scratch probe, not a suite. */
 
 const only = process.argv.slice(2);
-const all = fs.readdirSync(DIR)
-  .filter((f) => f.endsWith('.mjs'))
+const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.mjs'));
+const skipped = files.filter((f) => NOT_TESTS.has(f) || f.startsWith('_'));
+const all = files
+  .filter((f) => !NOT_TESTS.has(f) && !f.startsWith('_'))
   .map((f) => f.replace(/\.mjs$/, ''))
-  .filter((n) => !NOT_TESTS.has(n) && !n.startsWith('_'))
   .sort();
+/* Say what is not being run. A suite that quietly stops being run is worse
+   than one that fails, because the report still says everything passed. */
+if (!only.length && skipped.length) {
+  console.log('not run (tools, not suites): ' + skipped.join(', ') + '\n');
+}
 const chosen = only.length ? only : all;
 const order = [...FIRST.filter((f) => !only.length || only.includes(f)), ...chosen];
 

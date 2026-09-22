@@ -62,7 +62,12 @@ for (const kind of DOCS) {
             out.push(`page ${i + 1}: repeated header has ${hc} columns over ${bc} of body`);
           }
         }
-        if (rows && !t.tHead && t.closest('[data-cont]')) {
+        /* A key is not a continuation. The risk matrix carries a two-column
+           key — R1 against the name of the risk — which has no heading by
+           design, and reading it as a table that lost its header on a page
+           break reported an orphan that was not one. Keys say so. */
+        if (rows && !t.tHead && !t.classList.contains('nohead')
+            && t.closest('[data-cont]')) {
           const first = [...t.tBodies[0].rows[0].cells].map((c) => c.textContent.trim().slice(0, 14));
           out.push(`page ${i + 1}: continuation of ${rows} rows carries no header (${first.join(' | ')})`);
         }
