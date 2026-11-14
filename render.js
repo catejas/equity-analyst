@@ -741,6 +741,15 @@ body.gu th{ font-size:7.9pt; letter-spacing:.02em; }
    that carried the sentences. These two classes are set by tbl() when the
    caller passes headWrap or widths. */
 table.hw th{ white-space:normal; line-height:1.15; }
+/* The three statements run to eight columns of figures — three audited years
+   and five projected — and a company reporting in lakh crore fills every one
+   of them: "15,00,000" eight times at body size ran five pixels past the edge
+   of the page. A statement gives a little on type size and cell padding, as
+   printed accounts do, and never lets a figure wrap. */
+table.stmt td, table.stmt th{ padding-left:1mm; padding-right:1mm; }
+table.stmt td{ font-size:8.4pt; }
+table.stmt th{ font-size:7.2pt; letter-spacing:.04em; }
+table.stmt td.n, table.stmt th.n{ white-space:nowrap; }
 table.fixw{ table-layout:fixed; }
 /* Values may break anywhere — a long unbroken figure is better broken than
    spilling out of its column. A HEADING may not: breaking one produced
@@ -4937,7 +4946,7 @@ function eqThreeStatement(c, p){
      any set of accounts. Without it these are 45 rows of bare numbers and
      nothing on the page says whether they are crore, lakh or rupees. */
   var unit = moneyUnit(p);
-  return tbl([unit ? unit + ', except EPS in ₹' : ''].concat(periods), body, { num:num })
+  return tbl([unit ? unit + ', except EPS in ₹' : ''].concat(periods), body, { num:num, cls:'stmt' })
     + '<p class="note">' + note + '</p>'
     + (projOff ? '<div class="note warn"><b>No forecast columns for this company.</b> '
         + e(projOff) + '</div>' : '');

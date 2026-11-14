@@ -2,7 +2,7 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '22-09-2026.19';
+var BUILD = '12-11-2026.20';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
@@ -18,6 +18,7 @@ var ASSETS = [
      serves a build that cannot start offline. */
   './src/core/audit.js',
   './src/core/industry.js',
+  './src/core/completeness.js',
   './src/core/scenario.js',
   './src/core/compare.js',
   './src/core/forensic.js',

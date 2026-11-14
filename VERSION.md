@@ -26,9 +26,12 @@ behave and it is not a fault.
 
 ## Current build
 
-`22-09-2026.19` — methodology 2.0.0, payload schema 4.0.0, framework v5.
+`12-11-2026.20` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
-Build 19 sets body type at 9.0pt, removes the narrowed prose measure, sizes the
-printed sheet to the page box, adds the industry intelligence engine
-(`src/core/industry.js`) and prints the full three statements for every
-nominated company in the sector report.
+Build 20 moves the library from localStorage to IndexedDB and stores only the
+payload (the report is rebuilt from it), so a second and every later sector
+study can be saved; treats "Power" and "Power and utilities" as one sector and
+never sets aside a company the study itself shortlisted; keeps the selected
+study and the selected company in step on the Score Card; and measures the
+depth of a payload rather than the presence of its sections, with a follow-up
+prompt and a merge to fill what is thin (`src/core/completeness.js`).

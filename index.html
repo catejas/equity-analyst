@@ -390,6 +390,17 @@ input[type=range].scn-range:disabled{ opacity:.4; }
   border-radius:11px;background:var(--grad-gold);color:var(--goldink);font-size:.72rem;font-weight:800;
   margin-right:8px;vertical-align:middle;}
 .slotwhy{font-size:.78rem;color:var(--mut);margin-top:2px;}
+/* How deep the saved research goes, and the way to deepen it. */
+.depth{margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;}
+.depth .dh{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+.depth .dh b{font-variant-numeric:tabular-nums;}
+.depth .dh span{flex:1;color:var(--ink2);}
+.depth .dbar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:7px 0;}
+.depth .dbar i{display:block;height:100%;background:var(--green);}
+.depth .dl{font-size:12px;color:var(--ink3);line-height:1.45;}
+.depth .btn{margin:8px 0 0;width:100%;}
+.rvthin{margin:4px 0 2px;font-size:12px;line-height:1.5;color:var(--ink2);}
+.rvthin b{color:var(--ink);}
 
 /* ---- score card: one collapsible card per scoring model ---- */
 .tiles3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px;}
@@ -529,7 +540,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="22-09-2026.19";</script>
+<script>window.APP_BUILD="12-11-2026.20";</script>
 </head>
 <body>
 
@@ -612,6 +623,7 @@ body.previewing{overflow:hidden;}
     </div>
 
     <p class="note" id="segBoxMeta" style="margin-top:10px;"></p>
+    <div id="segDepth"></div>
 
     <span id="repTag" hidden></span><span id="repMeta" hidden></span>
     <input id="repPick" hidden><span id="repPanel" hidden></span>
@@ -647,6 +659,7 @@ body.previewing{overflow:hidden;}
       <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
     </div>
     <div id="soloDocs"></div>
+    <div id="soloDepth"></div>
     <div id="soloMsg" class="note" style="margin-top:8px;"></div>
   </div>
 
@@ -1298,7 +1311,14 @@ $('#btnWipe').addEventListener('click', function(){
   ['eq.library','eq.list','eq.base','eq.mode'].forEach(function(k){
     try{ localStorage.removeItem(k); }catch(e){} });
   try{ sessionStorage.clear(); }catch(e){}
-  location.reload();
+  /* The library is in IndexedDB now, so Erase has to reach it there too. */
+  LIB_MEM = []; LIB_BUILT = {};
+  var gone = function(){ location.reload(); };
+  try{
+    if(LIB_DB){ LIB_DB.close(); LIB_DB = null; }
+    var dq = indexedDB.deleteDatabase('equity-analyst');
+    dq.onsuccess = dq.onerror = dq.onblocked = gone;
+  }catch(e){ gone(); }
 });
 
 $('#btnTest').addEventListener('click', function(){
@@ -2235,7 +2255,6 @@ function mergeIntoRecord(id, raw){
   rec.data.scores = rec.data.scores || {};
   if(rec.data.verdict && rec.data.verdict.scores) rec.data.scores = rec.data.verdict.scores;
   rec.data.scores.ipo_quality = sumLines(rec.data.score_lines);
-  rec.text = (rec.text||'') + '\n\n' + raw;
   libWrite(lib);
   var after = 28 - (rec.data.incomplete||[]).length;
   var gained = [];
@@ -2253,6 +2272,12 @@ function parseImport(raw){
   /* An equity payload is complete in itself: the engine validates it and
      computes everything from it, so there is nothing to scrape and nothing to
      reshape. It is recognised first, before any of the older handling. */
+  /* A follow-up block is a fragment by design — a few keys under a run marked
+     topUp — so it is recognised here even without a companies array, and it is
+     not validated on its own: the research it is merged into is what gets
+     validated, when it is saved. */
+  var isTopUpBlock = !!(j && j.run && j.run.topUp === true);
+  if(isTopUpBlock && !Array.isArray(j.companies)) j.companies = [];
   if(j && j.run && Array.isArray(j.companies)){
     if(LAST_TRUNCATED) out.truncated = true;
     if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
@@ -2262,7 +2287,7 @@ function parseImport(raw){
     out.equity = true;
     out.how = 'the data block';
     out.found = j.companies.length;
-    if(window.EQ){
+    if(window.EQ && !isTopUpBlock){
       var check = EQ.schema.validatePayload(j);
       out.valid = check.valid;
       out.errors = check.errors;
@@ -2447,14 +2472,157 @@ function migrateRecord(r){
   }
   return r;
 }
-function libRead(){
-  try{ return (JSON.parse(get(LIB,'[]')) || []).map(migrateRecord); }catch(e){ return []; }
+/* ============================== the library store ====================
+ *
+ * Tejas, after researching Power and then Chemicals: "segment payload got
+ * imported with its Top 3 companies but when I try to import payload of Top 3
+ * companies of Chemical segment, it is not saved."
+ *
+ * It was not saved, and the app said "Saved." Three things combined:
+ *
+ *   1. Every record was stored with its finished report beside its data. The
+ *      report is thirteen times the size of the payload it is built from — a
+ *      35 KB company payload became a 536 KB record — and the raw paste was
+ *      stored a third time as `text`.
+ *   2. All of it went into ONE localStorage key. Safari allows about 2.5
+ *      million characters there. One sector study and its three companies is
+ *      1.7 million. The next sector study is small and still fits; the first
+ *      of its companies does not.
+ *   3. set() swallowed the quota error, so the write failed without a word
+ *      and the alert that follows reported success.
+ *
+ * So the library now lives in IndexedDB, which has no such ceiling; only the
+ * payload is stored, and the report is rebuilt from it on demand (it is a pure
+ * function of the payload, so nothing is lost); and a write that fails says
+ * so. localStorage remains as the fallback where IndexedDB does not exist, and
+ * whatever an older build left there is moved across on first launch.
+ *
+ * The rest of the app still reads and writes synchronously through libRead()
+ * and libWrite(): memory is the truth, and the database is written behind it.
+ */
+var LIB_MAX = 400;          /* was 40, which silently dropped the oldest study */
+var LIB_MEM = null;         /* the records, newest first */
+var LIB_BUILT = {};         /* id -> { stamp, report, warnings } */
+var LIB_DB = null;          /* the open IndexedDB handle, once there is one */
+var LIB_FAILED = '';        /* why the last write failed, if it did */
+
+function libStamp(r){
+  try{ return String(JSON.stringify(r.data).length) + ':' + (r.ts || 0); }catch(e){ return 'x'; }
 }
-function libWrite(a){ set(LIB, JSON.stringify(a.slice(0,40))); }
+function libBuiltFor(r){
+  var c = LIB_BUILT[r.id];
+  if(c && c.stamp === r._stamp) return c;
+  if(!window.EQ || !EQ.buildReport || !r.data) return null;
+  c = { stamp: r._stamp, report: null, warnings: [] };
+  try{
+    var b = EQ.buildReport(r.data);
+    c.report = b.report || null; c.warnings = b.warnings || [];
+  }catch(e){}
+  LIB_BUILT[r.id] = c;
+  return c;
+}
+/* A record as the app sees it: its report and warnings are there to read, but
+   they are computed, not stored, and they do not serialise. */
+function libHydrate(r){
+  if(!r || typeof r !== 'object') return r;
+  delete r.text; delete r.report; delete r.warnings;
+  Object.defineProperty(r, '_stamp', { value: libStamp(r), writable: true,
+    enumerable: false, configurable: true });
+  Object.defineProperty(r, 'report', { enumerable: false, configurable: true,
+    get: function(){ var c = libBuiltFor(r); return c ? c.report : null; } });
+  Object.defineProperty(r, 'warnings', { enumerable: false, configurable: true,
+    get: function(){ var c = libBuiltFor(r); return c ? c.warnings : []; } });
+  return r;
+}
+function libPlain(){
+  return (LIB_MEM || []).map(function(r){
+    var o = {}; Object.keys(r).forEach(function(k){ o[k] = r[k]; }); return o;
+  });
+}
+function libFail(err){
+  LIB_FAILED = String((err && (err.message || err.name)) || err || 'unknown error');
+  alert('This could NOT be stored on this device.\n\n' + LIB_FAILED
+    + '\n\nNothing was lost from what was already saved, but the last change is in memory '
+    + 'only and will be gone when the app closes. Free some space on the device, or delete '
+    + 'a study you no longer need, and import again.');
+}
+/* Returns false when the write is known to have failed. */
+function libPersist(){
+  LIB_FAILED = '';
+  var plain = libPlain();
+  if(LIB_DB){
+    try{
+      var tx = LIB_DB.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(plain, 'library');
+      tx.onerror = tx.onabort = function(){ libFail(tx.error); };
+    }catch(e){ libFail(e); return false; }
+    return true;
+  }
+  try{ localStorage.setItem(LIB, JSON.stringify(plain)); }
+  catch(e){ libFail(e); return false; }
+  return true;
+}
+function libLoadLocal(){
+  try{ return (JSON.parse(get(LIB,'[]')) || []).map(migrateRecord).map(libHydrate); }
+  catch(e){ return []; }
+}
+function libRead(){
+  if(!LIB_MEM) LIB_MEM = libLoadLocal();
+  return LIB_MEM.slice();
+}
+function libWrite(a){
+  LIB_MEM = (a || []).slice(0, LIB_MAX).map(libHydrate);
+  return libPersist();
+}
 function saveToLibrary(rec){
   var lib = libRead().filter(function(x){ return x.id !== rec.id; });
-  lib.unshift(rec); libWrite(lib); drawLibrary(rec.id);
+  lib.unshift(rec);
+  var ok = libWrite(lib);
+  drawLibrary(rec.id);
+  return ok;
 }
+window.EQLib = { all: function(){ return libPlain(); },
+  ready: null, backend: function(){ return LIB_DB ? 'indexeddb' : 'localstorage'; } };
+
+/* Open the database, bring across anything an older build left in
+   localStorage, and redraw. Until this resolves the app runs on what
+   localStorage holds, which on a device that has never been migrated is the
+   whole library and on one that has is nothing — hence the redraw. */
+window.EQLib.ready = new Promise(function(done){
+  var idb = null;
+  try{ idb = window.indexedDB; }catch(e){}
+  if(!idb){ done('localstorage'); return; }
+  var rq;
+  try{ rq = idb.open('equity-analyst', 1); }catch(e){ done('localstorage'); return; }
+  rq.onupgradeneeded = function(){
+    try{ rq.result.createObjectStore('kv'); }catch(e){}
+  };
+  rq.onerror = rq.onblocked = function(){ done('localstorage'); };
+  rq.onsuccess = function(){
+    var db = rq.result, g;
+    try{ g = db.transaction('kv', 'readonly').objectStore('kv').get('library'); }
+    catch(e){ done('localstorage'); return; }
+    g.onerror = function(){ done('localstorage'); };
+    g.onsuccess = function(){
+      var stored = Array.isArray(g.result) ? g.result.map(migrateRecord).map(libHydrate) : [];
+      /* Memory first: it holds whatever localStorage had, plus anything
+         imported in the moment before the database opened. */
+      var mem = libRead(), seen = {};
+      mem.forEach(function(r){ seen[r.id] = true; });
+      stored.forEach(function(r){ if(!seen[r.id]) mem.push(r); });
+      mem.sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+      LIB_DB = db;
+      LIB_MEM = mem;
+      if(libPersist()){
+        /* Only now is it safe to let go of the old copy. */
+        try{ localStorage.removeItem(LIB); }catch(e){}
+      }
+      try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+      try{ drawLibrary(); renderReportPage(); renderScoreTab(); }catch(e){}
+      done('indexeddb');
+    };
+  };
+});
 
 
 
@@ -2883,7 +3051,9 @@ function auditPayload(d){
   var isCompanyRun = cos.length === 1 && !(d.macro || d.budget || d.policy || d.programs);
   var isSectorRun = !!(d && d.run) && !cos.length;
   var SECTOR_ONLY = ['world', 'macro', 'ind'];
-  var COMPANY_ONLY = ['rate', 'arg', 'for', 'lit', 'mod', 'val', 'mkt', 'nar'];
+  /* 'src' is per-company too: on a sector study it reported "Sources — no
+     companies" as two missing sections, which is a gap in nothing. */
+  var COMPANY_ONLY = ['rate', 'arg', 'for', 'lit', 'mod', 'val', 'mkt', 'nar', 'src'];
 
   AUDIT_SPEC.forEach(function(e){
     if(isCompanyRun && SECTOR_ONLY.indexOf(e[0]) >= 0) return;
@@ -3019,6 +3189,35 @@ function showReview(res, raw){
   var d = res.data;
   var html = '<div class="rv">';
 
+  /* A follow-up block is an addition to research already saved, not a run of
+     its own. It is folded into that record here, so everything below — what
+     arrived, what can be built, what is still thin — describes the research as
+     it will stand once this is saved. */
+  var CMP = window.EQ && EQ.completeness;
+  var merged = null;
+  if(res.v3 && CMP && CMP.isTopUp(d)){
+    var tgt = topUpTarget(d);
+    var mg = tgt ? CMP.mergeTopUp(tgt.data, d) : { ok:false,
+      reason:'There is no saved research for it to be added to. Import the original reply first.' };
+    if(!mg.ok){
+      $('#reviewBox').innerHTML = '<div class="rv"><div class="rvh">Follow-up block</div>'
+        + '<div class="rvbad"><b>This could not be added.</b> ' + esc(mg.reason) + '</div></div>';
+      $('#reviewBox').classList.remove('hidden');
+      $('#btnSaveImport').classList.add('hidden');
+      pendingImport = null;
+      return;
+    }
+    merged = { into: tgt, gained: mg.gained };
+    d = mg.merged; res.data = d;
+    pendingImport.mergeInto = tgt.id;
+    pendingImport.gained = mg.gained;
+    IMPORT_TARGET = tgt.kind === 'company'
+      ? { kind:'company', rank: tgt.standalone ? 0 : (tgt.rank || 0) }
+      : { kind:'sector', rank:0 };
+    if(tgt.kind === 'company' && !tgt.standalone && tgt.parentId) SEL.sector = tgt.parentId;
+    if(tgt.kind !== 'company') SEL.sector = tgt.id;
+  }
+
   /* ---- headline: what arrived, and how much of it ---- */
   if(res.v3){
     var au = auditPayload(d);
@@ -3061,9 +3260,28 @@ function showReview(res, raw){
     html += '<div class="rvh">' + esc(headline)
           + ' <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
     html += '<div class="rvm">' + esc(subline) + '</div>';
+    if(merged){
+      html += '<div class="rvok"><b>Follow-up added to the saved research for '
+        + esc(merged.into.company || merged.into.sector || 'this run') + '.</b> '
+        + (merged.gained.length
+            ? 'It filled in: ' + esc(merged.gained.slice(0, 14).join(' \u00b7 '))
+              + (merged.gained.length > 14 ? ' \u00b7 and ' + (merged.gained.length - 14) + ' more.' : '.')
+            : 'It carried nothing the saved research did not already have.')
+        + ' Press SAVE to keep it.</div>';
+    }
+    /* Depth, not presence. "67 of 67 sections" was true of a payload with one
+       quarter, one risk and three years where ten were asked for: every section
+       had something in it. This measures how much. */
+    var depth = CMP ? CMP.completeness(d) : null;
+    if(depth){ pct = depth.pct; }
     html += '<div class="rvbar"><i style="width:' + pct + '%"></i></div>';
-    html += '<div class="' + (pct >= 80 ? 'rvok' : pct >= 55 ? 'rvwarn' : 'rvbad') + '">'
-          + '<b>' + pct + '% of the payload carries data.</b> '
+    html += '<div class="' + (pct >= 85 ? 'rvok' : pct >= 60 ? 'rvwarn' : 'rvbad') + '">'
+          + (depth
+              ? '<b>' + pct + '% complete.</b> ' + depth.met + ' of ' + depth.total
+                + ' depth checks are met' + (depth.missing.length
+                  ? '; ' + depth.missing.length + ' are thin or missing and are listed below.'
+                  : '. Nothing the reports need is missing.')
+              : '<b>' + pct + '% of the payload carries data.</b> ')
           + '</div>';
 
     /* ---- section by section ---- */
@@ -3080,6 +3298,45 @@ function showReview(res, raw){
       }
     });
     html += '</div>';
+
+    /* A company reply that answered about a different sector than the study it
+       is being imported into. This warning used to sit in the branch for a
+       reply with no data block, so a real payload never showed it: the company
+       was saved, kept out of the study, and nothing said why. */
+    if(IMPORT_TARGET.kind === 'company' && IMPORT_TARGET.rank && EQ.compose && EQ.compose.sectorMismatch){
+      var segNow0 = segRecord();
+      var mm = segNow0 && EQ.compose.sectorMismatch(segNow0.data && segNow0.data.run, d.run,
+        { sector: segNow0.data, company: d.companies && d.companies[0] });
+      if(mm){
+        html += '<div class="rvbad"><b>This reply is about a different sector.</b> '
+          + 'Its run block says <b>' + esc(mm.found) + '</b>'
+          + (mm.foundSub ? ' — ' + esc(mm.foundSub) : '')
+          + ', but you are importing it into the <b>' + esc(mm.expected) + '</b> study, and the company '
+          + 'is not on that study’s shortlist. It will be saved but kept out of the study. '
+          + 'Re-run the company prompt from this sector, or import it as an independent company instead.</div>';
+      }
+    }
+
+    /* ---- what is thin, by name, and the way to go and get it ---- */
+    if(depth && depth.missing.length){
+      html += '<div class="rvdocs"><div class="rvdh">Still thin or missing</div>';
+      depth.sections.forEach(function(sx){
+        var miss = sx.checks.filter(function(c){ return !c.ok; });
+        if(!miss.length) return;
+        if(depth.sections.length > 1) html += '<div class="rvthin"><b>' + esc(sx.title) + '</b></div>';
+        miss.forEach(function(c){
+          html += '<div class="rvsrow"><i class="dot ' + (c.have ? 'part' : 'none') + '"></i><span>'
+            + esc(c.label) + '</span><b>' + c.have + '/' + c.want + '</b></div>';
+          if(c.detail) html += '<div class="rvgap">' + esc(c.detail) + '</div>';
+        });
+      });
+      html += '<div class="rvthin">Each of these leaves a blank or a gap note in the report. '
+        + 'SAVE what arrived, then send the follow-up prompt in the <b>same chat</b> that produced '
+        + 'this reply and import its answer with the same Import button \u2014 it is added to '
+        + 'this research rather than replacing it.</div>'
+        + '<button type="button" class="btn sm" id="btnTopUpPending">Copy follow-up prompt</button>'
+        + '</div>';
+    }
 
     /* ---- what will actually build ---- */
     html += '<div class="rvdocs"><div class="rvdh">'
@@ -3113,22 +3370,6 @@ function showReview(res, raw){
     html += '<div class="rvm">' + esc(runSeg)
           + ((d.run && d.run.subSector) ? ' · ' + esc(d.run.subSector) : '')
           + ' · ' + nCo + ' companies</div>';
-    /* A company reply that answered about a different sector than the run it
-       is being imported into. Saying so here is the only cheap moment: once
-       saved, it is kept out of the study and the reader meets it as a gap in
-       the ranking instead. */
-    if(IMPORT_TARGET.kind === 'company' && EQ.compose && EQ.compose.sectorMismatch){
-      var segNow = segRecord();
-      var mm = segNow && EQ.compose.sectorMismatch(segNow.data && segNow.data.run, d.run);
-      if(mm){
-        html += '<div class="rvbad"><b>This reply is about a different sector.</b> '
-          + 'Its run block says <b>' + esc(mm.found) + '</b>'
-          + (mm.foundSub ? ' — ' + esc(mm.foundSub) : '')
-          + ', but you are importing it into the <b>' + esc(mm.expected) + '</b> run. '
-          + 'It will be kept out of that study. Re-run the company prompt from this sector, '
-          + 'or import it as an independent company instead.</div>';
-      }
-    }
     var sum2 = sumLines(d.score_lines);
     html += ' · they total <b>' + sum2.toFixed(1) + '</b>';
     if(res.statedTotal != null){
@@ -3527,6 +3768,27 @@ $('#btnSaveImport').addEventListener('click', function(){
       + '\n\nEverything else in the payload is fine. Fix these and paste again.');
     return;
   }
+  /* A follow-up changes the record it was merged into and nothing else: same
+     id, same rank, same parent, so the study's companies stay attached. */
+  if(pendingImport.mergeInto){
+    var libNow = libRead();
+    var hit = libNow.filter(function(r){ return r.id === pendingImport.mergeInto; })[0];
+    if(!hit){ alert('The research this follow-up belongs to is no longer saved.'); return; }
+    if(d.run) delete d.run.topUp;
+    hit.data = d;
+    if(!libWrite(libNow)) return;
+    var nGain = (pendingImport.gained || []).length;
+    if(hit.kind === 'company') selectCompany(hit.id); else selectSector(hit.id);
+    IMPORT_TARGET = { kind:'sector', rank:0 };
+    $('#importCard').classList.add('hidden'); $('#importText').value='';
+    $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
+    pendingImport = null;
+    renderReportPage(); renderScoreTab();
+    alert('Follow-up saved into ' + (hit.company || hit.sector || 'the research') + '.\n\n'
+      + nGain + (nGain === 1 ? ' item was' : ' items were') + ' filled in. The reports now build from '
+      + 'the fuller research.');
+    return;
+  }
   if(built.partial){
     var pr = { id:'r' + Date.now(), ts:Date.now(), source:(detectTool(pendingImport.raw, d)||{}).name || 'unknown',
       kind:'sector', rank:0, parentId:null,
@@ -3534,7 +3796,7 @@ $('#btnSaveImport').addEventListener('click', function(){
       subSector:(d.run && d.run.subSector) || '',
       company:((d.run && d.run.sector) || 'Untitled run')
         + ((d.run && d.run.subSector) ? ' \u2014 ' + d.run.subSector : ''),
-      data:d, report:built.report, warnings:built.warnings, partial:true, text:pendingImport.raw };
+      data:d, partial:true };
     /* Every sector run is kept. The same sector researched again on another
        date, or with another tool, is a different run with its own Top 3 — not a
        replacement for the first. Only an identical run from the same tool on the
@@ -3553,8 +3815,8 @@ $('#btnSaveImport').addEventListener('click', function(){
     if(dup){
       libWrite(libRead().filter(function(r){ return r.id !== dup.id && r.parentId !== dup.id; }));
     }
-    saveToLibrary(pr);
-    SEL.sector = pr.id;
+    if(!saveToLibrary(pr)) return;      /* the failure has already been reported */
+    selectSector(pr.id);
     IMPORT_TARGET = { kind:'sector', rank:0 };
     renderReportPage();
     $('#importCard').classList.add('hidden'); $('#importText').value='';
@@ -3587,8 +3849,7 @@ $('#btnSaveImport').addEventListener('click', function(){
               company: isCompanyRun
                 ? ((firstCo && (firstCo.name || firstCo.symbol)) || ('Company ' + IMPORT_TARGET.rank))
                 : (seg + (sub ? ' — ' + sub : '')),
-              data:d, report:built.report, warnings:built.warnings,
-              text:pendingImport.raw };
+              data:d };
   if(isCompanyRun){
     var firstSym = firstCo && firstCo.symbol;
     var keep = libRead().filter(function(r){
@@ -3603,7 +3864,15 @@ $('#btnSaveImport').addEventListener('click', function(){
     });
     libWrite(keep);
   }
-  saveToLibrary(rec);
+  if(!saveToLibrary(rec)) return;       /* the failure has already been reported */
+  /* The company just imported is the one every page should now be showing —
+     and with it the sector study it belongs to. This used to set only the
+     Score Card's own (unused) run id, so after importing the Top 3 of a second
+     sector the Score Card went on showing a company from the first. */
+  if(isCompanyRun){
+    if(rec.standalone) SEL.solo = rec.id;
+    selectCompany(rec.id);
+  }
   IMPORT_TARGET = { kind:'sector', rank:0 };
   renderReportPage();
 
@@ -4081,27 +4350,68 @@ function renderScoreTab(){
   /* Two pickers, each over the whole library, each labelled the way IPO Analyst
      labels a run: what it is, when it arrived, which tool produced it. */
   fillPicker('#scSector', sectorRecords(), SEL.sector, '\u2014 none imported \u2014');
-  fillPicker('#scCompany', companyRecords(), SEL.company, '\u2014 none imported \u2014');
 
-  var built = eng ? composedReport() : null;
-  if(!built){
+  /* Which company, of which study. The company on show is either one that was
+     researched on its own, or one of the selected study's own Top 3 — never a
+     company from a different study standing in because nothing matched. */
+  var seg = segRecord();
+  var kids = seg ? sectorKids(seg.id) : [];
+  var cur = companyRecords().filter(function(r){ return r.id === SEL.company; })[0] || null;
+  if(cur && !cur.standalone && !(seg && cur.parentId === seg.id)) cur = null;
+  if(!cur) cur = kids[0] || null;
+  if(!cur && !seg) cur = soloRecords()[0] || null;
+  if(cur) SEL.company = cur.id;
+  fillScoreCompanyPicker(seg, kids, cur);
+
+  if(!eng || (!seg && !cur)){
     tiles.innerHTML = '';
     sheet.innerHTML = '<p class="hint">Import a sector study or a company on the Sector or '
       + 'Company page, and the score card appears here.</p>';
     return;
   }
+  if(!cur){
+    /* A study with none of its companies in yet. Saying so is the difference
+       between "nothing has been imported" and "the app lost my import". */
+    var named = (seg.data && seg.data.run && Array.isArray(seg.data.run.top3)) ? seg.data.run.top3 : [];
+    tiles.innerHTML = '';
+    sheet.innerHTML = '<p class="hint"><b>' + esc(seg.sector || 'This sector study')
+      + (seg.subSector ? ' \u2014 ' + esc(seg.subSector) : '') + '</b> is saved, but none of its Top 3 '
+      + 'has been imported yet, so there is no company to score. Research and import '
+      + (named.length ? esc(named.map(function(x){ return x.name || x.symbol; }).join(', ')) : 'its companies')
+      + ' on the <b>Company</b> page and each one appears here.</p>';
+    return;
+  }
+
+  var built = null;
+  try{
+    built = EQ.buildReport(scenarioApplyTo(cur.standalone
+      ? cur.data
+      : EQ.compose.composePayload(seg.data, kids.map(function(r){ return r.data; }))));
+  }catch(e){ built = null; }
+  if(!built || !built.ok){
+    tiles.innerHTML = '';
+    sheet.innerHTML = '<p class="hint">The saved research for ' + esc(cur.company || 'this company')
+      + ' could not be scored. Import it again from the Company page.</p>';
+    return;
+  }
 
   var list = built.report.full || [];
   var co = null;
-  var cur = coRecord();
-  var sym = cur && cur.data && cur.data.companies && cur.data.companies[0]
+  var sym = cur.data && cur.data.companies && cur.data.companies[0]
     && cur.data.companies[0].symbol;
   if(sym){
     co = list.filter(function(c){
       return String(c.symbol).toUpperCase() === String(sym).toUpperCase(); })[0] || null;
   }
-  if(!co) co = list[0];
-  if(!co){ tiles.innerHTML=''; sheet.innerHTML = '<p class="hint">This run has no scored company.</p>'; return; }
+  if(!co && cur.standalone) co = list[0];
+  if(!co){
+    tiles.innerHTML='';
+    sheet.innerHTML = '<p class="hint">' + esc(cur.company || 'This company')
+      + ' is saved but was kept out of the ' + esc((seg && seg.sector) || 'sector')
+      + ' study \u2014 its research names a different sector. Re-run its prompt from this '
+      + 'study, or import it as an independent company.</p>';
+    return;
+  }
 
   var cover = co.overall && co.overall.coverage;
   function tile(k, v, sub){
@@ -4148,7 +4458,7 @@ function renderScoreTab(){
   if(dn){
     var segNow = segRecord();
     dn.textContent = (co.name || co.symbol)
-      + (segNow ? ' \u00b7 ' + (segNow.sector || '') : '') + ' \u00b7 A4 PDF';
+      + ((segNow && !cur.standalone) ? ' \u00b7 ' + (segNow.sector || '') : '') + ' \u00b7 A4 PDF';
   }
   sheet.innerHTML = html;
 }
@@ -4232,6 +4542,34 @@ function coRecords(){
     return !r.standalone && r.parentId === seg.id;
   });
 }
+/* One sector study and one company are selected at a time, and they have to
+ * agree.
+ *
+ * They were two independent variables. The Score Card composed its report from
+ * the selected SECTOR and then looked in it for the selected COMPANY; when the
+ * company belonged to a different study it was not there, and the card quietly
+ * showed the first company of the wrong sector instead. With one study saved
+ * that can never happen, which is why it only appeared with the second.
+ *
+ * So choosing a company that belongs to a study selects that study, and
+ * choosing a study moves the company selection onto one of its own. */
+function sectorKids(id){
+  return companyRecords().filter(function(r){ return !r.standalone && r.parentId === id; })
+    .sort(function(a, b){ return (a.rank || 9) - (b.rank || 9); });
+}
+function selectSector(id){
+  SEL.sector = id;
+  var cur = companyRecords().filter(function(r){ return r.id === SEL.company; })[0];
+  if(cur && !cur.standalone && cur.parentId === id) return;
+  var kids = sectorKids(id);
+  if(kids.length) SEL.company = kids[0].id;
+}
+function selectCompany(id){
+  SEL.company = id;
+  var r = companyRecords().filter(function(x){ return x.id === id; })[0];
+  if(r && !r.standalone && r.parentId
+     && sectorRecords().some(function(x){ return x.id === r.parentId; })) SEL.sector = r.parentId;
+}
 function coRecord(){
   var l = companyRecords(); if(!l.length) return null;
   return l.filter(function(r){ return r.id === SEL.company; })[0] || l[0];
@@ -4300,6 +4638,34 @@ function runLabel(r){
   var when = r.ts ? dmyTs(r.ts) : '';
   var via = (r.source && r.source !== 'unknown') ? r.source : null;
   return name + (when ? '  \u00b7  ' + when : '') + (via ? '  \u00b7  ' + via : '');
+}
+/* The Score Card's company list, grouped by what each company belongs to.
+   A flat list of every company ever imported gave no sign of which study a
+   name came from, and choosing one from another study showed the wrong card. */
+function fillScoreCompanyPicker(seg, kids, cur){
+  var el = $('#scCompany'); if(!el) return;
+  var opt = function(r, label){
+    return '<option value="' + esc(r.id) + '"' + (cur && r.id === cur.id ? ' selected' : '') + '>'
+      + esc(label || runLabel(r)) + '</option>'; };
+  var html = '';
+  if(seg){
+    html += '<optgroup label="' + esc('Top 3 of ' + (seg.sector || 'this study')
+      + (seg.subSector ? ' \u2014 ' + seg.subSector : '')) + '">'
+      + (kids.length ? kids.map(function(r){ return opt(r, '#' + r.rank + '  ' + runLabel(r)); }).join('')
+          : '<option value="" disabled' + (cur ? '' : ' selected') + '>\u2014 none imported yet \u2014</option>')
+      + '</optgroup>';
+  }
+  var solos = soloRecords();
+  if(solos.length) html += '<optgroup label="Researched independently">'
+    + solos.map(function(r){ return opt(r); }).join('') + '</optgroup>';
+  var secs = sectorRecords(), others = '';
+  secs.forEach(function(sr){
+    if(seg && sr.id === seg.id) return;
+    sectorKids(sr.id).forEach(function(r){
+      others += opt(r, (sr.sector || 'Sector') + ': #' + r.rank + '  ' + runLabel(r)); });
+  });
+  if(others) html += '<optgroup label="Other sector studies">' + others + '</optgroup>';
+  el.innerHTML = html || '<option value="">\u2014 none imported \u2014</option>';
 }
 function fillPicker(sel, records, current, empty){
   var el = $(sel); if(!el) return;
@@ -4425,6 +4791,7 @@ function renderSectorPage(){
        + (seg.source && seg.source !== 'unknown' ? ' \u00b7 via ' + seg.source : ''))
     : 'Choose a sector above, press Research, then pick a tool.';
 
+  if($('#segDepth')) $('#segDepth').innerHTML = depthBox(seg);
   if($('#docTools')) $('#docTools').classList.toggle('hidden', !seg);
   if($('#btnDelRep')) $('#btnDelRep').disabled = !seg;
   var box = $('#segBox'); if(box) box.classList.toggle('done', !!seg);
@@ -4462,6 +4829,7 @@ function renderCompanyPage(){
   /* Rows for whichever saved independent company is selected, so all five of
      them can produce their documents rather than only the newest. */
   if($('#soloDocs')) $('#soloDocs').innerHTML = docRows('solo', !!soloCur);
+  if($('#soloDepth')) $('#soloDepth').innerHTML = depthBox(soloCur);
 
   var recs = companyRecords(), cur = coRecord();
   if(cur) SEL.company = cur.id;
@@ -4487,6 +4855,8 @@ function renderCompanyPage(){
         + (function(){
             /* The score, then the reason — but the engine's own generated
                reason already opens with the score, so it is not said twice. */
+            if(s.inPlaceOf) return '<div class="slotwhy"><b>Imported in place of ' + esc(s.inPlaceOf)
+              + '</b>, which the screen nominated for this rank.</div>';
             if(s.screenScore == null) return s.why ? '<div class="slotwhy">' + esc(s.why) + '</div>' : '';
             var why = String(s.why || '').replace(/^Screened[^—]*—\s*/, '');
             return '<div class="slotwhy"><b>Screened ' + s.screenScore.toFixed(1) + ' of 100.</b>'
@@ -4500,10 +4870,80 @@ function renderCompanyPage(){
             + (done ? '' : ' disabled') + '>Delete</button>'
         + '</div>'
         + docRows('co' + s.rank, done)
+        + depthBox(done ? s.record : null)
         + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
 }
 function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
+
+/* ---------- how deep saved research goes, and the follow-up ---------- */
+/* Which saved record a follow-up block belongs to: the company it names, in
+   the place it is being imported into first and anywhere else second; or, with
+   no company in it, the sector study on screen. */
+function topUpTarget(d){
+  var cos = (d && Array.isArray(d.companies)) ? d.companies : [];
+  var sym = cos[0] && String(cos[0].symbol || '').toUpperCase();
+  var nm = cos[0] && String(cos[0].name || '').toLowerCase();
+  if(sym || nm){
+    var same = function(r){
+      var c0 = r.data && r.data.companies && r.data.companies[0];
+      if(!c0) return false;
+      return (sym && String(c0.symbol || '').toUpperCase() === sym)
+          || (nm && String(c0.name || '').toLowerCase() === nm);
+    };
+    var all = companyRecords().filter(same);
+    var seg = segRecord();
+    var here = all.filter(function(r){
+      if(IMPORT_TARGET && IMPORT_TARGET.kind === 'company' && !IMPORT_TARGET.rank) return r.standalone;
+      return !r.standalone && seg && r.parentId === seg.id;
+    })[0];
+    return here || all[0] || null;
+  }
+  return segRecord();
+}
+function depthBox(rec){
+  if(!rec || !rec.data || !window.EQ || !EQ.completeness) return '';
+  var dp;
+  try{ dp = EQ.completeness.completeness(rec.data); }catch(e){ return ''; }
+  var thin = dp.missing.map(function(c){ return c.label + ' ' + c.have + '/' + c.want; });
+  return '<div class="depth"><div class="dh"><span>Depth of this research</span><b>' + dp.pct + '%</b></div>'
+    + '<div class="dbar"><i style="width:' + dp.pct + '%"></i></div>'
+    + (thin.length
+        ? '<div class="dl"><b>' + thin.length + ' thin or missing:</b> ' + esc(thin.slice(0, 8).join(' · '))
+          + (thin.length > 8 ? ' · and ' + (thin.length - 8) + ' more' : '') + '</div>'
+          + '<button type="button" class="btn xs topup-copy" data-rec="' + esc(rec.id) + '">'
+          + 'Copy follow-up prompt</button>'
+        : '<div class="dl">Everything the reports need is here.</div>')
+    + '</div>';
+}
+function copyTopUp(data, what){
+  if(!window.EQ || !EQ.completeness) return;
+  var text = EQ.completeness.topUpPrompt(data);
+  if(!text){ alert('Nothing is missing from ' + what + '.'); return; }
+  LAST_PROMPT = text;
+  copyText(text).then(function(){
+    alert('Follow-up prompt copied for ' + what + '.\n\nPaste it into the SAME chat that produced '
+      + 'the original research, so the tool still has its sources. Copy the json block it '
+      + 'returns and bring it back with the same Import button — the app adds it to what is '
+      + 'saved rather than replacing it.');
+  }).catch(function(){
+    alert('Copying was blocked by the browser. Tap the button once more.');
+  });
+}
+document.addEventListener('click', function(ev){
+  if(!ev.target.closest) return;
+  var b = ev.target.closest('.topup-copy');
+  if(b){
+    var rec = libRead().filter(function(r){ return r.id === b.getAttribute('data-rec'); })[0];
+    if(rec) copyTopUp(rec.data, rec.kind === 'company' ? (rec.company || 'this company')
+      : ('the ' + (rec.sector || 'sector') + ' study'));
+    return;
+  }
+  if(ev.target.closest('#btnTopUpPending') && pendingImport && pendingImport.res){
+    var d = pendingImport.res.data, c0 = d.companies && d.companies[0];
+    copyTopUp(d, c0 ? (c0.name || c0.symbol) : ('the ' + ((d.run && d.run.sector) || 'sector') + ' study'));
+  }
+});
 
 /* ============================== the scenario page ==================== */
 /* One piece of state: whose scenario, and which drivers were moved. A driver
@@ -4699,9 +5139,9 @@ function openImport(target){
 document.addEventListener('change', function(ev){
   var id = ev.target.id;
   if(id === 'segSel'){ fillSubSelect(); return; }
-  if(id === 'segPick'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
+  if(id === 'segPick'){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
   if(id === 'soloPick'){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
-  if(id === 'coPick'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); renderScenarioPage(); }
+  if(id === 'coPick'){ selectCompany(ev.target.value); renderReportPage(); renderScoreTab(); renderScenarioPage(); }
   if(id === 'scnCompany'){
     /* A different company is a different base case, so the overrides do not
        travel with it: sliders set against one company's drivers mean nothing
@@ -4709,8 +5149,8 @@ document.addEventListener('change', function(ev){
     SCENARIO = { of: ev.target.value, overrides: {} };
     scenarioSave(); renderScenarioPage(); return;
   }
-  if(id === 'scSector'){ SEL.sector = ev.target.value; renderReportPage(); renderScoreTab(); }
-  if(id === 'scCompany'){ SEL.company = ev.target.value; renderCompanyPage(); renderScoreTab(); }
+  if(id === 'scSector'){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
+  if(id === 'scCompany'){ selectCompany(ev.target.value); renderReportPage(); renderScoreTab(); }
 });
 
 /* Sliders. `input` rather than `change`, so the value follows the thumb — a
