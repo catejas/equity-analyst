@@ -12,6 +12,13 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
 const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+
+/* Two payloads that two dozen suites read from /tmp. They lived only there,
+   so a fresh machine had a suite that could not start; they are kept in
+   tests/fixtures now and put in place here, first, every run. */
+for (const name of ['psu.json', 'ril.json']) {
+  fs.copyFileSync(new URL('./fixtures/' + name, import.meta.url), '/tmp/' + name);
+}
 const SRC = process.argv[2] || (U + '944cc4df-attachment.txt');
 const raw = fs.readFileSync(SRC, 'utf8');
 const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
@@ -88,6 +95,36 @@ for (const kind of ['co1', 'co2', 'co3', 'sector', 'exec', 'score']) {
   }
   fs.writeFileSync(`/tmp/doc-${kind}.html`, html);
   console.log(`  wrote /tmp/doc-${kind}.html  ${(html.length / 1024).toFixed(0)} KB`);
+}
+
+/* The older names the layout suites still read.
+ *
+ * fill, overflow, real, realall, sccheck, scdeep and abbr open
+ * /tmp/company-new.html, /tmp/sector-new.html, /tmp/exec-new.html, /tmp/ex.html,
+ * /tmp/sc.html and /tmp/pnb-co1.html. Nothing in the suite wrote the first
+ * five: they were left behind by a one-off script reading a payload that no
+ * longer exists, so those suites went on measuring pages built by whichever
+ * renderer last produced them and reported on documents no current build
+ * makes. It came to light only because a new machine had no such files.
+ *
+ * They are written here from the documents just built, so each of those suites
+ * now measures this build or fails. */
+{
+  const exHtml = await page.evaluate(() => {
+    try { const p = window.EQDocTools.currentPayload('co1');
+      return p ? window.EQDocTools.buildHTML(p, 'co1:exec', 'en') : ''; }
+    catch (e) { return 'ERR ' + e.message; }
+  });
+  if (!exHtml || exHtml.startsWith('ERR') || exHtml.length < 5000) {
+    console.log(`FAIL  company executive summary: ${exHtml ? exHtml.slice(0, 90) : 'empty'}`);
+    await b.close(); process.exit(1);
+  }
+  fs.writeFileSync('/tmp/ex.html', exHtml);
+  for (const [from, to] of [['co1', 'company-new'], ['co1', 'pnb-co1'], ['sector', 'sector-new'],
+    ['exec', 'exec-new'], ['score', 'sc']]) {
+    fs.copyFileSync(`/tmp/doc-${from}.html`, `/tmp/${to}.html`);
+  }
+  console.log('  wrote the six documents the layout suites read under their older names');
 }
 
 /* What the contents page says, taken from the finished DOM. The PDF check

@@ -963,6 +963,38 @@ including pledged shares.
     reading exists. The application computes each reading's age from its period
     and prints it; a stale block is visible in the finished document.
 
+10b. THE SCHEMA SHOWS ONE EXAMPLE ROW. IT IS NOT ASKING FOR ONE ROW. Every
+    array in the schema below is written with a single element so its shape is
+    clear, and the commonest failure in a returned payload is that each array
+    comes back with exactly one: one quarter, one risk, one catalyst, one year
+    of forensic history, one peer. The application counts, and prints every
+    shortfall in the finished report as a named gap. The minimums:
+
+      financials.annual          3 completed years, EVERY line on every year
+      financials.quarterly       the last 4 reported quarters
+      forensic.decade            5 years at least, 10 where they exist
+      industryMetrics            every key listed for this industry in 4c
+      peers                      4 or more listed peers
+      shareholding               the last 4 quarters
+      theses                     3
+      management.guidanceRecord  3 instances of guidance against delivery
+      catalysts                  3, each dated
+      risks                      5, each with probability and impact
+      sources                    8 or more
+      and for a sector study:
+      global.peers               5, from more than one country
+      competition.players        every player a share can be found for — 6+
+      shortlist                  8 or more companies, all four ratings on each
+      budget.allocations         3 years, announced AND spent
+      policy                     3 or more schemes
+      monitorables               5
+      glossary                   8
+
+    If the whole payload will not fit in one reply, do NOT thin it to make it
+    fit. Send what fits as a complete, valid json block, say CONTINUE, and send
+    the rest in the next reply. A complete payload in two replies is usable; a
+    thin one in a single reply is not.
+
 11. Return the payload as the last thing in your reply, in one fenced json code
     block, so it carries a copy button. Nothing after the closing fence.
 
@@ -990,7 +1022,7 @@ something in it:
   forensic         two consecutive years of line items, and ten years of
                    profit against operating cash
   litigation       every register, with the clean ones recorded as clean
-  financials       two full years of the annual series, every field named in
+  financials       three full years of the annual series, every field named in
                    the schema, one basis, so the metrics section computes
   model            sector drivers, costs, capex, working capital, debt, shares
   valuation        price with its date, discount rate, and three scenarios

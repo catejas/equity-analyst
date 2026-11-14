@@ -51,7 +51,8 @@ async function run(mode) {
     /* what actually got stored */
     let stored = null;
     try {
-      const lib = JSON.parse(localStorage.getItem('eq.library') || '[]');
+      /* The library is in IndexedDB now; the app answers for it. */
+      const lib = window.EQLib.all();
       for (const rec of lib) {
         const cs = rec && rec.data && rec.data.companies;
         if (cs && cs[0] && cs[0].priceHistory && cs[0].priceHistory.closes) {
