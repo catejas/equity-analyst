@@ -46,7 +46,7 @@
    * still works: the print dialogue scales it to fit, which is what it does
    * with any page size. */
   var MM = 72 / 25.4;
-  var PT_W = 210 * MM, PT_H = 263 * MM;
+  var PT_W = 210 * MM, PT_H = 297 * MM;
 
   /* Character handling.
    *
@@ -201,6 +201,12 @@
     this.textColor(colour);
     this.font(style, this.L(sizePx), this.L(spacePx || 0));
     this.pdf.text(str, this.X(x), this.Y(baseline), { baseline: 'alphabetic' });
+    /* Glyphs are painted with the fill colour, and writing them leaves that
+       colour set in the page's graphics state. The next shape must therefore
+       set its own fill again even when it is the same fill as the shape before
+       the text — skipping it painted every bar after the first value label in
+       the label's dark ink. */
+    this._fill = null;
   };
 
   /* --- SVG ---------------------------------------------------------------
@@ -310,7 +316,13 @@
 
       if (tag === 'text') {
         var col = f || { r: 0, g: 0, b: 0 };
-        var fs = (parseFloat(cs.fontSize) || 10);
+        /* Type inside a chart is in the chart's own units, so it scales with
+           the chart. This read the CSS size and drew it unscaled: the shapes
+           of a figure shown at 60% were drawn at 60% and its labels at 100%,
+           which is how an axis label came to sit on top of the axis and a
+           funnel label ran off the left edge in the shared PDF while the same
+           page looked right on screen. */
+        var fs = (parseFloat(cs.fontSize) || 10) * (scale || 1);
         /* The browser has already resolved text-anchor into a box, so the box
            is the truth: reading it back beats re-deriving the anchor. */
         var bb = el.getBoundingClientRect();
@@ -619,6 +631,11 @@
     /* The sheet is the box, so there is nothing to offset by. */
     var offY = 0;
 
+    /* The sheet is the page box, whatever height the stylesheet gives it. The
+       box is A4 now; this used to be fixed at 263mm, so every PDF came out
+       thirty-four millimetres short of the paper it was printed on. Reading
+       the height off the laid-out page means the two cannot disagree again. */
+    PT_H = Math.round((first.height || 0) * k * 100) / 100 || PT_H;
     var pdf = new jsPDF({ orientation: 'p', unit: 'pt',
       format: [PT_W, PT_H], compress: true });
     var family = useFont(pdf);

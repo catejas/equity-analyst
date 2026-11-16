@@ -420,28 +420,56 @@ function consensusDelta(c, modelled) {
 }
 
 /** Liquidity and what it means for a position. */
-function liquidityAssessment(c) {
+const UNIT_RUPEES = { crore: 1e7, lakh: 1e5, million: 1e6, billion: 1e9, thousand: 1e3, '': 1 };
+
+/* Traded value arrives in the payload's reporting unit, like every other
+   money figure. This function used to read it as absolute rupees: a bank
+   trading INR 150 crore a day was sized as if it traded INR 150, so a
+   position took tens of thousands of days to build, and the page printed the
+   figure with "Crs" after it whichever way it had arrived. Everything is now
+   carried in the reporting unit, and the sizes are ones a fund would hold. */
+function liquidityAssessment(c, run) {
   const l = c.liquidity;
-  if (!l || !isNum(l.avgDailyValue)) {
+  if (!l || !isNum(l.avgDailyValue) || l.avgDailyValue <= 0) {
     return { available: false, reason: 'No liquidity data supplied, so position sizing cannot be assessed.' };
   }
+  const unit = reportingUnits({ run }).unit;
+  const mult = UNIT_RUPEES[unit] ?? 1e7;
+  /* A figure that would be more than INR 10 lakh crore a day in the stated
+     unit was written in absolute currency despite the instruction. */
+  const absolute = l.avgDailyValue * mult > 1e13;
+  let rupees = absolute ? l.avgDailyValue : l.avgDailyValue * mult;
+  /* The snapshot carries the same figure. Where the two are orders of
+     magnitude apart, one of them was written in the wrong unit; the snapshot
+     sits beside market capitalisation, which the unit check has already
+     verified, so it is the one believed. */
+  const snap = c.snapshot && c.snapshot.avgDailyValue;
+  let reconciled = null;
+  if (isNum(snap) && snap > 0) {
+    const ratio = rupees / (snap * mult);
+    if (ratio > 20 || ratio < 0.05) {
+      rupees = snap * mult;
+      reconciled = 'The liquidity block and the market snapshot gave traded value on different scales; the snapshot figure is used.';
+    }
+  }
   const participation = 0.20;
-  const perDay = l.avgDailyValue * participation;
-  const sizes = [1e6, 1e7, 1e8].map((size) => ({
-    positionSize: size,
-    daysToBuild: r2(size / perDay),
+  const perDay = rupees * participation;
+  const sizes = [1e7, 1e8, 1e9].map((size) => ({
+    positionSize: size / mult,
+    daysToBuild: Math.round((size / perDay) * 10) / 10,
   }));
   return {
     available: true,
-    avgDailyValue: r2(l.avgDailyValue),
+    avgDailyValue: r2(rupees / mult),
     currency: l.currency ?? 'INR',
     impactCostPct: isNum(l.impactCostPct) ? r2(l.impactCostPct) : null,
     freeFloatPct: isNum(l.freeFloatPct) ? r2(l.freeFloatPct) : null,
     participationAssumed: `${participation * 100}% of daily volume`,
     sizes,
-    caution: l.avgDailyValue < 5e6
+    caution: rupees < 5e6
       ? 'Thin. A position of any size takes weeks to build and longer to exit.'
       : null,
+    reconciled,
     evidence: 'CALCULATION',
   };
 }
@@ -579,7 +607,7 @@ function scoreCompany(c, horizonKey, run) {
     model: modelled,
     metrics: computeMetrics(c),
     consensus: consensusDelta(c, modelled),
-    liquidity: liquidityAssessment(c),
+    liquidity: liquidityAssessment(c, run),
     ownership: c.ownership ?? null,
     baseRates: c.baseRates ?? null,
     valuation: {

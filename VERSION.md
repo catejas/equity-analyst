@@ -26,7 +26,18 @@ behave and it is not a fault.
 
 ## Current build
 
-`12-11-2026.20` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`15-11-2026.21` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 21 is the professional A4 format: every document is set on a true A4
+sheet (210 × 297 mm) with one running head and one three-part footer on every
+page of every report; a type scale of 9pt text, 10.5–13pt bold headings and
+7pt back matter; pastel charts drawn 1:1, two to a row, each with a numbered
+title, units on the value axis, an axis title and a "What it shows" reading;
+the three statements set as three tables; and a corrected liquidity section
+(traded value in the reporting unit, position sizes in ₹). Checked by
+`tests/a4format.mjs` on all six documents.
+
+Previous: `12-11-2026.20`.
 
 Build 20 moves the library from localStorage to IndexedDB and stores only the
 payload (the report is rebuilt from it), so a second and every later sector
