@@ -40,8 +40,12 @@
 import { PILLARS, OVERALL_WEIGHTS } from './scoring.js';
 import { industryPanel, industryFamily } from './industry.js';
 import { lenderLines } from './audit.js';
+import { REGISTERS } from './litigation.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+/* A reading, as opposed to a placeholder: the schema's example rows are full
+   of zeros, and a reply that echoes them back has not measured anything. */
+const real = (v) => isNum(v) && v !== 0;
 const arr = (v) => (Array.isArray(v) ? v : []);
 const S = (v) => (v == null ? '' : String(v).trim());
 const filled = (v) => !(v == null || v === '' || (Array.isArray(v) && !v.length)
@@ -236,6 +240,25 @@ function companyChecks(c, run, now) {
     'risks, each with probability and impact');
   count('Sources', 'Sources', c.sources, 8, 'sources', 'sources, each with its tier and date');
 
+  /* The litigation registers (build 22). Tejas: "11 essential registers
+     were never searched ... Fix this." The brief always asked; the reply
+     recorded two. Every essential register not in the reply is named here,
+     with where to search it, so the follow-up asks for exactly those. */
+  const lit = arr(c.litigation && c.litigation.searched);
+  const searchedIds = new Set(lit.map((x) => S(x && x.register)));
+  const essential = REGISTERS.filter((r) => r.essential);
+  const regMiss = essential.filter((r) => !searchedIds.has(r.id));
+  check(out, 'Litigation and regulatory registers', 'Essential registers searched',
+    essential.length - regMiss.length, essential.length,
+    `${at}.litigation.searched — these essential registers have no entry. Search each against `
+    + `${who} (and each promoter where the register allows) and add ONE row per register, as `
+    + '{ "register": id, "subject": "company", "outcome": "clear" | "matters found" | "register unreachable", '
+    + '"detail": "what you searched — the query or URL and the date", "matters": [ ... ] }. '
+    + 'A register you cannot reach (a login, a captcha, a paywall) is recorded as "register unreachable" '
+    + 'with the reason in "detail" — that is an honest answer; leaving the row out is not. The registers: '
+    + regMiss.map((r) => `"${r.id}" (${r.name} — ${r.find})`).join('; ') + '.',
+    regMiss.map((r) => r.name).join(', '));
+
   const snap = c.snapshot || {};
   const snapKeys = ['marketCap', 'freeFloatPct', 'avgDailyValue', 'week52High', 'week52Low'];
   const snapMiss = snapKeys.filter((k) => !isNum(snap[k]));
@@ -272,9 +295,30 @@ function sectorChecks(d, now, backdrop) {
     if (BACKDROP_LABELS.includes(c.label)) all.push(c); } } : all;
   const WANT = backdrop ? { players: 3 } : { players: 6 };
   const g = d.global || {};
-  const peers = arr(g.peers);
-  check(out, 'The world', 'Global peers', peers.length, 5,
-    'global.peers — at least FIVE listed global peers from more than one country, each with '
+  /* Build 22. The world block came back as India's market labelled global —
+     "25,00,000 USD Millions, source RBI" — with no year, no forecast and no
+     India share. Each part is now asked for by name. */
+  const gUnit = S(g.unit);
+  const gOk = real(g.marketSize) && S(g.source) && /usd|us\$|\$|dollar|eur|global/i.test(gUnit + ' ' + S(g.marketSizeBasis))
+    && !/\brbi\b|india|inr|crore|lakh/i.test(gUnit + ' ' + S(g.source));
+  check(out, 'The world', 'Global market size, in US$, dated and sourced',
+    (gOk ? 1 : 0) + (S(g.marketSizeYear) ? 1 : 0), 2,
+    'global.marketSize — the size of the GLOBAL market (not India\'s), in US$ billion, with '
+    + '"unit": "USD billion", "marketSizeYear", "marketSizeBasis" (what was measured) and "source" '
+    + '(the publisher and the date of the estimate). India\'s own market belongs in global.indiaShare and tam.');
+  const gf = g.growthForecast || {};
+  check(out, 'The world', 'Forecast global growth', real(gf.cagr) && S(gf.years) ? 1 : 0, 1,
+    'global.growthForecast — the published forecast compound growth of the global market, as '
+    + '{ "cagr": percent, "years": "2025 to 2030", "source": "" }.');
+  const ish = g.indiaShare || {};
+  check(out, 'The world', 'Where India sits: share of the global market',
+    (real(ish.value) ? 1 : 0) + (S(ish.source) ? 1 : 0) + (S(g.indiaPosition) ? 1 : 0), 3,
+    'global.indiaShare — India\'s share of the global market in percent, its rank among countries, '
+    + 'the year and the source, as { "value", "rank", "year", "source", "basis" }; and global.indiaPosition, '
+    + 'one paragraph on what that share implies.');
+  const peers = arr(g.peers).filter((p) => !/^india$/i.test(S(p.country)));
+  check(out, 'The world', 'Global peers outside India', peers.length, 5,
+    'global.peers — at least FIVE listed peers OUTSIDE India, from more than one country, each with '
     + 'name, country, marketCap, marketCapCurrency ("USD"), marketCapUnit ("billion"), return5y, '
     + `forwardPe, growthPast, growthForecast and one sentence on what it makes. ${peers.length} came back.`);
   const unscaled = peers.filter((p) => isNum(p.marketCap) && !(S(p.marketCapCurrency) && S(p.marketCapUnit)));
@@ -282,6 +326,10 @@ function sectorChecks(d, now, backdrop) {
     peers.length,
     'global.peers — add "marketCapCurrency" and "marketCapUnit" to: '
     + unscaled.map((p) => S(p.name)).join(', ') + '.', unscaled.map((p) => S(p.name)).join(', '));
+  const noMakes = peers.filter((p) => S(p.makes).length < 12).map((p) => S(p.name));
+  check(out, 'The world', 'Global peers: what each one makes', peers.length - noMakes.length, peers.length,
+    'global.peers — add "makes", a sentence on what each actually makes or sells, for: ' + noMakes.join(', ') + '.',
+    noMakes.join(', '));
   const cagrKeys = ['y15', 'y10', 'y5', 'y3'].filter((k) => !isNum(g.cagr && g.cagr[k]));
   check(out, 'The world', 'Global growth over 15, 10, 5 and 3 years', 4 - cagrKeys.length, 4,
     `global.cagr — missing: ${cagrKeys.join(', ')}.`, cagrKeys.join(', '));
@@ -311,38 +359,88 @@ function sectorChecks(d, now, backdrop) {
     macStale.join('; '));
 
   const alloc = arr(d.budget && d.budget.allocations);
-  check(out, 'Macro and policy', 'Budget allocations, announced against spent', alloc.length, 3,
-    'budget.allocations — at least three years of the allocations touching this sector, each with '
-    + `what was announced AND what was actually spent. ${alloc.length} came back.`);
+  /* A row of zeros is the schema echoed back, not a nil allocation — unless
+     it says so. Years are counted, not rows: five heads in one year is one
+     year of history. */
+  const realAlloc = alloc.filter((a) => (real(a.announced) && isNum(a.spent))
+    || /nil/i.test(S(a.spentBasis)));
+  const budgetYears = new Set(realAlloc.map((a) => S(a.year))).size;
+  check(out, 'Macro and policy', 'Budget years, announced (BE) against spent (Actuals or RE)', budgetYears, 5,
+    'budget.allocations — one row per Budget head per year for the last FIVE Union Budgets: "head", '
+    + '"year", "announced" (the Budget Estimate, INR crore), "spent" (the Actuals, or the Revised '
+    + 'Estimate where Actuals are not yet out), "spentBasis" ("Actuals" or "Revised Estimate"), '
+    + '"ministry" and "reachesSector". Source: Budget at a Glance and the Expenditure Profile on '
+    + 'indiabudget.gov.in. If the sector has no head of its own, use the heads that reach it. '
+    + `${budgetYears} year${budgetYears === 1 ? '' : 's'} with real figures came back`
+    + (alloc.length > realAlloc.length ? `, and ${alloc.length - realAlloc.length} row(s) were zeros` : '') + '.');
   check(out, 'Macro and policy', 'Policy schemes', arr(d.policy).length, 3,
     `policy — every scheme touching the sector, to the full template. ${arr(d.policy).length} came back.`);
-  const trade = arr(d.geopolitics && d.geopolitics.tradeData);
-  check(out, 'Macro and policy', 'Trade data behind the geopolitics', trade.length, 2,
-    'geopolitics.tradeData — at least two rows of import or export data (flow, partner, value, '
-    + `year, source) behind the dependence claims. ${trade.length} came back.`);
+  const eras = arr(d.policyEvolution).filter((x) => S(x.era) && S(x.what));
+  check(out, 'Macro and policy', 'How the regime evolved: dated eras', eras.length, 4,
+    'policyEvolution — at least four eras, oldest first, each as { "era": "1991 to 2001", "what": '
+    + '"the defining act, circular or reform and what it changed" }, from liberalisation (or the '
+    + `sector's founding regime) to today. ${eras.length} came back.`);
+  const trade = arr(d.geopolitics && d.geopolitics.tradeData).filter((x) => real(x.value) && S(x.partner) && S(x.source));
+  check(out, 'Macro and policy', 'Trade data behind the claims', trade.length, 4,
+    'geopolitics.tradeData — at least four rows with real values: the top import partners and the top '
+    + 'export destinations for the sector\'s goods, each { "flow", "partner", "value", "unit": "USD million", '
+    + '"year", "source" } from Ministry of Commerce TradeStat, DGCI&S or UN Comtrade. For a services sector, '
+    + 'the cross-border flows that apply (services exports, remittances, FDI, ECB), named. '
+    + `${trade.length} usable row(s) came back.`);
 
   check(out, 'Industry', 'Demand drivers', arr(d.industry && d.industry.demandDrivers).length, 3,
     'industry.demandDrivers — three or more, each tagged structural or cyclical.');
-  check(out, 'Industry', 'Value-chain nodes', arr(d.valueChain).length, 3,
-    'valueChain — every node of the chain, with the listed companies at each one.');
+  const vc = arr(d.valueChain);
+  const vcNamed = vc.filter((n) => arr(n.beneficiaries).filter((b) => S(b)).length > 0);
+  check(out, 'Industry', 'Value-chain nodes with a listed beneficiary', vcNamed.length, 5,
+    'valueChain — at least FIVE nodes, upstream to downstream, each { "name", "what", "beneficiaries": '
+    + '["Company (NSESYMBOL)"], "secondOrder": ["Company (NSESYMBOL)"] }, with the listed Indian companies '
+    + `named at EVERY node. ${vc.length} node(s) came back, ${vcNamed.length} with a company named.`);
   const tam = d.tam || {};
-  const tamMiss = ['tam', 'sam', 'som'].filter((k) => !(tam[k] && isNum(tam[k].value) && S(tam[k].year) && S(tam[k].source)));
+  const tamMiss = ['tam', 'sam', 'som'].filter((k) => !(tam[k] && real(tam[k].value) && S(tam[k].year) && S(tam[k].source)));
   const tamStale = ['tam', 'sam', 'som'].filter((k) => tam[k] && (monthsOld(tam[k].year, now) || 0) >= 24);
   check(out, 'Industry', 'TAM, SAM and SOM, each dated and sourced', 3 - tamMiss.length, 3,
-    `tam — missing or undated: ${tamMiss.join(', ')}. Each as { "value", "unit", "basis", "year", "source" }.`,
+    `tam — missing or undated: ${tamMiss.join(', ')}. Each as { "value", "unit": "INR crore", "basis", "year", `
+    + '"source", "method" }: TAM is the whole Indian market for what the sector sells; SAM the part the listed '
+    + 'companies can serve; SOM what they have already captured (their combined revenue in it).',
     tamMiss.join(', '));
   check(out, 'Industry', 'Market size from a recent estimate', 3 - tamMiss.length - tamStale.length,
     3 - tamMiss.length,
     `tam — ${tamStale.join(', ')} ${tamStale.length === 1 ? 'is' : 'are'} more than two years old; `
     + 'search for the most recent published estimate and its publication date.', tamStale.join(', '));
-  check(out, 'Industry', 'Programmes traced to suppliers', arr(d.programs).length, 2,
-    'programs — the contracts and programmes driving demand, traced to listed suppliers.');
+  const traced = arr(d.programs).filter((x) => arr(x.beneficiaries).some((b) => S(b && (b.symbol || b.name))));
+  check(out, 'Industry', 'Programmes traced to listed suppliers', traced.length, 3,
+    'programs — at least THREE national programmes, tenders or order pipelines driving demand, each with '
+    + '"scale", "unit", "timeline", "participants", "challenges" and "beneficiaries": [{ "symbol", "name", '
+    + '"supplies", "shareOfProgram" }] naming the listed companies that supply into it. '
+    + `${arr(d.programs).length} came back, ${traced.length} traced to a listed supplier.`);
 
-  const players = arr(d.competition && d.competition.players).filter((p) => isNum(p.share) && p.share > 0)
+  const comp = d.competition || {};
+  const players = arr(comp.players).filter((p) => isNum(p.share) && p.share > 0)
     .sort((a, b) => b.share - a.share);
-  check(out, 'Industry', 'Players with a measured market share', players.length, WANT.players,
-    'competition.players — every player a share can be established for (aim for the whole market, '
-    + `not just the leaders), each with share, basis, asOf and source. ${players.length} came back.`);
+  const covered = players.reduce((a, p) => a + (p.share < 1 && players.every((q) => q.share < 1) ? p.share * 100 : p.share), 0);
+  check(out, 'Industry', 'Players with a measured market share', players.length, backdrop ? WANT.players : 8,
+    'competition.players — at least EIGHT players, largest first, on ONE measure and ONE period, '
+    + 'each "share" in percentage points of the whole market (23 for 23%), with "symbol" if listed, '
+    + `"asOf" and "source". ${players.length} came back.`);
+  if (!backdrop) {
+    check(out, 'Industry', 'Share measure, period and market total stated',
+      (S(comp.metric) ? 1 : 0) + (S(comp.period) ? 1 : 0) + (comp.marketTotal && real(comp.marketTotal.value) ? 1 : 0), 3,
+      'competition — name the one measure the shares are of in "metric" (share of gross advances, of '
+      + 'capacity, of revenue), the one period in "period", and the size of the whole market on that '
+      + 'measure in "marketTotal": { "value", "unit", "source" }.');
+    check(out, 'Industry', 'Share of the market accounted for', Math.min(80, Math.round(covered)), 80,
+      `competition.players — the shares returned add up to ${Math.round(covered)}% of the market. Add the `
+      + 'next largest players until at least 80% is accounted for, so the ranking is of the market and '
+      + 'not of whoever was found first.');
+    const bases = new Set(players.map((p) => S(p.basis).toLowerCase()).filter(Boolean));
+    const periods = new Set(players.map((p) => S(p.asOf)).filter(Boolean));
+    check(out, 'Industry', 'Every share on the same measure and period',
+      bases.size <= 1 && periods.size <= 1 ? 1 : 0, 1,
+      'competition.players — the shares mix ' + [bases.size > 1 ? 'measures (' + [...bases].join(', ') + ')' : '',
+        periods.size > 1 ? 'periods (' + [...periods].join(', ') + ')' : ''].filter(Boolean).join(' and ')
+      + '. Restate every player on one measure and one period.');
+  }
   const staleShare = players.filter((p) => (monthsOld(p.asOf, now) || 0) >= 18).map((p) => `${S(p.name)} (${S(p.asOf)})`);
   check(out, 'Industry', 'Market shares from a recent period', players.length - staleShare.length,
     players.length,
@@ -479,13 +577,21 @@ ${body}
 }
 
 /* ── Merging the reply ────────────────────────────────────────────────── */
+const norm = (v) => S(v).toLowerCase().replace(/\s+/g, ' ');
 const ID_KEYS = ['period', 'key', 'symbol', 'name', 'risk', 'quarter', 'year', 'label', 'title', 'term', 'id'];
+/* Rows whose identity is more than one field. A Budget has several heads in
+   one year, trade has several partners in one year, and a register is
+   searched against the company and each promoter: joining any of them on
+   "year" or "register" alone would fold distinct rows into one. */
+const ID_COMBOS = [['register', 'subject', 'subjectName'], ['head', 'year'], ['flow', 'partner', 'year'], ['era']];
 function identityOf(list) {
   const objs = list.filter((x) => x && typeof x === 'object' && !Array.isArray(x));
   if (!objs.length || objs.length !== list.length) return null;
+  const combo = ID_COMBOS.find((ks) => objs.every((o) => S(o[ks[0]]) !== ''));
+  if (combo) return combo.join('+');
   return ID_KEYS.find((k) => objs.every((o) => S(o[k]) !== '')) || null;
 }
-const norm = (v) => S(v).toLowerCase().replace(/\s+/g, ' ');
+const idOf = (o, idk) => idk.split('+').map((k) => norm(o[k])).join('|');
 
 function mergeValue(base, add, path, gained) {
   if (add === undefined || add === null || add === '') return base;
@@ -496,10 +602,10 @@ function mergeValue(base, add, path, gained) {
     if (idk && identityOf(base) === idk) {
       const out = base.slice(); let added = 0, touched = 0;
       add.forEach((item) => {
-        const ix = out.findIndex((b) => norm(b[idk]) === norm(item[idk]));
+        const ix = out.findIndex((b) => idOf(b, idk) === idOf(item, idk));
         if (ix < 0) { out.push(item); added++; }
         else { const before = JSON.stringify(out[ix]);
-          out[ix] = mergeValue(out[ix], item, `${path}[${S(item[idk])}]`, []);
+          out[ix] = mergeValue(out[ix], item, `${path}[${idk.split('+').map((k) => S(item[k])).filter(Boolean).join(' ')}]`, []);
           if (JSON.stringify(out[ix]) !== before) touched++; }
       });
       if (added || touched) gained.push(`${path} (${added ? '+' + added + ' new' : ''}${added && touched ? ', ' : ''}${touched ? touched + ' filled in' : ''})`);

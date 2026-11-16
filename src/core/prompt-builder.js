@@ -48,6 +48,14 @@ function rubricSection() {
   return out.join('\n');
 }
 
+/* The litigation rows the schema shows: one per applicable register. The
+   example used to show one row (sebi_orders), and research tools returned
+   exactly that one row — eleven essential registers were "never searched" on
+   the PNB run. A schema that lists every register is a form to fill in. */
+const LIT_ROWS = registerChecklist({ listed: true })
+  .map((r) => `        { "register": "${r.id}", "subject": "company", "outcome": "", "detail": "" },`)
+  .join('\n');
+
 function registerSection() {
   return registerChecklist({ listed: true })
     .map((r) => `  ${r.essential ? '[essential]' : '[if relevant]'} ${r.id} — ${r.name}. Find it via: ${r.howToFind}`)
@@ -471,7 +479,8 @@ precise thing this screen exists to refuse. A run that returns three companies
 and leaves essential registers unsearched produces a shortlist of nothing.
 
 So: search every register marked [essential] for every company you shortlist,
-and return an entry for each one. If a register genuinely cannot be reached,
+and return an entry for each one — the "litigation.searched" array in the
+schema already lists every register as a row to fill in; keep every row. If a register genuinely cannot be reached,
 record it with outcome "register unreachable" and say why — that is an honest
 answer and the report will print it. Omitting the entry is not.
 
@@ -504,18 +513,26 @@ pages establishing why an industry will compound before it names a company. The
 sector is the argument; the companies are how it is expressed. Work in that
 order.
 
-**The world.** Global market size and its compound growth over fifteen, ten,
-five and three years. The structural forces reshaping it. A table of global
-peers with market capitalisation, five-year return, forward multiple, growth
-history and forecast, and a plain sentence on what each one actually makes.
-AT LEAST FIVE PEERS, drawn from more than one country: one comparator is an
-anecdote, not a comparison, and a reader cannot tell whether an Indian multiple
-is high or low against a single foreign name. Pick the five largest listed
-companies in the world doing the same thing, and say for each one what it
-makes in a sentence, not a category. Every market capitalisation MUST carry
-its currency and its scale in "marketCapCurrency" and "marketCapUnit" — "USD"
-and "billion", not a bare number; a figure with no currency is unusable and
-will print as unstated. Then where India sits, and the trade flowing each way.
+**The world.** This block is about the WORLD, not India. Search for each of:
+  - the GLOBAL market size in US$ billion ("marketSize", "unit": "USD billion"),
+    the year it is for ("marketSizeYear"), what was measured ("marketSizeBasis"
+    — global revenue, global installed base, global credit outstanding) and
+    who published it ("source" — an industry body, a multilateral, a
+    consultancy report, with its date). India's own market is NOT the global
+    market size; it goes in "indiaShare" below.
+  - its compound growth over fifteen, ten, five and three years ("cagr"), and
+    the published FORECAST growth for the next five years ("growthForecast").
+  - the structural forces reshaping it ("forces", three or more).
+  - WHERE INDIA SITS: India's share of the global market in percent, India's
+    rank among countries, and the source ("indiaShare"), plus one paragraph
+    ("indiaPosition") on what that share implies.
+  - global peers: AT LEAST FIVE listed companies OUTSIDE India, drawn from
+    more than one country, doing the same thing. For each: market
+    capitalisation WITH "marketCapCurrency" ("USD") and "marketCapUnit"
+    ("billion"), five-year return, forward PE, past and forecast growth, and
+    "makes" — a plain sentence on what it actually makes or sells, not a
+    category. Indian companies are the subject of this report, not its
+    comparators; do not list them here.
 
 **India.** Growth, inflation, the policy rate, the currency, credit growth and
 capacity utilisation, each with its period and source. An undated macro figure
@@ -523,39 +540,80 @@ is not usable, and a stale one is worse: search for each of the six and return
 the LATEST PUBLISHED PRINT as at today, by quarter or by month, not the last
 completed fiscal year. See rule 10a below for where each one is published.
 
-**The Union Budget.** The allocations that touch this sector, over five years,
-each with what was announced and what was actually spent. The gap between the
-two is usually the story. Add the Economic Survey's own reading of the sector.
+**The Union Budget.** The Budget heads that touch this sector — the ministry's
+own demand for grants, the schemes and capital outlays that reach it — for EACH
+of the last five Union Budgets, one row per head per year. "announced" is the
+Budget Estimate (BE); "spent" is the Actual (from the Budget documents two
+years on) or, for the latest years where Actuals are not yet out, the Revised
+Estimate (RE) — say which in "spentBasis". Both in INR crore. Search the Budget
+at a Glance and the Expenditure Profile on indiabudget.gov.in. If the sector
+has no head of its own (banking, for instance), use the heads that reach it —
+recapitalisation, credit guarantee funds, interest subvention, capital
+expenditure lines — and say so in "reachesSector". Never write 0 for a figure
+you did not find; a genuine zero allocation is written 0 with
+"spentBasis": "nil allocation". The gap between announced and spent is usually
+the story. Add the Economic Survey's own reading of the sector.
 
 **Policy.** Each scheme to the same template: name, ministry, objective,
 funding and scope, outcomes to date, challenges, and how it reaches this
-sector. Then the evolution of the regime by era, with dates. A sector thesis
+sector. Then the evolution of the regime BY ERA, AT LEAST FOUR ERAS, each with
+its years and the defining act, circular or reform — from liberalisation (or
+the sector's founding regime) to today — in "policyEvolution". A sector thesis
 that never mentions policy is not an Indian equity thesis.
 
 **Regulation.** The regulator, the rules, what is under review, and what a
 change would cost.
 
 **Geopolitics and supply chains.** Import dependence, export exposure, tariff
-and sanction risk, and supply-chain concentration, with the trade data behind
-each claim.
+and sanction risk, and supply-chain concentration, with THE TRADE DATA BEHIND
+EACH CLAIM in "tradeData": at least four rows — the top import partners and
+the top export destinations for the sector's goods — each with its value in
+US$ million ("unit"), the year and the source (Ministry of Commerce TradeStat,
+DGCI&S, UN Comtrade). For a services sector, use the cross-border flows that
+apply — services exports, remittances, FDI, external commercial borrowing —
+and name the flow. A claim of "low import dependence" with no figure under it
+is an opinion.
 
 **The industry.** Structure, where it sits in its cycle, the demand drivers each
 tagged positive or negative, where the profit pool sits and whether it is
 moving, and the technology shift.
 
-**The value chain.** Node by node, upstream to downstream, with the listed
-companies at each node named — direct beneficiaries and second order both.
+**The value chain.** AT LEAST FIVE nodes, upstream to downstream (raw input →
+intermediate → producer → distribution → end user, in this sector's own
+terms). At EVERY node, name the listed Indian companies that benefit — with
+their NSE symbol in brackets, "Tata Steel (TATASTEEL)" — as direct
+beneficiaries, and the companies one step removed as second order. A node with
+no listed company named is a gap the report will print.
 
-**TAM, SAM and SOM**, each with its basis, year and source.
+**TAM, SAM and SOM.** Three different numbers, each with value, unit, year,
+basis, source and "method" — how it was arrived at:
+  TAM  the whole Indian market for what this sector sells, in INR crore
+  SAM  the part the listed companies in this study can actually serve
+  SOM  what those listed companies have already captured (their combined
+       revenue or volume in it), so SOM ÷ SAM is their realised share
+A SOM that is one company's revenue, or a SAM marked "estimate" with no
+method, is not a market size.
 
-**Programmes and contracts.** The major national programmes, tenders or order
-pipelines driving demand. Each with scale, timeline, participants, and — this is
-the part that matters — which listed companies supply what into it. A programme
-that is not traced to a listed supplier is background, not research.
+**Programmes and contracts.** AT LEAST THREE of the major national programmes,
+tenders or order pipelines driving demand. Each with scale, timeline,
+participants, and — this is the part that matters — "beneficiaries": the
+listed companies supplying into it, each with symbol, what they supply and
+their share of the programme or its order value. A programme that is not
+traced to a listed supplier is background, not research.
 
-**Competition.** Share by player with the basis stated, because volume share and
-value share are different numbers. Concentration, entry barriers, substitution
-and pricing behaviour.
+**Competition.** ONE market-share table a reader can add up. Choose the one
+measure the industry is ranked on (share of gross advances, share of installed
+capacity, share of revenue, share of volume sold) and name it in
+"competition.metric"; take ONE period that every player has reported for and
+name it in "competition.period"; and give the size of the whole market on that
+measure in "competition.marketTotal". Then AT LEAST EIGHT players, largest
+first, listed and unlisted, together covering at least 80% of the market —
+each "share" in PERCENTAGE POINTS of the whole market (23 for 23%, never 0.23),
+on that same metric and period. Mixing value share with volume share, or one
+year with another, produces a table that does not add up and a ranking that
+means nothing. For the three largest, "moat" (what the advantage actually is)
+and "whyLeader" (why it has held). Then concentration, entry barriers,
+substitution and pricing behaviour.
 
 **Key monitorables.** What would confirm or break the sector thesis. This is
 the sector-level equivalent of a thesis breaker.
@@ -636,7 +694,13 @@ including pledged shares.
       } }
   ],
 
-  "global": { "marketSize": 0, "unit": "", "source": "",
+  // THE WORLD, not India. marketSize is the GLOBAL market, in US$ billion.
+  "global": { "marketSize": 0, "unit": "USD billion", "marketSizeYear": "2025",
+    "marketSizeBasis": "what was measured — global revenue, installed base, credit outstanding",
+    "source": "publisher and date of the estimate",
+    "growthForecast": { "cagr": 0, "years": "2025 to 2030", "source": "" },
+    "indiaShare": { "value": 0, "rank": 0, "year": "", "source": "",
+      "basis": "India's share of the global market, in percent, and its rank among countries" },
     // EVERY rate in this payload is in PERCENTAGE POINTS, never a fraction:
     // eleven percent is 11, not 0.11. This was answered both ways by different
     // tools and the charts had no way to tell them apart.
@@ -648,7 +712,8 @@ including pledged shares.
     // currency and no scale cannot be compared with anything.
     "peers": [ { "name": "", "country": "", "marketCap": 0,
       "marketCapCurrency": "USD", "marketCapUnit": "billion", "return5y": 0,
-      "forwardPe": 0, "growthPast": 0, "growthForecast": 0, "makes": "" } ] },
+      "forwardPe": 0, "growthPast": 0, "growthForecast": 0,
+      "makes": "a sentence on what it makes or sells" } ] },
 
   "macro": {
     "gdpGrowth":          { "value": 0, "period": "", "source": "" },
@@ -659,43 +724,57 @@ including pledged shares.
     "capacityUtilisation":{ "value": 0, "period": "", "source": "" } },
 
   "budget": { "economicSurvey": "the Survey's own reading of this sector",
+    // One row per head per Budget year, five years. announced = Budget
+    // Estimate; spent = Actuals, or Revised Estimate where Actuals are not
+    // out yet — say which in spentBasis. INR crore.
     "allocations": [ { "head": "", "year": "FY26", "announced": 0, "spent": 0,
-      "ministry": "", "reachesSector": "" } ] },
+      "spentBasis": "Actuals or Revised Estimate", "ministry": "", "reachesSector": "" } ] },
 
   "policy": [ { "name": "", "ministry": "", "announced": "", "objective": "",
     "funding": "", "outcomes": "", "challenges": "", "reachesSector": "" } ],
+  // At least four eras, oldest first, each with its years and defining act.
   "policyEvolution": [ { "era": "1991 to 2001", "what": "" } ],
   "regulation": { "regulator": "", "rules": "", "underReview": "", "costOfChange": "" },
 
   "geopolitics": { "importDependence": "", "exportExposure": "", "tariffRisk": "",
     "sanctionRisk": "", "concentration": "",
-    "tradeData": [ { "flow": "import or export", "partner": "", "value": 0, "year": "", "source": "" } ] },
+    // At least four rows: top import partners and top export destinations.
+    "tradeData": [ { "flow": "import or export", "partner": "", "value": 0,
+      "unit": "USD million", "year": "", "source": "" } ] },
 
   "industry": { "structure": "", "cyclePosition": "", "profitPool": "",
     "technologyShift": "",
     "demandDrivers": [ { "driver": "", "direction": "positive or negative", "why": "" } ] },
 
+  // At least five nodes, upstream to downstream; listed companies named at EVERY node.
   "valueChain": [ { "name": "node, upstream to downstream", "what": "",
-    "beneficiaries": ["listed company names at this node"],
-    "secondOrder": ["listed companies one step removed"] } ],
+    "beneficiaries": ["Company Name (NSESYMBOL)"],
+    "secondOrder": ["Company Name (NSESYMBOL), one step removed"] } ],
 
-  "tam": { "tam": { "value": 0, "unit": "", "basis": "", "year": "", "source": "" },
-           "sam": { "value": 0, "unit": "", "basis": "", "year": "", "source": "" },
-           "som": { "value": 0, "unit": "", "basis": "", "year": "", "source": "" } },
+  "tam": { "tam": { "value": 0, "unit": "INR crore", "basis": "the whole Indian market", "year": "", "source": "", "method": "" },
+           "sam": { "value": 0, "unit": "INR crore", "basis": "the part the listed companies can serve", "year": "", "source": "", "method": "" },
+           "som": { "value": 0, "unit": "INR crore", "basis": "what the listed companies have captured", "year": "", "source": "", "method": "" } },
 
+  // At least three, each traced to its listed suppliers.
   "programs": [ { "name": "", "scale": 0, "unit": "", "timeline": "",
     "participants": "", "challenges": "",
     "beneficiaries": [ { "symbol": "", "name": "", "supplies": "", "shareOfProgram": "" } ] } ],
 
   "competition": { "concentration": "", "entryBarriers": "", "substitution": "",
     "pricingBehaviour": "",
+    // ONE measure, ONE period, for every player. share is in percentage
+    // points of marketTotal (23 for 23%). At least eight players, covering
+    // at least 80% of the market.
+    "metric": "share of gross advances, or of installed capacity, revenue, volume",
+    "period": "FY26",
+    "marketTotal": { "value": 0, "unit": "INR crore", "source": "" },
     // EVERY player you can establish a share for, not just the leaders — the
     // chart names the ones above 5% and groups the rest, so a long tail costs
     // nothing and a short list understates concentration. asOf must be the
     // latest period for which every player has reported (rule 10a).
     // moat and whyLeader are asked for on the three largest by share: what the
     // advantage actually is, and why it has held.
-    "players": [ { "name": "", "listed": true, "share": 0, "basis": "volume or value",
+    "players": [ { "name": "", "symbol": "NSE symbol if listed", "listed": true, "share": 0, "basis": "the metric above",
       "asOf": "", "source": "", "moat": "", "whyLeader": "" } ] },
 
   "sectorValuation": { "currentMultiple": 0, "metric": "", "tenYearMedian": 0,
@@ -774,10 +853,16 @@ including pledged shares.
         "disclosures": { "auditorResignedWithin24Months": false }
       },
 
+      // ONE ENTRY FOR EVERY REGISTER BELOW, at least against the company —
+      // these are the rows to fill in, not examples. outcome is "clear",
+      // "matters found" or "register unreachable"; detail says what was
+      // searched (the URL or query and the date). Add promoter and
+      // subsidiary rows the same way.
       "litigation": { "searched": [
-        { "register": "sebi_orders", "subject": "company or promoter or subsidiary",
-          "subjectName": "", "outcome": "clear", "detail": "",
-          "matters": [ { "severity": "", "category": "", "summary": "", "status": "", "amount": null } ] }
+${LIT_ROWS}
+        { "register": "sebi_orders", "subject": "promoter", "subjectName": "name of the promoter",
+          "outcome": "", "detail": "",
+          "matters": [ { "severity": "low, moderate or severe", "category": "", "summary": "", "status": "", "amount": null } ] }
       ] },
 
       "model": {
@@ -946,8 +1031,13 @@ including pledged shares.
       inflation             the latest monthly CPI print (MoSPI), by month
       policy rate           the rate set at the most recent MPC meeting (RBI),
                             with the meeting date
-      rupee                 the spot rate on or near the run date (RBI
-                            reference rate), not a fiscal-year average
+      rupee                 the FBIL/RBI reference rate for US$ ON THE RUN
+                            DATE itself (or the last business day before it),
+                            period written as the day, e.g. "13-11-2026" —
+                            never a quarter, a fiscal year or an average, and
+                            never a figure from memory. The application checks
+                            this rate against a published reference for the
+                            run date and replaces a wrong one.
       credit growth         the latest RBI fortnightly or monthly
                             sectoral-deployment release
       capacity utilisation  the latest RBI OBICUS round
@@ -981,12 +1071,20 @@ including pledged shares.
       catalysts                  3, each dated
       risks                      5, each with probability and impact
       sources                    8 or more
+      litigation.searched        one row for EVERY register listed in section 6
       and for a sector study:
-      global.peers               5, from more than one country
-      competition.players        every player a share can be found for — 6+
-      shortlist                  8 or more companies, all four ratings on each
-      budget.allocations         3 years, announced AND spent
+      global.marketSize          the GLOBAL market, US$ billion, with year and source
+      global.indiaShare          India's share of the global market, with rank
+      global.peers               5 listed companies outside India, more than one country
+      budget.allocations         5 Budget years, announced (BE) AND spent (Actuals or RE)
       policy                     3 or more schemes
+      policyEvolution            4 or more eras, dated
+      geopolitics.tradeData      4 or more rows, values in US$ million
+      valueChain                 5 or more nodes, a listed company named at each
+      tam                        TAM, SAM and SOM — three different numbers, each with method
+      programs                   3 or more, each with its listed suppliers
+      competition.players        8 or more on one metric and one period, 80% of the market
+      shortlist                  8 or more companies, all four ratings on each
       monitorables               5
       glossary                   8
 

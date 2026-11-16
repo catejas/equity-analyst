@@ -854,6 +854,22 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
     }
   }
 
+  /* Market shares that arrived as fractions (build 22). The sample sector
+     study gave State Bank of India 0.23 for 23%, and the report printed "0.2%"
+     beside a chart that was 99.6% "unaccounted for" — a table a reader could
+     not make sense of. Shares are their own block: two or more players, every
+     one below 1, together no more than the whole market, is a fraction scale. */
+  {
+    const pl = (payload.competition && Array.isArray(payload.competition.players))
+      ? payload.competition.players.filter((x) => x && typeof x.share === 'number' && x.share > 0) : [];
+    const sum = pl.reduce((a, x) => a + x.share, 0);
+    if (pl.length >= 2 && pl.every((x) => x.share < 1) && sum <= 1.05) {
+      pl.forEach((x) => { x.share = Math.round(x.share * 100 * 1e4) / 1e4; });
+      unitGaps.push(`Market shares arrived as fractions (0.23 for 23%). All ${pl.length} have been `
+        + 'multiplied by 100 so the competition table reads in percent of the market.');
+    }
+  }
+
   /* THE SCREEN. What the sector run actually did.
    *
    * This never reached the report before, and its absence is why the sector

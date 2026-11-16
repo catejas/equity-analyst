@@ -26,6 +26,20 @@ behave and it is not a fault.
 
 ## Current build
 
+`16-11-2026.22` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 22: the footer disclaimer moves under the page row with the new wording;
+the rupee rate is checked by the app against a published reference for the
+save date (src/core/fx.js); every litigation register is a row in the schema
+and is printed register by register; market shares state their measure,
+period and market total and are read correctly when given as fractions; and
+the sector brief, depth check and follow-up ask by name for the global market,
+India's share, five years of Budget BE against actuals, dated eras, trade
+data, value-chain beneficiaries, TAM/SAM/SOM with method and programmes traced
+to suppliers.
+
+Previous: `15-11-2026.21`.
+
 `15-11-2026.21` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 21 is the professional A4 format: every document is set on a true A4

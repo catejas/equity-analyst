@@ -232,6 +232,33 @@ export function repairPayload(payload) {
     if (isObj(c.litigation)) wrap(c.litigation, 'searched', 'litigation.searched');
     if (isObj(c.litigation) && isArr(c.litigation.searched)) {
       c.litigation.searched.forEach((s) => { if (isObj(s)) wrap(s, 'matters', 'litigation matters'); });
+      /* The schema lists every register as a row to fill in (build 22). A row
+         handed back with no outcome is a register nobody searched: it is
+         dropped here, so the report counts it as never searched rather than
+         the whole payload failing on a blank. Outcomes written in other
+         words are read as the three the engine knows. */
+      const OUT = { clear: 'clear', clean: 'clear', 'no matters': 'clear', 'nothing found': 'clear',
+        none: 'clear', nil: 'clear', 'matters found': 'matters found', matters: 'matters found',
+        found: 'matters found', 'register unreachable': 'register unreachable',
+        unreachable: 'register unreachable', 'not reachable': 'register unreachable',
+        inaccessible: 'register unreachable', blocked: 'register unreachable' };
+      let blank = 0;
+      c.litigation.searched = c.litigation.searched.filter((s) => {
+        if (!isObj(s)) return true;
+        const o = typeof s.outcome === 'string' ? s.outcome.trim().toLowerCase() : s.outcome;
+        if (o == null || o === '' || o === 'not searched' || o === 'pending') { blank++; return false; }
+        if (typeof o === 'string' && OUT[o] && OUT[o] !== s.outcome) s.outcome = OUT[o];
+        if (Array.isArray(s.matters)) s.matters = s.matters.filter((m) => isObj(m)
+          && Object.keys(m).some((k) => m[k] != null && m[k] !== ''));
+        if (s.outcome === 'matters found' && !(Array.isArray(s.matters) && s.matters.length)) {
+          /* "matters found" with nothing listed: kept, with the detail as the matter. */
+          s.matters = [{ severity: 'moderate', category: 'litigation',
+            summary: (typeof s.detail === 'string' && s.detail.trim()) || 'matters were reported but not listed' }];
+          say('a register marked "matters found" with no matters listed was given its detail as the matter');
+        }
+        return true;
+      });
+      if (blank) say(`${blank} litigation register row${blank === 1 ? ' was' : 's were'} returned with no outcome and ${blank === 1 ? 'is' : 'are'} counted as never searched`);
     }
     if (isObj(c.forensic)) {
       wrap(c.forensic, 'decade', 'forensic.decade');

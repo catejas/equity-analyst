@@ -132,7 +132,7 @@ export function assessLitigation(searched, { listed = true } = {}) {
     })),
     // The honest statement the report prints where coverage is thin.
     caveat: essentialMissed.length
-      ? `${essentialMissed.length} essential registers were never searched: ${essentialMissedNames.join(', ')}. The absence of findings against them means nothing.`
+      ? `${essentialMissed.length} of the ${applicable.filter((r) => r.essential).length} essential registers were not searched: ${essentialMissedNames.join(', ')}. No finding from a register nobody searched is a clean record, so the company stays out of the Top 3 until they are; the follow-up prompt asks for exactly these.`
       : unreachable.length
         ? `${unreachable.length} registers were unreachable. Those results are unknown, not clean.`
         : null,

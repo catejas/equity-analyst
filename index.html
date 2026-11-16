@@ -540,7 +540,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="15-11-2026.21";</script>
+<script>window.APP_BUILD="16-11-2026.22";</script>
 </head>
 <body>
 
@@ -2579,8 +2579,74 @@ function saveToLibrary(rec){
   lib.unshift(rec);
   var ok = libWrite(lib);
   drawLibrary(rec.id);
+  if(ok && fxNeeded(rec.data)) setTimeout(fxUpgradeLibrary, 50);
   return ok;
 }
+/* ---- USD/INR on the research date ---- */
+function fxNeeded(d){
+  return !!(d && d.macro && typeof d.macro === 'object'
+    && !(d.macro.currency && d.macro.currency.verified));
+}
+/* Never rejects. On success the payload's rate is replaced by the reference
+   rate for the research date; on failure the payload is marked, so the
+   report prints the tool's figure as unchecked rather than as fact. */
+/* The date is the day the study is saved — the date the report's footer
+   prints — not the date the research tool wrote into its own reply, which is
+   sometimes wrong as well. */
+function fxCheck(d, when){
+  var date = EQ.fx.isoDay(when || new Date());
+  return EQ.fx.fetchUsdInr(date).then(function(r){
+    if(r && r.value){ EQ.fx.applyFx(d, r, date); return true; }
+    d.macro.currencyCheck = { tried: date, failed: true,
+      why: (r && r.attempts || []).map(function(a){ return a.source + ': ' + a.error; }).join('; ') };
+    return false;
+  }, function(){ return false; });
+}
+/* Studies saved before build 22 carry whatever rate the tool wrote. Once the
+   engine and the library are both up, each is checked once, quietly, and
+   stored again only if the check succeeded. */
+/* Every saved study whose rate has not been checked is checked, one at a
+   time, in the background: after each save, and once at launch for studies
+   saved before build 22 or saved while offline. The save itself never waits
+   on the network — a slow rate source must not hold a study hostage. The
+   record is written back whether the check succeeded (the reference rate
+   replaces the tool's) or failed (so the report can say no source answered). */
+var FX_BUSY = false;
+function fxUpgradeLibrary(){
+  if(FX_BUSY || !window.EQ || !EQ.fx) return Promise.resolve(0);
+  var lib = libRead(), todo = lib.filter(function(r){ return fxNeeded(r.data); });
+  if(!todo.length) return Promise.resolve(0);
+  FX_BUSY = true;
+  var changed = 0;
+  return todo.reduce(function(chain, r){
+    return chain.then(function(){
+      var before = JSON.stringify(r.data.macro.currency || null) + JSON.stringify(r.data.macro.currencyCheck || null);
+      return fxCheck(r.data, r.ts ? new Date(r.ts) : null).then(function(ok){
+        if(ok) delete r.data.macro.currencyCheck;
+        var after = JSON.stringify(r.data.macro.currency || null) + JSON.stringify(r.data.macro.currencyCheck || null);
+        if(after !== before) changed++;
+      });
+    });
+  }, Promise.resolve()).then(function(){
+    FX_BUSY = false;
+    if(changed){
+      /* Written over the library as it stands now, not as it stood when the
+         check began: a study saved in the meantime must not be lost. */
+      var now = libRead(), byId = {};
+      todo.forEach(function(r){ byId[r.id] = r; });
+      libWrite(now.map(function(x){ return byId[x.id] ? Object.assign(x, { data: byId[x.id].data }) : x; }));
+      try{ drawLibrary(); }catch(e){}
+      try{ if(typeof refresh === 'function') refresh(); }catch(e){}
+    }
+    return changed;
+  }, function(){ FX_BUSY = false; return 0; });
+}
+window.EQFx = { check: function(){ return fxUpgradeLibrary(); } };
+window.addEventListener('eq:ready', function(){
+  (window.EQLib && EQLib.ready ? EQLib.ready : Promise.resolve()).then(function(){
+    setTimeout(fxUpgradeLibrary, 1500); });
+});
+
 window.EQLib = { all: function(){ return libPlain(); },
   ready: null, backend: function(){ return LIB_DB ? 'indexeddb' : 'localstorage'; } };
 

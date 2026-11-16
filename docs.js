@@ -78,7 +78,10 @@ function currentPayload(kind){
             analysis_datetime: seg && seg.ts ? new Date(seg.ts).toISOString() : new Date().toISOString() },
     report: built.report,
     warnings: built.warnings || [],
-    companyIndex: idx
+    companyIndex: idx,
+    /* The sector study as it was saved, so a thin section can name what the
+       follow-up prompt would fetch (build 22). */
+    payload: seg && seg.data || null
   };
 }
 /* One language switch governs every document on the Report page. It used to be
