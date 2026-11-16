@@ -1,3 +1,4 @@
+import os
 """The contents links in the printed PDF.
 
 THIS WAS CLOSED TWICE AS IMPOSSIBLE, AND IT ALREADY WORKED.
@@ -177,13 +178,18 @@ ok('and the contents prints the page the section is on', not mislabelled)
 # tapping "Sum of the parts" jumped to page 13 and left the reader to find the
 # heading somewhere down it. Where several rows point at the same page, their
 # destinations must differ — and each must sit near where the section starts.
-# The PAGE BOX, which is not always the sheet. The vector writer makes the
-# sheet the box (210 x 263mm); the browser print path puts the same box at the
-# top of an A4 sheet, so a section 44% down the box is 39% down that sheet. The
-# box is 210mm wide in both, so its height follows from the sheet's width.
+# The PAGE BOX. Since build 21 the box is the A4 sheet itself (210 x 297mm) in
+# both the vector writer and the browser print path; it was 263mm before, with
+# the sheet taller than the box. Its height still follows from the width.
 sheet_h = float(r.pages[0].mediabox.height)
 page_w = float(r.pages[0].mediabox.width)
-box_h = page_w * (263.0 / 210.0)
+box_h = page_w * (297.0 / 210.0)
+# The browser print path (the fallback, not the vector writer) shrinks each
+# page to 88% of the sheet in a print media query, so a browser that insists
+# on its own margins still does not split one page across two sheets. A
+# section 73% down the box is then 64% down the sheet.
+if 'plain' in os.path.basename(sys.argv[1] if len(sys.argv) > 1 else ''):
+    box_h *= 0.88
 # The symptom was every destination resolving to the same place: the top of a
 # page. Two sections CAN legitimately share a y — one at the foot of a page and
 # its continuation at the top of the next — so this asks the weaker question

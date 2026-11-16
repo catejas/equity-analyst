@@ -52,7 +52,9 @@ ok('no "Fig N" prefix on captions', !/<b>Fig \d+<\/b>/.test(body));
    produced a figure inside a figure: two captions, the counter advanced twice,
    and an inner figure carrying no source line. */
 ok('no figure is nested inside another figure',
-   !/<figure class="fig[^>]*>(?:(?!<\/figure>)[\s\S])*?<figure class="fig/.test(body));
+   /* The row that pairs two charts side by side (build 21) is a figure of
+      class "figrow" by design; what must not happen is a CHART inside a CHART. */
+   !/<figure class="fig[ "][^>]*>(?:(?!<\/figure>)[\s\S])*?<figure class="fig[ "]/.test(body));
 ok('headings are Title Case', /Sum of the Parts/.test(body) && /Pay and Alignment/.test(body));
 ok('no sentence-case heading left', !/>Return on capital, deconstructed</.test(body));
 
@@ -120,7 +122,10 @@ ok('the lender suppression states its reason',
    /not computed for a lender/i.test(body) && /Deposits are the funding a bank runs on/.test(body));
 ok('the football field is read for the reader',
    /Each bar is the range one method produces/.test(body));
-ok('the scatters are drawn at half height', /max-height:96px/.test(body));
+/* Build 21 draws every chart 1:1 on a half-width canvas and sets two to a
+   row, so a scatter no longer needs squashing to fit; the old max-height cap
+   is gone. What is checked is that charts are paired rather than stacked. */
+ok('the charts are set two to a row', /<figure class="figrow/.test(body));
 
 /* --- the five pillars -------------------------------------------------- */
 {

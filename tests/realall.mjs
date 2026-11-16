@@ -24,7 +24,13 @@ for (const name of ['company','sector','exec','coexec','scorecard']) {
     const tocPage = toc ? toc.closest('.page') : null;
     return { pages: pages.length, over,
       tocRows: document.querySelectorAll('[data-toc] a').length,
-      tocIsFirst: tocPage === pages[0],
+      /* First, or second behind the one-page tear sheet that opens a company
+         report. This asked for "first" outright and passed for a dozen builds
+         because the file it opened was a stale one from before the tear sheet
+         existed; pointed at the current build it failed on a page order that
+         is deliberate. What matters is that nothing but the opener precedes
+         the contents. */
+      tocIsFirst: tocPage === pages[0] || tocPage === pages[1],
       tocHasContent: tocPage ? tocPage.querySelectorAll('.sec').length : -1,
       lastPageNum: pages.length ? (pages[pages.length-1].querySelector('.pgnum')||{}).textContent : null,
       /* a page scaled down is a page whose type no longer matches its
