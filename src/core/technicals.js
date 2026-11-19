@@ -218,19 +218,51 @@ export function supportResistance(closes, lookback = 5) {
  * Entry context only. Returns a plain summary and an explicit reminder that a
  * fundamental red flag outranks anything here (doc 01).
  */
-export function entryContext({ closes, volumes = null, benchmarkCloses = null }) {
+/* Build 23. Tejas: "Entry Context, data missing for 200 days average and
+   relative strength - fix this." The series the app fetches is WEEKLY — 106
+   weekly closes is two years — and the 200-day average was asked for 200 of
+   them, four years of weeks. Averages and ranges are now taken in trading
+   days whatever the spacing: 50 days is 10 weekly closes, 200 days is 40, a
+   year is 52. Relative strength is computed from a benchmark series when one
+   is supplied and otherwise from the twelve-month return and relative return
+   the research states against its named index, labelled as such. */
+export function entryContext({ closes, volumes = null, benchmarkCloses = null, spacing = 'daily', performance = null }) {
+  const weekly = /week/i.test(String(spacing || ''));
+  const d = (days) => (weekly ? Math.max(2, Math.round(days / 5)) : days);
+  const yearN = weekly ? 52 : 250;
+  const avg = (days, label) => {
+    const r = sma(closes, d(days));
+    return r.available ? Object.freeze({ ...r, indicator: label, periods: d(days), spacing: weekly ? 'weekly' : 'daily' }) : r;
+  };
+  let rs;
+  if (benchmarkCloses) rs = relativeStrength(closes, benchmarkCloses, yearN);
+  else {
+    const pf = performance || {};
+    const num = (v) => typeof v === 'number' && Number.isFinite(v);
+    if (num(pf.m12) && num(pf.m12Relative)) {
+      rs = Object.freeze({ available: true, indicator: 'Relative strength', periods: yearN,
+        stockReturn: round2(pf.m12), benchmarkReturn: round2(pf.m12 - pf.m12Relative),
+        value: round2(pf.m12Relative), benchmark: pf.benchmark || null, window: '12 months',
+        reading: pf.m12Relative >= 0 ? 'outperforming' : 'underperforming',
+        basis: 'stated', evidence: 'FACT' });
+    } else if (num(pf.m6) && num(pf.m6Relative)) {
+      rs = Object.freeze({ available: true, indicator: 'Relative strength', periods: weekly ? 26 : 125,
+        stockReturn: round2(pf.m6), benchmarkReturn: round2(pf.m6 - pf.m6Relative),
+        value: round2(pf.m6Relative), benchmark: pf.benchmark || null, window: '6 months',
+        reading: pf.m6Relative >= 0 ? 'outperforming' : 'underperforming',
+        basis: 'stated', evidence: 'FACT' });
+    } else rs = refuse('No benchmark series, and no relative return stated by the research.', 'Relative strength');
+  }
   const parts = {
-    sma50: sma(closes, 50),
-    sma200: sma(closes, 200),
+    sma50: avg(50, '50 day average'),
+    sma200: avg(200, '200 day average'),
     rsi14: rsi(closes, 14),
     macd: macd(closes),
     bollinger: bollinger(closes),
-    range: rangePosition(closes),
+    range: rangePosition(closes, yearN),
     levels: supportResistance(closes),
     obv: volumes ? obv(closes, volumes) : refuse('No volume series supplied.', 'OBV'),
-    relativeStrength: benchmarkCloses
-      ? relativeStrength(closes, benchmarkCloses)
-      : refuse('No benchmark series supplied.', 'Relative strength'),
+    relativeStrength: rs,
   };
   const available = Object.values(parts).filter((p) => p.available).length;
   return Object.freeze({

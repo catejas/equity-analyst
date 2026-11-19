@@ -26,6 +26,22 @@ behave and it is not a fault.
 
 ## Current build
 
+`19-11-2026.23` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 23: sector documents are built only from the sector run (an
+independently researched company had replaced the whole Banking report); the
+PDF writer honours scaled pages; the industry engine covers 26 families and
+computes NIM, CASA, NPA ratios, provision coverage, capital adequacy, load
+factor, ARPOB, EBITDA per tonne and more from the reported lines, which the
+brief now asks for; financial metrics fall back to it; entry context reads
+weekly prices in trading days and takes relative strength from the stated
+relative return, with every reading explained; peers are compared on each
+industry's own measures with the subject computed and plotted; the four
+overall dimensions are scored from bases like the pillars; shareholding,
+discount-rate and multibagger exhibits corrected.
+
+Previous: `16-11-2026.22`.
+
 `16-11-2026.22` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 22: the footer disclaimer moves under the page row with the new wording;

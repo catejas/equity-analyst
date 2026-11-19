@@ -229,6 +229,21 @@ function companyChecks(c, run, now) {
       `${at}.${path} — ${want} or more ${what}; ${arr(v).length} came back.`);
   count('Peers compared', 'The argument', c.peers, 4, 'peers',
     'listed peers, each with marketCap, pe, roe, revGrowth and an asOf period');
+  /* A peer named with nothing against it (build 23 — Bank of Baroda on the
+     PNB run) is a row of dashes. Each peer needs the figures its industry is
+     compared on. */
+  {
+    const lender = /bank|nbfc|financ|lend|credit/i.test(S(c.sector) + ' ' + S(c.subSector) + ' ' + S(run && run.sector));
+    const need = lender ? ['marketCap', 'pe', 'pb', 'roe', 'roa', 'nim', 'gnpa', 'advancesGrowth']
+      : ['marketCap', 'pe', 'evEbitda', 'roe', 'revGrowth', 'ebitdaMargin'];
+    const ps = arr(c.peers).filter((p) => p && S(p.name));
+    const thin = ps.filter((p) => need.filter((k) => real(p[k])).length < Math.ceil(need.length / 2));
+    if (ps.length) check(out, 'The argument', 'Peers with their figures', ps.length - thin.length, ps.length,
+      `${at}.peers — every peer needs ${need.join(', ')} (percentages in percentage points), with asOf and `
+      + `source. These came back with too few to compare: ${thin.map((p) => S(p.name)).join(', ')}. Return each `
+      + 'peer in full, keeping its name exactly as before so it merges.',
+      thin.map((p) => S(p.name)).join(', '));
+  }
   count('Numbered theses', 'The argument', c.theses, 3, 'theses', 'theses, each with its evidence');
   count('Management guidance, checked against delivery', 'The argument',
     c.management && c.management.guidanceRecord, 3, 'management.guidanceRecord',

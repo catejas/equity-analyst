@@ -540,7 +540,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="16-11-2026.22";</script>
+<script>window.APP_BUILD="19-11-2026.23";</script>
 </head>
 <body>
 
@@ -4745,16 +4745,27 @@ function fillPicker(sel, records, current, empty){
 /* What the documents and the score card are built from. A company researched on
    its own is a run in its own right: it is scored from its own payload, never
    merged into a sector study it has nothing to do with. */
-function composedPayload(){
+/* "sectorRun" (build 23). Tejas: "I generated Banking Sector report but it
+   got mixed with JP Power Independent company search." The run used to be
+   chosen from the selected COMPANY first: when that was an independently
+   researched company — the newest import, or the one last picked on the Score
+   page — every document was built from its payload, while the header, title
+   and date still came from the selected sector study. A Banking report with
+   JP Power inside it. The sector report, the sector executive summary and the
+   three Top 3 reports now ask for the sector run explicitly and never see an
+   independent company; only the per-company Score Card follows the company
+   picker. */
+function composedPayload(sectorRun){
   if(!window.EQ || !window.EQ.compose) return null;
   var co = coRecord();
-  if(co && co.standalone) return scenarioApplyTo(co.data);
+  if(!sectorRun && co && co.standalone) return scenarioApplyTo(co.data);
   var seg = segRecord();
   if(seg) return scenarioApplyTo(EQ.compose.composePayload(seg.data, coRecords().map(function(r){ return r.data; })));
+  if(sectorRun) return null;
   return co ? scenarioApplyTo(co.data) : null;
 }
-function composedReport(){
-  var p = composedPayload(); if(!p) return null;
+function composedReport(sectorRun){
+  var p = composedPayload(sectorRun); if(!p) return null;
   try{
     var b = EQ.buildReport(p);
     if(!b.ok) return null;

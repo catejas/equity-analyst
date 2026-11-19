@@ -62,6 +62,25 @@ const low = (v) => S(v).toLowerCase();
  * clever one that silently mis-files a company would be worse than 'general'.
  */
 const FAMILIES = [
+  /* Build 23: specialised families first, because the first match wins and
+     the broad ones ("transport", "energy", "healthcare", "financial") would
+     otherwise swallow them. */
+  { key: 'amc', label: 'Asset managers, brokers and capital markets',
+    match: /\b(asset manag|mutual fund|\bamc\b|broking|stock ?brok|wealth manag|capital market|exchange operator|depositor|registrar and transfer)/ },
+  { key: 'airlines', label: 'Airlines and aviation',
+    match: /\b(airline|aviation|air carrier|air transport)/ },
+  { key: 'hospitals', label: 'Hospitals and healthcare services',
+    match: /\b(hospital|healthcare deliver|healthcare servic|diagnostic|patholog|clinic)/ },
+  { key: 'refining', label: 'Refining and fuel marketing',
+    match: /\b(refin|oil marketing|\bomc\b|petroleum product)/ },
+  { key: 'gasdist', label: 'City gas and gas distribution',
+    match: /\b(city gas|gas distribut|\bcgd\b|gas transmission|lng regas)/ },
+  { key: 'mining', label: 'Mining',
+    match: /\b(mining|coal\b|iron ore|minerals?\b|quarr)/ },
+  { key: 'sugar', label: 'Sugar, ethanol and agri processing',
+    match: /\b(sugar|ethanol|distiller|agri ?process|edible oil|tea\b|coffee)/ },
+  { key: 'textiles', label: 'Textiles and apparel manufacturing',
+    match: /\b(textile|yarn|spinning|fabric|garment|cotton)/ },
   { key: 'lender', label: 'Banks and lenders',
     match: /\b(bank|banking|nbfc|non[- ]banking financ|housing financ|microfinanc|lending|lender|small financ)/ },
   { key: 'insurance', label: 'Insurance',
@@ -69,13 +88,13 @@ const FAMILIES = [
   { key: 'telecom', label: 'Telecom',
     match: /\b(telecom|telco|wireless|mobile network|broadband|cellular)/ },
   { key: 'construction', label: 'Construction, EPC and infrastructure',
-    match: /\b(construction|epc\b|infrastructur|engineering procurement|road|highway|railway|capital goods)/ },
+    match: /\b(construction|epc\b|infrastructur|engineering procurement|road|highway|railway|capital goods|defen[cs]e|aerospace|shipbuild)/ },
   { key: 'realestate', label: 'Real estate',
     match: /\b(real estate|realty|property develop|housing develop)/ },
   { key: 'retail', label: 'Retail and consumer',
     match: /\b(retail|quick service|qsr\b|restaurant|apparel|footwear|e-?commerce|consumer durable)/ },
   { key: 'fmcg', label: 'FMCG',
-    match: /\b(fmcg\b|consumer staple|packaged food|personal care|household product|beverage)/ },
+    match: /\b(fmcg\b|consumer staple|packaged food|food|dairy|snack|personal care|household product|beverage|tobacco)/ },
   { key: 'it', label: 'IT and technology services',
     match: /\b(information technolog|it services|software|saas\b|technolog|bpo\b|bpm\b|ites\b|digital services)/ },
   { key: 'pharma', label: 'Pharmaceuticals and healthcare',
@@ -125,6 +144,21 @@ export function industryFamily(company, run) {
  * between a number and an intelligence engine.
  */
 const pct = (a, b) => (isNum(a) && isNum(b) && b !== 0 ? (a / b) * 100 : null);
+const sub = (a, b) => (isNum(a) && isNum(b) ? a - b : null);
+const add = (a, b) => (isNum(a) && isNum(b) ? a + b : null);
+const nz = (v) => (isNum(v) && v !== 0 ? v : null);
+const avg = (a, b) => (isNum(a) && isNum(b) ? (a + b) / 2 : (isNum(a) ? a : null));
+/* An industry line for the year: the reported row first — where an annual
+   report puts deposits, NPAs, beds or seat-kilometres — then the payload's
+   industry block. This is what lets the application compute NIM, CASA, PCR,
+   load factor or ARPOB itself instead of waiting to be told them (build 23). */
+const L = (x, k) => {
+  const v = x.row ? x.row[k] : undefined;
+  if (isNum(v) && v !== 0) return v;
+  const w = x.im ? x.im[k] : undefined;
+  return isNum(w) && w !== 0 ? w : null;
+};
+const Lp = (x, k) => { const v = x.prev ? x.prev[k] : undefined; return isNum(v) && v !== 0 ? v : null; };
 const ratio = (a, b) => (isNum(a) && isNum(b) && b !== 0 ? a / b : null);
 const growth = (now, then) => (isNum(now) && isNum(then) && then !== 0
   ? ((now - then) / Math.abs(then)) * 100 : null);
@@ -156,30 +190,39 @@ const SETS = {
     { key: 'costToIncome', name: 'Cost to income', unit: '%',
       why: 'Operating costs as a share of net total income. Where a bank has room '
         + 'to absorb a bad year, and where it does not.',
-      derive: (x) => (isNum(x.ll?.costToIncomePct) ? x.ll.costToIncomePct : null) },
+      derive: (x) => (isNum(x.ll?.costToIncomePct) ? x.ll.costToIncomePct
+        : pct(L(x, 'operatingExpenses'), nz(sub(x.row?.revenue, x.row?.interestExpense)) != null
+            ? sub(x.row?.revenue, x.row?.interestExpense) + (L(x, 'otherIncome') ?? 0) : null)) },
     { key: 'creditCost', name: 'Credit cost', unit: '% of advances',
       why: 'Provisions as a share of the loan book. The price of the risk the bank '
         + 'took two years ago, arriving now.',
-      derive: (x) => pct(x.ll?.provisions, x.row?.advances) },
+      derive: (x) => pct(x.ll?.provisions ?? L(x, 'provisions'), avg(L(x, 'advances'), Lp(x, 'advances'))) },
     { key: 'casa', name: 'CASA ratio', unit: '%',
       why: 'Current and savings deposits as a share of total deposits. Cheap money '
         + 'the bank does not have to compete for, and the reason two banks with the '
-        + 'same loan book earn different margins.' },
+        + 'same loan book earn different margins.',
+      derive: (x) => pct(L(x, 'casaDeposits') ?? add(L(x, 'currentDeposits'), L(x, 'savingsDeposits')), L(x, 'deposits')) },
     { key: 'gnpa', name: 'Gross NPA', unit: '%',
       why: 'The share of the loan book that has stopped paying. The headline asset '
-        + 'quality number.' },
+        + 'quality number.',
+      derive: (x) => pct(L(x, 'grossNpa'), L(x, 'grossAdvances') ?? L(x, 'advances')) },
     { key: 'nnpa', name: 'Net NPA', unit: '%',
-      why: 'Gross NPA after provisions — what is still exposed to the equity.' },
+      why: 'Gross NPA after provisions — what is still exposed to the equity.',
+      derive: (x) => pct(L(x, 'netNpa'), L(x, 'advances')) },
     { key: 'pcr', name: 'Provision coverage', unit: '%',
       why: 'How much of the bad book is already written down. A low cover means the '
-        + 'losses are still ahead of the profit and loss account.' },
+        + 'losses are still ahead of the profit and loss account.',
+      derive: (x) => (isNum(L(x, 'grossNpa')) && isNum(L(x, 'netNpa')) && L(x, 'grossNpa') > 0
+        ? ((L(x, 'grossNpa') - L(x, 'netNpa')) / L(x, 'grossNpa')) * 100
+        : pct(L(x, 'npaProvisions'), L(x, 'grossNpa'))) },
     { key: 'roa', name: 'Return on assets', unit: '%',
       why: 'Profit per rupee of balance sheet. The comparison that survives across '
         + 'banks of very different sizes.',
       derive: (x) => pct(x.row?.netProfit, x.row?.totalAssets) },
     { key: 'car', name: 'Capital adequacy', unit: '%',
       why: 'Regulatory capital against risk-weighted assets. How much the bank can '
-        + 'grow before it has to come back to shareholders.' },
+        + 'grow before it has to come back to shareholders.',
+      derive: (x) => pct(L(x, 'totalCapital') ?? add(L(x, 'tier1Capital'), L(x, 'tier2Capital')), L(x, 'riskWeightedAssets')) },
     { key: 'cdRatio', name: 'Credit to deposit', unit: '%',
       why: 'Advances against deposits. How hard the bank is working its funding.',
       derive: (x) => pct(x.row?.advances, x.row?.deposits) },
@@ -191,7 +234,15 @@ const SETS = {
       derive: (x) => growth(x.row?.deposits, x.prev?.deposits) },
     { key: 'slippage', name: 'Slippage ratio', unit: '%',
       why: 'Fresh bad loans as a share of opening standard advances. Asset quality '
-        + 'as a flow rather than a stock — it turns before the GNPA does.' },
+        + 'as a flow rather than a stock — it turns before the GNPA does.',
+      derive: (x) => pct(L(x, 'freshSlippages'), Lp(x, 'advances')) },
+    { key: 'roe', name: 'Return on equity', unit: '%',
+      why: 'Profit on the shareholders\' money. For a bank it is ROA times leverage, '
+        + 'so a high ROE on a thin ROA is borrowed rather than earned.',
+      derive: (x) => pct(x.row?.netProfit, avg(x.row?.shareholdersEquity, x.prev?.shareholdersEquity)) },
+    { key: 'bvpsGrowth', name: 'Book value per share growth', unit: '%',
+      why: 'How fast the book a bank is priced on is compounding.',
+      derive: (x) => growth(x.row?.bookValuePerShare, x.prev?.bookValuePerShare) },
   ],
   insurance: [
     { key: 'ape', name: 'Annualised premium equivalent', unit: 'reported',
@@ -438,11 +489,13 @@ const SETS = {
   power: [
     { key: 'plf', name: 'Plant load factor', unit: '%',
       why: 'How much of the installed capacity actually ran. The utilisation measure '
-        + 'of a generator.' },
+        + 'of a generator; for wind and solar the same measure is called CUF.',
+      derive: (x) => pct(L(x, 'generation'), isNum(L(x, 'capacity')) ? L(x, 'capacity') * 8760 / 1000 : null) },
     { key: 'capacity', name: 'Operating capacity', unit: 'MW',
       why: 'The asset base, in the unit the sector is regulated in.' },
     { key: 'tariff', name: 'Realised tariff', unit: '₹ per kWh',
-      why: 'What the power actually sold for, against a largely fixed cost base.' },
+      why: 'What the power actually sold for, against a largely fixed cost base.',
+      derive: (x) => ratio(isNum(x.row?.revenue) ? x.row.revenue * 1e7 : null, isNum(L(x, 'generation')) ? L(x, 'generation') * 1e6 : null) },
     { key: 'receivableDays', name: 'Receivable days from discoms', unit: 'days',
       why: 'Generators are paid by state distribution companies. This is the credit '
         + 'risk of the whole sector in one line.',
@@ -490,6 +543,147 @@ const SETS = {
     { key: 'roomsAdded', name: 'Rooms added', unit: 'rooms',
       why: 'Where the next year\'s capacity comes from, owned or managed.' },
   ],
+  amc: [
+    { key: 'aum', name: 'Assets under management', unit: 'reported',
+      why: 'The base every fee is charged on. It moves with markets and with flows, '
+        + 'and only the flows are the company\'s doing.' },
+    { key: 'yieldOnAum', name: 'Revenue yield on AUM', unit: '%',
+      why: 'What the business earns on each rupee it manages — the price, which '
+        + 'regulation and passive funds are both pressing down.',
+      derive: (x) => pct(x.row?.revenue, avg(L(x, 'aum'), Lp(x, 'aum'))) },
+    { key: 'equityShare', name: 'Equity share of AUM', unit: '%',
+      why: 'Equity funds carry several times the fee of debt and liquid funds.',
+      derive: (x) => pct(L(x, 'equityAum'), L(x, 'aum')) },
+    { key: 'marketShare', name: 'Market share', unit: '%',
+      why: 'Share of industry assets or volumes; the franchise in one number.' },
+    { key: 'sipFlows', name: 'Monthly SIP flows', unit: 'reported',
+      why: 'The recurring, market-independent inflow. The stickiest money there is.' },
+    { key: 'costToIncome', name: 'Cost to income', unit: '%',
+      why: 'Operating leverage: costs are largely fixed, so revenue growth falls '
+        + 'through to profit.',
+      derive: (x) => pct(sub(x.row?.revenue, x.row?.ebitda), x.row?.revenue) },
+  ],
+  airlines: [
+    { key: 'ask', name: 'Capacity (ASK)', unit: 'million seat-km',
+      why: 'Available seat kilometres — the capacity flown, before anyone buys a ticket.' },
+    { key: 'loadFactor', name: 'Passenger load factor', unit: '%',
+      why: 'How full the aircraft flew. An empty seat costs the same to fly as a full one.',
+      derive: (x) => pct(L(x, 'rpk'), L(x, 'ask')) },
+    { key: 'yield', name: 'Yield', unit: '₹ per passenger-km',
+      why: 'What each passenger kilometre actually sold for — the fare, net of discounts.',
+      derive: (x) => ratio(L(x, 'passengerRevenue') ?? x.row?.revenue, L(x, 'rpk')) },
+    { key: 'rask', name: 'Revenue per ASK', unit: '₹ per seat-km',
+      why: 'Revenue per unit of capacity — load factor and yield in one number.',
+      derive: (x) => ratio(x.row?.revenue, L(x, 'ask')) },
+    { key: 'cask', name: 'Cost per ASK', unit: '₹ per seat-km',
+      why: 'The cost of flying one seat one kilometre. An airline makes money only '
+        + 'while RASK stays above it.',
+      derive: (x) => ratio(sub(x.row?.revenue, x.row?.ebit), L(x, 'ask')) },
+    { key: 'caskExFuel', name: 'Cost per ASK, excluding fuel', unit: '₹ per seat-km',
+      why: 'The part of the cost the airline controls; fuel is set by the oil market.',
+      derive: (x) => ratio(sub(sub(x.row?.revenue, x.row?.ebit), L(x, 'fuelCost')), L(x, 'ask')) },
+    { key: 'fleet', name: 'Fleet', unit: 'aircraft',
+      why: 'The asset base, and with grounded aircraft, how much of it is earning.' },
+  ],
+  hospitals: [
+    { key: 'beds', name: 'Operational beds', unit: 'beds',
+      why: 'The capacity, in the unit the industry is valued on.' },
+    { key: 'occupancy', name: 'Bed occupancy', unit: '%',
+      why: 'How full the beds were. A hospital\'s costs are largely fixed, so occupancy '
+        + 'above about 65% is where the margin comes from.',
+      derive: (x) => pct(L(x, 'occupiedBedDays'), isNum(L(x, 'beds')) ? L(x, 'beds') * 365 : null) },
+    { key: 'arpob', name: 'Revenue per occupied bed', unit: '₹ per bed-day',
+      why: 'ARPOB — the price and the case mix together. It rises with complex '
+        + 'specialities and with insurance-paying patients.',
+      derive: (x) => ratio(L(x, 'inpatientRevenue') ?? x.row?.revenue, L(x, 'occupiedBedDays')) },
+    { key: 'alos', name: 'Average length of stay', unit: 'days',
+      why: 'Shorter stays at the same revenue mean more patients through the same beds.' },
+    { key: 'ebitdaPerBed', name: 'EBITDA per bed', unit: 'reported',
+      why: 'Profit per unit of capacity; mature hospitals against new ones.',
+      derive: (x) => ratio(x.row?.ebitda, L(x, 'beds')) },
+    { key: 'ebitdaMargin', name: 'EBITDA margin', unit: '%',
+      why: 'Operating profitability, which new beds dilute until they fill.',
+      derive: (x) => pct(x.row?.ebitda, x.row?.revenue) },
+  ],
+  refining: [
+    { key: 'grm', name: 'Gross refining margin', unit: 'US$ per barrel',
+      why: 'The spread between crude and products. For a refiner it is the main '
+        + 'earnings driver, set by the global market rather than the company.' },
+    { key: 'throughput', name: 'Crude throughput', unit: 'million tonnes',
+      why: 'Crude actually processed.' },
+    { key: 'capacityUtilisation', name: 'Refinery utilisation', unit: '%',
+      why: 'Throughput against nameplate capacity. Indian refiners run above 100% in '
+        + 'good years; a drop means a shutdown or weak margins.',
+      derive: (x) => pct(L(x, 'throughput'), L(x, 'capacity')) },
+    { key: 'ebitdaPerTonne', name: 'EBITDA per tonne of crude', unit: '₹ per tonne',
+      why: 'Refining and marketing profit per unit processed — the comparable measure '
+        + 'across refiners of different size.',
+      derive: (x) => ratio(x.row?.ebitda, isNum(L(x, 'throughput')) ? L(x, 'throughput') * 1e6 / 1e7 : null) },
+    { key: 'marketingVolumes', name: 'Marketing volumes', unit: 'million tonnes',
+      why: 'Fuel sold through the company\'s own pumps — the steadier half of the business.' },
+    { key: 'marketingMargin', name: 'Marketing margin', unit: '₹ per litre',
+      why: 'The retail spread on petrol and diesel, which in India is partly a policy decision.' },
+  ],
+  gasdist: [
+    { key: 'volumes', name: 'Gas volumes', unit: 'mmscmd',
+      why: 'Gas sold a day across CNG, domestic and industrial customers.' },
+    { key: 'ebitdaPerScm', name: 'EBITDA per scm', unit: '₹ per scm',
+      why: 'The spread per unit of gas — the industry\'s own profitability measure, '
+        + 'squeezed whenever input gas costs rise faster than prices.',
+      derive: (x) => ratio(x.row?.ebitda, isNum(L(x, 'volumes')) ? L(x, 'volumes') * 365 / 10 : null) },
+    { key: 'cngStations', name: 'CNG stations', unit: 'stations',
+      why: 'The network that carries volume growth.' },
+    { key: 'pngConnections', name: 'Domestic connections', unit: 'connections',
+      why: 'Households connected — low volume, but sticky and regulated.' },
+    { key: 'ebitdaMargin', name: 'EBITDA margin', unit: '%',
+      why: 'Operating profitability.',
+      derive: (x) => pct(x.row?.ebitda, x.row?.revenue) },
+  ],
+  mining: [
+    { key: 'production', name: 'Production', unit: 'million tonnes',
+      why: 'Tonnes taken out of the ground, before price moves the revenue line.' },
+    { key: 'realisationPerTonne', name: 'Realisation per tonne', unit: '₹ per tonne',
+      why: 'The price achieved, set largely by the market or by notified prices.',
+      derive: (x) => ratio(x.row?.revenue, isNum(L(x, 'production')) ? L(x, 'production') * 1e6 / 1e7 : null) },
+    { key: 'costPerTonne', name: 'Cash cost per tonne', unit: '₹ per tonne',
+      why: 'Where the mine sits on the cost curve — what decides who survives a price fall.',
+      derive: (x) => ratio(sub(x.row?.revenue, x.row?.ebitda), isNum(L(x, 'production')) ? L(x, 'production') * 1e6 / 1e7 : null) },
+    { key: 'ebitdaPerTonne', name: 'EBITDA per tonne', unit: '₹ per tonne',
+      why: 'The margin per tonne — the whole business in one number.',
+      derive: (x) => ratio(x.row?.ebitda, isNum(L(x, 'production')) ? L(x, 'production') * 1e6 / 1e7 : null) },
+    { key: 'reserveLife', name: 'Reserve life', unit: 'years',
+      why: 'Reserves at today\'s production rate. A mine is a depleting asset.',
+      derive: (x) => ratio(L(x, 'reserves'), L(x, 'production')) },
+    { key: 'stripRatio', name: 'Strip ratio', unit: 'x',
+      why: 'Overburden moved per tonne of ore — rising strip ratios raise costs ahead of output.' },
+  ],
+  sugar: [
+    { key: 'caneCrushed', name: 'Cane crushed', unit: 'lakh tonnes',
+      why: 'The season\'s raw material, set by the monsoon and the cane price.' },
+    { key: 'recovery', name: 'Sugar recovery', unit: '%',
+      why: 'Sugar per tonne of cane. A point of recovery is most of a year\'s margin.' },
+    { key: 'ethanolVolumes', name: 'Ethanol volumes', unit: 'crore litres',
+      why: 'The policy-backed, steadier half of the business under the blending programme.' },
+    { key: 'ethanolShare', name: 'Distillery share of revenue', unit: '%',
+      why: 'How much of the earnings no longer depend on the sugar price.',
+      derive: (x) => pct(L(x, 'distilleryRevenue'), x.row?.revenue) },
+    { key: 'inventoryDays', name: 'Inventory days', unit: 'days',
+      why: 'Sugar is produced in four months and sold over twelve; the working capital is the risk.',
+      derive: (x) => { const d = ratio(x.row?.inventory, x.row?.revenue); return d == null ? null : d * 365; } },
+  ],
+  textiles: [
+    { key: 'capacityUtilisation', name: 'Capacity utilisation', unit: '%',
+      why: 'Spindles and looms are fixed cost; utilisation is the margin.' },
+    { key: 'exportShare', name: 'Export share of revenue', unit: '%',
+      why: 'Exposure to US and EU demand, to the rupee and to trade agreements.',
+      derive: (x) => pct(L(x, 'exportRevenue'), x.row?.revenue) },
+    { key: 'grossSpread', name: 'Gross spread', unit: '%',
+      why: 'Yarn or fabric price against cotton — the spread the business lives on.',
+      derive: (x) => pct(x.row?.grossProfit, x.row?.revenue) },
+    { key: 'inventoryDays', name: 'Inventory days', unit: 'days',
+      why: 'Cotton bought for the season ties up cash and carries price risk.',
+      derive: (x) => { const d = ratio(x.row?.inventory, x.row?.revenue); return d == null ? null : d * 365; } },
+  ],
   general: [
     { key: 'ebitdaMargin', name: 'EBITDA margin', unit: '%',
       why: 'Operating profitability before the capital structure.',
@@ -512,13 +706,20 @@ const SETS = {
    figure in the gap list. */
 const ALIASES = {
   nim: ['netInterestMargin', 'nim'],
-  casa: ['casaRatio', 'casa'],
   gnpa: ['grossNpa', 'gnpaRatio', 'gnpa', 'grossNpaRatio'],
   nnpa: ['netNpa', 'nnpaRatio', 'nnpa', 'netNpaRatio'],
   pcr: ['provisionCoverageRatio', 'provisionCoverage', 'pcr'],
-  car: ['capitalAdequacy', 'crar', 'car', 'capitalAdequacyRatio'],
-  cdRatio: ['creditDepositRatio', 'cdRatio'],
-  costToIncome: ['costToIncome', 'costIncomeRatio'],
+  cdRatio: ['creditDepositRatio', 'cdRatio', 'creditToDeposit', 'creditToDepositRatio', 'ldr', 'loanToDeposit'],
+  casa: ['casaRatio', 'casa', 'casaShare'],
+  car: ['capitalAdequacy', 'crar', 'car', 'capitalAdequacyRatio', 'cet1'],
+  advancesGrowth: ['advancesGrowth', 'loanGrowth', 'creditGrowth'],
+  depositGrowth: ['depositGrowth', 'depositsGrowth'],
+  costToIncome: ['costToIncome', 'costIncomeRatio', 'costToIncomeRatio'],
+  loadFactor: ['loadFactor', 'plf_air', 'passengerLoadFactor'],
+  arpob: ['arpob', 'revenuePerOccupiedBed'],
+  occupancy: ['occupancy', 'occupancyRate', 'bedOccupancy'],
+  grm: ['grm', 'grossRefiningMargin'],
+  aum: ['aum', 'assetsUnderManagement', 'qaaum'],
   creditCost: ['creditCost', 'creditCosts'],
   roa: ['returnOnAssets', 'roa'],
   slippage: ['slippageRatio', 'slippage'],
@@ -549,7 +750,6 @@ const ALIASES = {
   rndSpend: ['rndSpend', 'researchAndDevelopment', 'rdSpend'],
   rndIntensity: ['rndIntensity', 'rdToSales'],
   plf: ['plf', 'plantLoadFactor'],
-  occupancy: ['occupancy', 'occupancyRate'],
   arr: ['arr', 'averageRoomRate'],
   revpar: ['revpar'],
 };
@@ -581,14 +781,18 @@ function readSupplied(company) {
   return out;
 }
 
-function pickSupplied(supplied, key) {
-  const names = ALIASES[key] || [key];
-  for (const n of names) {
-    if (supplied[n]) return supplied[n];
-    const hit = Object.keys(supplied).find((k) => k.toLowerCase() === n.toLowerCase());
-    if (hit) return supplied[hit];
-  }
-  return null;
+/* Names are compared with case, spaces and punctuation stripped, and against
+   the metric's printed name as well as its key and aliases — so
+   "creditToDeposit", "Credit to deposit" and "credit-deposit ratio" all find
+   the same figure. On the PNB run "creditToDeposit" was supplied, matched
+   nothing, and the report listed credit to deposit as never measured. */
+const normKey = (v) => S(v).toLowerCase().replace(/ratio$/, '').replace(/[^a-z0-9]/g, '');
+function pickSupplied(supplied, key, name) {
+  const names = (ALIASES[key] || [key]).concat([key, name].filter(Boolean));
+  const want = new Set(names.map(normKey));
+  for (const n of names) if (supplied[n]) return supplied[n];
+  const hit = Object.keys(supplied).find((k) => want.has(normKey(k)));
+  return hit ? supplied[hit] : null;
 }
 
 /* ── The panel ──────────────────────────────────────────────────────────
@@ -615,7 +819,12 @@ function orderedAnnual(rows) {
 
 export function industryPanel(company, run, opts = {}) {
   const fam = industryFamily(company, run);
-  const set = SETS[fam.key] || SETS.general;
+  /* Every non-financial family also carries the general operating measures it
+     does not already have, so a panel is never empty for want of a
+     specialist set (build 23). */
+  const own = SETS[fam.key] || SETS.general;
+  const set = ['lender', 'insurance', 'amc', 'general'].includes(fam.key) ? own
+    : own.concat(SETS.general.filter((g) => !own.some((m) => m.key === g.key)));
   /* Oldest first, so "the latest year" is the latest year.
    *
    * The payload's annual array arrives in whatever order the research wrote
@@ -664,7 +873,7 @@ export function industryPanel(company, run, opts = {}) {
     let basis = null;
     let period = S(row?.period) || null;
     let source = null;
-    const sup = pickSupplied(supplied, m.key);
+    const sup = pickSupplied(supplied, m.key, m.name);
     if (sup && isNum(sup.value)) {
       value = sup.value;
       basis = 'stated';
@@ -745,3 +954,28 @@ const INTRO = {
 export const INDUSTRY_FAMILIES = FAMILIES.map((f) => ({ key: f.key, label: f.label }))
   .concat([{ key: 'general', label: 'General' }]);
 export const INDUSTRY_METRIC_SETS = SETS;
+
+/* The raw lines the application computes each industry's measures from
+   (build 23). The brief asks for these on every reported year in
+   financials.annual, so NIM, CASA, provision coverage, load factor, ARPOB,
+   EBITDA per tonne and the rest are calculated here from the accounts rather
+   than copied from the research. */
+export const INDUSTRY_LINES = Object.freeze({
+  lender: ['advances', 'grossAdvances', 'deposits', 'casaDeposits', 'currentDeposits', 'savingsDeposits',
+    'grossNpa', 'netNpa', 'npaProvisions', 'provisions', 'freshSlippages', 'operatingExpenses',
+    'otherIncome', 'riskWeightedAssets', 'tier1Capital', 'tier2Capital', 'bookValuePerShare'],
+  insurance: ['grossWrittenPremium', 'netEarnedPremium', 'claimsIncurred', 'commission', 'operatingExpenses'],
+  amc: ['aum', 'equityAum'],
+  telecom: ['subscribers', 'capitalExpenditure'],
+  construction: ['orderBook', 'orderInflow'],
+  realestate: ['preSales', 'collections', 'netDebt'],
+  retail: ['stores', 'retailArea'],
+  it: ['employees'],
+  auto: ['volumes'], cement: ['volumes', 'capacity'], metals: ['volumes'],
+  energy: ['production'], refining: ['throughput', 'capacity', 'marketingVolumes'],
+  gasdist: ['volumes'], mining: ['production', 'reserves'],
+  power: ['capacity', 'generation'], airlines: ['ask', 'rpk', 'passengerRevenue', 'fuelCost'],
+  hospitals: ['beds', 'occupiedBedDays', 'inpatientRevenue'], hotels: ['rooms', 'occupiedRoomNights'],
+  logistics: ['volumes', 'netFixedAssets'], sugar: ['caneCrushed', 'distilleryRevenue'],
+  textiles: ['exportRevenue'], chemicals: ['rndSpend'], pharma: ['rndSpend'],
+});

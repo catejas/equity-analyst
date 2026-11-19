@@ -10,7 +10,7 @@ import { FLAG_CATEGORIES, KILL_SWITCH_CATEGORIES } from './ranking.js';
 import { HORIZONS } from './multibagger.js';
 import { registerChecklist } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
-import { INDUSTRY_METRIC_SETS } from './industry.js';
+import { INDUSTRY_METRIC_SETS, INDUSTRY_LINES } from './industry.js';
 
 /* The metric keys, listed for the research brief, built from the engine's own
    sets so the prompt and the engine cannot drift apart. Asking for a key the
@@ -21,6 +21,10 @@ const INDUSTRY_KEY_LIST = Object.keys(INDUSTRY_METRIC_SETS).map((fam) => {
     .map((m) => '    "' + m.key + '"  ' + m.name + ' (' + m.unit + ')').join('\n');
   return '  ' + fam + '\n' + lines;
 }).join('\n\n');
+
+/* The raw lines per family, asked for on every reported year (build 23). */
+const INDUSTRY_LINE_LIST = Object.keys(INDUSTRY_LINES)
+  .map((fam) => '  ' + fam.padEnd(13) + INDUSTRY_LINES[fam].map((k) => '"' + k + '"').join(', ')).join('\n');
 
 const list = (arr) => arr.join(', ');
 
@@ -441,6 +445,19 @@ Use these exact keys. Find the ones that apply to this company's industry:
 
 ${INDUSTRY_KEY_LIST}
 
+ALSO PUT THE RAW LINES ON EVERY REPORTED YEAR. The application calculates these
+measures itself, year by year, from the accounts — net interest margin from
+interest income, interest expense and assets; CASA from CASA and total deposits;
+provision coverage from gross and net NPA; load factor from RPK and ASK; ARPOB
+from occupied bed-days. So for this company's industry, add these lines to EACH
+row of financials.annual, in the same reporting unit as the rest of the row
+(counts and physical volumes in the unit the company publishes them in):
+
+${INDUSTRY_LINE_LIST}
+
+A line the annual report gives is never left out because the ratio was also
+given: the ratio is quoted, the lines are what the application checks it with.
+
 Each reading carries its own period and source, like everything else here. Take
 the latest reported period — a quarter where the company reports quarterly, a
 year where it does not — and say which it is. Do not convert or rebase: give the
@@ -808,9 +825,14 @@ including pledged shares.
           "dividends": 0, "buyback": 0, "debtRepaid": 0, "returnEarned": 0 } ] },
       "mispricing": [ { "concern": "the bear's argument, in the bear's own words",
         "answer": "why it is wrong, or why it is priced in twice over" } ],
-      "peers": [ { "name": "", "listed": true, "marketCap": 0, "pe": 0.0,
-        "evEbitda": 0.0, "roe": 0.0, "revGrowth": 0.0, "ebitdaMargin": 0.0,
-        "asOf": "", "note": "" } ],
+      // Every figure for EVERY peer named — a peer with no figures cannot be
+      // compared. For a bank or NBFC give pb, roa, nim, gnpa and
+      // advancesGrowth instead of evEbitda and ebitdaMargin, which a lender
+      // does not have. Percentages in percentage points (11.8 for 11.8%).
+      "peers": [ { "name": "", "symbol": "", "listed": true, "marketCap": 0, "pe": 0.0,
+        "pb": 0.0, "evEbitda": 0.0, "roe": 0.0, "roa": 0.0, "revGrowth": 0.0,
+        "ebitdaMargin": 0.0, "nim": 0.0, "gnpa": 0.0, "advancesGrowth": 0.0,
+        "asOf": "", "source": "", "note": "" } ],
 
       "historicalSectors": [ { "period": "FY25",
         "lines": [ { "name": "", "revenue": 0, "ebit": 0, "marginPct": 0.0 } ] } ],

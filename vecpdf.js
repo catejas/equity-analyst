@@ -431,6 +431,27 @@
     return txt;
   }
 
+  /* The scale a CSS transform puts on an element (build 23). When a page's
+     content is too tall the packer shrinks it with transform:scale, and the
+     browser lays the text out at the shrunk size — but getComputedStyle still
+     reports the unshrunk font size. Drawing at that size put full-size words on
+     shrunk line positions: on PNB's page 9 every column ran into the next and
+     the text looked a size larger than the rest of the report. The size is now
+     multiplied by every ancestor's scale. */
+  var SCALE_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function cssScale(el) {
+    if (!el || el.nodeType !== 1) return 1;
+    if (SCALE_CACHE && SCALE_CACHE.has(el)) return SCALE_CACHE.get(el);
+    var k = cssScale(el.parentElement);
+    var t = el.ownerDocument.defaultView.getComputedStyle(el).transform;
+    if (t && t !== 'none') {
+      var m = /matrix\(\s*([-\d.e]+)\s*,\s*([-\d.e]+)/.exec(t);
+      if (m) k *= Math.sqrt(parseFloat(m[1]) * parseFloat(m[1]) + parseFloat(m[2]) * parseFloat(m[2]));
+    }
+    if (SCALE_CACHE) SCALE_CACHE.set(el, k);
+    return k;
+  }
+
   function drawText(w, node, cs, clip) {
     var raw = node.nodeValue;
     if (!raw || !raw.trim()) return;
@@ -440,12 +461,14 @@
     if (!rects.length) return;
 
     var colour = rgb(cs.color) || { r: 0, g: 0, b: 0 };
-    var size = parseFloat(cs.fontSize) || 10;
+    var kScale = cssScale(node.parentElement);
+    var size = (parseFloat(cs.fontSize) || 10) * kScale;
     var weight = cs.fontWeight;
     var style = (/^(bold|bolder|[6-9]00)$/.test(weight) ? 'bold' : 'normal');
     if (/italic|oblique/.test(cs.fontStyle)) style = style === 'bold' ? 'bolditalic' : 'italic';
     var spacing = parseFloat(cs.letterSpacing);
     if (!isFinite(spacing)) spacing = 0;
+    spacing *= kScale;
     var tt = cs.textTransform;
     var deco = /line-through|underline/.test(cs.textDecorationLine || cs.textDecoration || '');
 

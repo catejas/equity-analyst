@@ -13,6 +13,7 @@ import { readRating, anchorFor } from './rubrics.js';
 import { entryContext } from './technicals.js';
 import { panel as technicalPanel } from './indicators.js';
 import { multibaggerModel, orderedAnnual } from './models.js';
+import { dimensionBases } from './dimensions.js';
 import { dcf, sensitivityGrid, impliedGrowth, multipleBands, checkWaccBuildup } from './valuation.js';
 import { buildModel, driverSensitivity, STANDARD_FLEXES } from './model.js';
 import { assessLitigation } from './litigation.js';
@@ -65,6 +66,7 @@ export function reportingUnits(payload, note) {
 }
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const S = (v) => (v == null ? '' : String(v).trim());
 const arr = (v) => (Array.isArray(v) ? v : []);
 
 function upside(fairValue, currentPrice) {
@@ -225,10 +227,27 @@ function financialsFor(c) {
   };
 }
 
-function computeMetrics(c) {
+/* Which sector model a company is read with. The payload's own "sector"
+   field is matched first; otherwise the industry family decides, so a
+   company filed as "Banking" (capital B) or "Airlines" no longer falls through
+   to the manufacturing set (build 23). */
+const FAMILY_MODEL = { lender: 'banking', insurance: 'insurance', amc: 'insurance', it: 'it',
+  pharma: 'pharma', hospitals: 'pharma', metals: 'commodity', mining: 'commodity', cement: 'commodity',
+  chemicals: 'commodity', energy: 'commodity', refining: 'commodity', sugar: 'commodity', textiles: 'commodity',
+  construction: 'infrastructure', power: 'infrastructure', logistics: 'infrastructure', airlines: 'infrastructure',
+  gasdist: 'infrastructure', realestate: 'infrastructure', telecom: 'infrastructure' };
+/* A sector-model metric the accounts' summary row cannot compute is taken
+   from the industry panel, which derives it from the reported lines or reads
+   it from the research with its source. */
+const PANEL_FOR = { netInterestMargin: 'nim', casaRatio: 'casa', provisionCoverageRatio: 'pcr',
+  creditCost: 'creditCost', roa: 'roa', roe: 'roe', ebitdaMargin: 'ebitdaMargin', ebitMargin: 'ebitMargin',
+  receivableDays: 'receivableDays', netDebtToEbitda: 'netDebtEbitda', cashConversionCycle: 'workingCapitalDays' };
+function computeMetrics(c, panel) {
   const f = financialsFor(c);
   if (!f || typeof f !== 'object' || Array.isArray(f)) return null;
-  const sector = c.sector && metrics.SECTOR_METRICS[c.sector] ? c.sector : null;
+  const sk = String(c.sector || '').trim().toLowerCase();
+  const sector = metrics.SECTOR_METRICS[sk] ? sk
+    : (panel && FAMILY_MODEL[panel.family]) || null;
   const wanted = sector ? metrics.SECTOR_METRICS[sector] : metrics.SECTOR_METRICS.manufacturing;
 
   const compute = {
@@ -259,6 +278,21 @@ function computeMetrics(c) {
   }
   out.accrualsRatio = metrics.accrualsRatio(f.netProfit, f.cashFromOperations, f.totalAssets);
   out.cashConversion = metrics.cashConversion(f.cashFromOperations, f.netProfit);
+  const pm = {};
+  (panel && Array.isArray(panel.metrics) ? panel.metrics : []).forEach((m) => { pm[m.key] = m; });
+  for (const name of Object.keys(out)) {
+    const v = out[name];
+    if (v && v.available) continue;
+    const m = pm[PANEL_FOR[name]];
+    if (m && isNum(m.value)) {
+      out[name] = { available: true, value: m.value, unit: /%/.test(S(m.unit)) ? '%' : (m.unit || null),
+        evidence: m.basis === 'derived' ? 'CALCULATION' : 'FACT', basis: m.basis, period: m.period || null,
+        source: m.source || null };
+    } else if (v && !v.available) {
+      out[name] = { ...v, reason: 'Not computable from the accounts supplied and not stated by the research. '
+        + 'The brief asks for the lines it is built from; the follow-up prompt asks again.' };
+    }
+  }
   return { sector: sector ?? 'unspecified', basis: f.basis ?? null, period: f.period ?? null, values: out };
 }
 
@@ -499,13 +533,27 @@ function scoreCompany(c, horizonKey, run) {
     catalysts: dm.scores.catalysts ?? null,
   };
 
-  const overall = overallScore(dimensions, { sector: c.sector ?? null });
-
   const forensicResult = runForensic(c);
   const forensicScore = forensicResult?.available ? forensicResult.score : null;
   const litigation = c.litigation?.searched
     ? assessLitigation(c.litigation.searched, { listed: true })
     : { available: false, reason: 'No litigation search was recorded.' };
+
+  /* The four direct dimensions, each built from its bases (build 23): the
+     research's rating is one basis, and the rest are measured by the
+     application. See dimensions.js. */
+  const techForDims = c.priceHistory?.closes?.length
+    ? entryContext({ closes: c.priceHistory.closes, volumes: c.priceHistory.volumes ?? null,
+        benchmarkCloses: c.priceHistory.benchmarkCloses ?? null, spacing: c.priceHistory.spacing ?? 'daily',
+        performance: c.snapshot?.performance ?? null })
+    : null;
+  const dimBases = dimensionBases({ c, dm: dm.detail, forensicScore, risk: rq.scores, litigation,
+    tech: techForDims, asOf: run?.generatedAt || null });
+  for (const k of Object.keys(dimBases)) {
+    if (isNum(dimBases[k].score)) dimensions[k] = dimBases[k].score;
+  }
+
+  const overall = overallScore(dimensions, { sector: c.sector ?? null });
 
   const modelled = runModel(c);
 
@@ -597,6 +645,7 @@ function scoreCompany(c, horizonKey, run) {
     pillars,
     dimensions,
     ratings: { businessQuality: bq.detail, growthMultibagger: gm.detail, valuationOpportunity: vo.detail, riskQuality: rq.detail, dimensions: dm.detail },
+    dimensionBases: dimBases,
     ratingsRejected: bq.rejected + gm.rejected + vo.rejected + rq.rejected,
     overall,
     forensic: forensicResult,
@@ -605,7 +654,10 @@ function scoreCompany(c, horizonKey, run) {
     litigation,
     redFlags: c.redFlags || [],
     model: modelled,
-    metrics: computeMetrics(c),
+    metrics: computeMetrics(c, industryPanel(c, run, {
+      lenderLines: isLender(c)
+        ? orderedAnnual(c.financials).map((r) => lenderLines(r)).filter(Boolean)
+        : null })),
     consensus: consensusDelta(c, modelled),
     liquidity: liquidityAssessment(c, run),
     ownership: c.ownership ?? null,
@@ -694,7 +746,9 @@ function scoreCompany(c, horizonKey, run) {
     } : null,
     technicals: c.priceHistory?.closes
       ? { ...entryContext({ closes: c.priceHistory.closes, volumes: c.priceHistory.volumes ?? null,
-            benchmarkCloses: c.priceHistory.benchmarkCloses ?? null }),
+            benchmarkCloses: c.priceHistory.benchmarkCloses ?? null,
+            spacing: c.priceHistory.spacing ?? 'daily',
+            performance: c.snapshot?.performance ?? null }),
           asOf: c.priceHistory.asOf ?? null, adjusted: c.priceHistory.adjusted === true,
           summary: c.technicals?.summary ?? null }
       : (c.technicals ?? null),

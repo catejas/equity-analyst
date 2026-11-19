@@ -53,7 +53,12 @@ function currentPayload(kind){
     if(typeof soloRecord !== 'function') return null;
     return soloPayload();
   }
-  var built = composedReport();
+  /* The sector's own documents are built from the sector run and nothing
+     else — never from an independently researched company that happens to be
+     selected (build 23). */
+  var sectorDoc = kind === 'sector' || /^co[123]$/.test(kind)
+    || (kind === 'exec' && (!DOC_SUBJECT || DOC_SUBJECT === 'sector'));
+  var built = composedReport(sectorDoc);
   if(!built) return null;
   var seg = (typeof segRecord === 'function') ? segRecord() : null;
 

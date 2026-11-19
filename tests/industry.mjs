@@ -64,8 +64,10 @@ const ok = (label, pass, detail) => {
     by.nim && by.nim.value.toFixed(2));
   ok('cost to income comes through as reported by the audit',
     by.costToIncome && Math.abs(by.costToIncome.value - 48) < 0.01);
-  ok('credit cost is provisions over advances',
-    by.creditCost && Math.abs(by.creditCost.value - 1) < 0.01, by.creditCost && by.creditCost.value);
+  /* Build 23: over AVERAGE advances, as banks report it — the provisions are
+     a year's charge against the book the bank carried through that year. */
+  ok('credit cost is provisions over average advances',
+    by.creditCost && Math.abs(by.creditCost.value - 9 / 850 * 100) < 0.01, by.creditCost && by.creditCost.value);
   ok('return on assets is profit over assets',
     by.roa && Math.abs(by.roa.value - 0.8) < 0.01, by.roa && by.roa.value);
   ok('advances growth is measured against the year before',
@@ -133,9 +135,12 @@ const ok = (label, pass, detail) => {
 {
   const empty = industryPanel({ sector: 'Retail' }, {});
   ok('a company with no accounts produces no metrics', empty.metrics.length === 0);
+  /* Build 23: a non-financial family also carries the general operating
+     measures its own set lacks, so those are missing here too. */
+  const want = INDUSTRY_METRIC_SETS.retail.length + INDUSTRY_METRIC_SETS.general
+    .filter((g) => !INDUSTRY_METRIC_SETS.retail.some((m) => m.key === g.key)).length;
   ok('and every metric in the set is listed as missing',
-    empty.missing.length === INDUSTRY_METRIC_SETS.retail.length,
-    `${empty.missing.length} of ${INDUSTRY_METRIC_SETS.retail.length}`);
+    empty.missing.length === want, `${empty.missing.length} of ${want}`);
   ok('the panel says it is unavailable', empty.available === false);
 }
 

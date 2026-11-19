@@ -2508,35 +2508,72 @@ function buildCompany(p, lang){
   out += eqComment(c, 'forensic');
   out += S3('Litigation and regulatory registers') + eqLitigation(c, lang);
 
+  /* Build 23. Tejas: "no data for NIM, CASA, Provision, Credit cost etc. fix
+     this industry specific logic and methods to calculate this through our
+     app." Each figure now says how it was arrived at — computed from the
+     accounts, or stated by the research with its source — and for which
+     period; where neither was possible, the reason is in words rather than
+     the names of missing variables. */
   var mt = c.metrics;
+  var MNAME = { roa:'Return on assets', roe:'Return on equity', netInterestMargin:'Net interest margin',
+    casaRatio:'CASA ratio', provisionCoverageRatio:'Provision coverage', creditCost:'Credit cost',
+    accrualsRatio:'Accruals ratio', cashConversion:'Cash conversion (operating cash to profit)',
+    ebitdaMargin:'EBITDA margin', ebitMargin:'EBIT margin', netMargin:'Net margin', roce:'ROCE', roic:'ROIC',
+    debtToEquity:'Debt to equity', netDebtToEbitda:'Net debt to EBITDA', interestCoverage:'Interest coverage',
+    freeCashFlow:'Free cash flow', cashConversionCycle:'Cash conversion cycle', receivableDays:'Receivable days' };
   if(mt && mt.values){
     var rows = Object.keys(mt.values).map(function(k){
       var v = mt.values[k];
-      return { cells:[e(k.replace(/([A-Z])/g,' $1').replace(/^./,function(ch){ return ch.toUpperCase(); })),
-        v && v.available ? '<b>' + n(v.value,2) + (v.unit === '%' ? '%' : (v.unit ? ' ' + v.unit : '')) + '</b>'
-                         : '<span class="mut">' + e(S(v && v.reason)) + '</span>'] };
+      var how = !v || !v.available ? ''
+        : v.basis === 'stated' ? 'stated by the research' + (S(v.source) ? ': ' + e(S(v.source)) : '')
+        : v.basis === 'derived' ? 'computed from the reported lines'
+        : 'computed from the accounts';
+      return { cells:['<b>' + e(MNAME[k] || k.replace(/([A-Z])/g,' $1').replace(/^./,function(ch){ return ch.toUpperCase(); })) + '</b>',
+        v && v.available ? '<b>' + n(v.value,2) + (v.unit === '%' ? '%' : (v.unit ? ' ' + e(v.unit) : '')) + '</b>'
+                         : '<span class="mut">not available</span>',
+        v && v.available ? e(S(v.period) || S(mt.period)) : '',
+        v && v.available ? '<span class="mut">' + how + '</span>' : '<span class="mut">' + e(S(v && v.reason)) + '</span>'] };
     });
-    out += S3('Financial metrics') + tbl(['Metric','Value'], rows, { num:[1] })
-      + '<div class="mut" style="margin-top:1.5mm">Sector model: ' + e(S(mt.sector))
-      + (mt.basis ? ', ' + e(S(mt.basis)) : '') + (mt.period ? ', ' + e(S(mt.period)) : '') + '.</div>';
+    out += S3('Financial metrics') + tbl(['Metric','Value','Period','How it was arrived at'], rows,
+        { num:[1], headWrap:true, widths:['26%','14%','12%','48%'] })
+      + '<div class="mut" style="margin-top:1.5mm">Read with the ' + e(S(mt.sector)) + ' metric set'
+      + (mt.basis ? ', ' + e(S(mt.basis)) + ' accounts' : '') + '. Figures computed from the annual accounts are for the last reported year; '
+      + 'figures stated by the research carry their own, usually more recent, period.</div>';
   }
 
   var tc = c.technicals;
   if(tc && tc.parts){
     var pt = tc.parts;
     function tv(x, fmt){ return (x && x.available) ? fmt(x) : '<span class="mut">' + e(S(x && x.reason)) + '</span>'; }
+    /* Build 23: every reading says what it is measured on and what it tells
+       the reader, as Tejas asked — "add here what each basis means". */
+    var per = function(x){ return x && x.periods ? ' <span class="mut">(' + x.periods + ' ' + (x.spacing === 'weekly' ? 'weekly' : 'daily') + ' closes)</span>' : ''; };
+    var rsx = pt.relativeStrength;
     out += S3('Entry context')
-      + tbl(['Reading','Value'], [
-          { cells:['Trend', e(S(tc.trend))] },
-          { cells:['50 day average', tv(pt.sma50, function(x){ return n(x.value,2); })] },
-          { cells:['200 day average', tv(pt.sma200, function(x){ return n(x.value,2); })] },
-          { cells:['RSI 14', tv(pt.rsi14, function(x){ return n(x.value,1) + ' (' + e(S(x.reading)) + ')'; })] },
-          { cells:['MACD', tv(pt.macd, function(x){ return n(x.value,2) + ' vs ' + n(x.signal,2); })] },
-          { cells:['Position in range', tv(pt.range, function(x){ return n(x.value,1) + '%, ' + n(x.fromHigh,1) + '% from the high'; })] },
-          { cells:['Volume trend', tv(pt.obv, function(x){ return e(S(x.trend)); })] },
-          { cells:['Relative strength', tv(pt.relativeStrength, function(x){ return n(x.value,1) + ' points, ' + e(S(x.reading)); })] },
-          { cells:['Adjusted for corporate actions', tc.adjusted ? 'Yes' : '<span class="neg">not stated</span>'] }
-        ], { num:[1] })
+      + tbl(['Reading','Value','What it means'], [
+          { cells:['<b>Trend</b>', e(S(tc.trend)),
+            'Whether the 50 day average sits above the 200 day one. Above is an uptrend in place; below, the stock is still being sold.'] },
+          { cells:['<b>50 day average</b>' + per(pt.sma50), tv(pt.sma50, function(x){ return '\u20B9' + n(x.value,2); }),
+            'The average closing price over about ten weeks — the short-term trend. A price above it is being bought on dips.'] },
+          { cells:['<b>200 day average</b>' + per(pt.sma200), tv(pt.sma200, function(x){ return '\u20B9' + n(x.value,2); }),
+            'The average over about forty weeks — the long-term trend most institutions watch. Buying well above it is paying for momentum.'] },
+          { cells:['<b>RSI 14</b>', tv(pt.rsi14, function(x){ return n(x.value,1) + ' (' + e(S(x.reading)) + ')'; }),
+            'Momentum from 0 to 100 over fourteen periods. Above 70 the stock has run hard and often pauses; below 30 it has been sold hard.'] },
+          { cells:['<b>MACD</b>', tv(pt.macd, function(x){ return n(x.value,2) + ' vs ' + n(x.signal,2); }),
+            'The gap between a fast and a slow average, against its own signal line. Above the signal, momentum is building; below, it is fading.'] },
+          { cells:['<b>Position in the 52-week range</b>', tv(pt.range, function(x){ return n(x.value,1) + '% of the range, ' + n(Math.abs(x.fromHigh),1) + '% below the high'; }),
+            'Where the price sits between the year\u2019s low (0%) and high (100%). Near the top, the easy part of the move may be behind it.'] },
+          { cells:['<b>Volume trend</b>', tv(pt.obv, function(x){ return e(S(x.trend)); }),
+            'On-balance volume: whether more shares trade on up days (accumulation) or down days (distribution). Price moves on rising accumulation are more durable.'] },
+          { cells:['<b>Relative strength</b>', tv(rsx, function(x){
+              return (x.value >= 0 ? '+' : '') + n(x.value,1) + ' points, ' + e(S(x.reading))
+                + '<br><span class="mut">' + n(x.stockReturn,1) + '% against ' + n(x.benchmarkReturn,1) + '%'
+                + (x.benchmark ? ' for ' + e(S(x.benchmark)) : ' for the benchmark')
+                + (x.window ? ', ' + e(x.window) : '') + (x.basis === 'stated' ? ', as stated by the research' : '') + '</span>'; }),
+            'The stock\u2019s return less its index\u2019s over the same period. Leaders keep outperforming in a rising market; a laggard needs a reason to catch up.'] },
+          { cells:['<b>Adjusted for corporate actions</b>', tc.adjusted ? 'Yes' : '<span class="neg">not stated</span>',
+            'Whether splits and bonuses have been taken out of the price history. Unadjusted, every average above is wrong across the date of the action.'] }
+        ], { headWrap:true, chunk:3, widths:['24%','26%','50%'] })
       + '<div class="mut" style="margin-top:1.5mm">' + e(S(tc.caveat)) + '</div>';
   }
 
@@ -4044,17 +4081,42 @@ function figCatalysts(c){
     items:cs.map(function(x){ return { when:S(x.expectedWindow), label:S(x.event) }; }) });
 }
 
+/* Build 23. Tejas: "clarify and use Required Annual Return % for the Y axis
+   and mark and show up the PNB spot so that reader can compare and judge the
+   probability for Multibagger." The company's own compounding rates are drawn
+   across the bars: return on equity, which is what the business compounds its
+   book at with no help from the multiple, and its reported profit growth.
+   Every bar under the ROE line is within reach of the business as it is; a
+   bar above it needs growth, a re-rating, or both. */
 function figMultibagger(c){
   var K=CH_(); if(!K) return '';
   var grid=arr(c.multibagger&&c.multibagger.required);
   if(!grid.length) return '';
   var hs=arr(grid[0].horizons);
-  return K.columns({ title:'Compound return a year needed to multiply the investment',
-    source:'Arithmetic, not a forecast', unit:'% a year', xTitle:'Holding period',
+  var nm = S(c.symbol) || S(c.name);
+  var tests = arr(c.multibaggerModel && c.multibaggerModel.tests);
+  var tv = function(k){ var t = tests.filter(function(x){ return x.key === k && x.ran && typeof x.value === 'number'; })[0]; return t ? t.value : null; };
+  var roe = tv('returnOnEquity'), pg = tv('profitGrowth');
+  var refs = [];
+  if(roe != null) refs.push({ value: roe, label: nm + ' ROE ' + n(roe,1) + '%', color:'#1F3A5F' });
+  if(pg != null && pg > 0 && (roe == null || Math.abs(pg - roe) > 4)) refs.push({ value: pg, label: nm + ' profit growth ' + n(pg,1) + '%', color:'#B5523B' });
+  var within = [], beyond = [];
+  if(roe != null) grid.forEach(function(m){ arr(m.horizons).forEach(function(h){
+    if(typeof h.requiredCagrPct !== 'number') return;
+    (h.requiredCagrPct <= roe ? within : beyond).push(m.multiple + 'x in ' + h.horizon + ' years'); }); });
+  return K.columns({ title:'Required annual return to multiply the investment, against ' + nm + '\u2019s own rates',
+    source:'Arithmetic, not a forecast; ' + nm + ' rates computed from its reported accounts', unit:'Required annual return, %',
+    xTitle:'Holding period, years',
     yFmt:function(v){ return n(v,0); }, vFmt:function(v){ return n(v,0) + '%'; },
-    note:'Each group is a holding period and each bar a multiple of the money invested. '
-       + 'The height is the compound annual return that multiple would take: the shorter '
-       + 'the period, the less plausible the multiple.',
+    refLines: refs,
+    note:'Each group is a holding period and each bar a multiple of the money invested (3x, 5x, 10x); the height is the '
+       + 'compound return a year that multiple needs. The dashed lines are ' + nm + '\u2019s own rates. '
+       + (roe != null
+          ? (within.length ? 'At its ' + n(roe,1) + '% ROE the business alone compounds fast enough for ' + within.join(', ') + '; '
+                           : 'At its ' + n(roe,1) + '% ROE no multiple shown is within reach of the business alone; ')
+            + (beyond.length ? 'the rest need faster growth or a higher multiple, and the further a bar rises above the line the less likely it is.'
+                             : 'every multiple shown is within its reach.')
+          : 'Its return on equity could not be computed, so there is no line to judge the bars against.'),
     categories:hs.map(function(h){ return h.horizon; }),
     series:grid.map(function(m){
       return { name:m.multiple+'x', values:arr(m.horizons).map(function(h){ return h.requiredCagrPct; }) };
@@ -4594,18 +4656,28 @@ function eqIndustryPanel(c, p){
   var out = '<h4>' + e(S(ind.label)) + ' &mdash; the measures this industry is judged on</h4>'
     + '<p class="storyp">' + e(S(ind.intro)) + '</p>';
   if(arr(ind.metrics).length){
-    out += tbl(['Measure','Reading','Unit','Period','Basis','Why it matters'],
+    /* Build 23. With a real bank's thirteen measures and their sources this
+       table was wider than the page and taller than what was left of it: the
+       packer moved it whole to the next page, leaving a blank one behind, then
+       shrank that page to fit and every column ran into the next. The reading
+       and its unit share a cell, the period's age sits under the period, and
+       the table is split every five rows so it flows from the page it starts
+       on. */
+    out += tbl(['Measure','Reading','Period','Source','Why it matters'],
       arr(ind.metrics).map(function(m){
         var dp = Math.abs(m.value) >= 1000 ? 0 : 2;
-        return { cells:[ e(S(m.name)), '<b>' + n(m.value, dp) + '</b>', e(S(m.unit)),
-          agedPeriod(m.period, runAsOf(p)),
+        var u = S(m.unit), pct = /^%/.test(u);
+        return { cells:[ '<b>' + e(S(m.name)) + '</b>',
+          '<b>' + n(m.value, dp) + (pct ? '%' : '') + '</b>'
+            + ((pct ? u.replace(/^%\s*/, '') : u) ? '<br><span class="mut">' + e(pct ? u.replace(/^%\s*/, '') : u) + '</span>' : ''),
+          agedPeriod(m.period, runAsOf(p)).replace('</span> <span', '</span><br><span'),
           m.basis === 'derived'
-            ? '<span class="mut">derived from the accounts</span>'
+            ? '<span class="mut">derived from the reported accounts</span>'
             : '<span class="mut">' + (e(S(m.source)) || 'stated') + '</span>',
           '<span class="mut">' + e(S(m.why)) + '</span>' ]};
       }),
-      { headWrap:true, num:[1],
-        widths:['20%','9%','9%','12%','14%','36%'] })
+      { headWrap:true, num:[1], chunk:5,
+        widths:['18%','12%','13%','24%','33%'] })
       + '<div class="mut" style="margin-top:1.5mm">A derived figure is computed from the '
       + 'reported accounts and can be checked against them; a stated one comes from the '
       + 'research with its source beside it.</div>';
@@ -4840,14 +4912,33 @@ function eqGlossary(p, lang){
 
 /* ============ the company argument ============ */
 
+/* Build 23. Tejas: "Share Holding does not show the % sign. Also percentage
+   numbers are not mentioned for FII and Public in the bar graph." A 6.7% slice
+   is about eight pixels tall — too thin to carry a label inside — so every
+   holder's latest percentage is now in the legend, every label inside a bar
+   carries its % sign, the meaningless "100" over each bar is gone, and the
+   reading under the chart states all four. */
 function figShareholding(c){
   var K=CH_(); var q=arr(c.shareholding); if(!K||q.length<2) return '';
   var qs=q.slice().reverse();
+  var last=qs[qs.length-1], first=qs[0];
+  var keys=[['promoter','Promoter'],['fii','FII'],['dii','DII'],['public','Public']];
+  var pc=function(v){ return n(v, Math.abs(v - Math.round(v)) < 0.05 ? 0 : 1) + '%'; };
+  var named=keys.filter(function(k){ return typeof last[k[0]]==='number'; });
+  var moves=keys.filter(function(k){ return typeof last[k[0]]==='number' && typeof first[k[0]]==='number'
+      && Math.abs(last[k[0]]-first[k[0]]) >= 0.5; })
+    .map(function(k){ return k[1] + ' ' + (last[k[0]]>first[k[0]] ? 'up' : 'down') + ' from ' + pc(first[k[0]]) + ' to ' + pc(last[k[0]]); });
   return K.columns({ title:'Shareholding, quarter by quarter', source:'Exchange filings',
-    stacked:true, unit:'% of equity', xTitle:'Quarter', yFmt:function(v){ return n(v,0); },
+    stacked:true, total:false, unit:'% of equity', xTitle:'Quarter',
+    yFmt:function(v){ return n(v,0); }, vFmt:pc,
     categories:qs.map(function(x){ return S(x.period); }),
-    series:[['promoter','Promoter'],['fii','FII'],['dii','DII'],['public','Public']].map(function(k){
-      return { name:k[1], values:qs.map(function(x){ return typeof x[k[0]]==='number'?x[k[0]]:null; }) };
+    note: 'Latest quarter (' + e(S(last.period)) + '): '
+      + named.map(function(k){ return k[1] + ' ' + pc(last[k[0]]); }).join(', ') + '. '
+      + (moves.length ? 'Over the ' + qs.length + ' quarters: ' + moves.join('; ') + '.'
+          : 'No holder moved by half a percentage point or more over the ' + qs.length + ' quarters.'),
+    series:keys.map(function(k){
+      return { name:k[1] + (typeof last[k[0]]==='number' ? ' ' + pc(last[k[0]]) : ''),
+        values:qs.map(function(x){ return typeof x[k[0]]==='number'?x[k[0]]:null; }) };
     }) });
 }
 function figPerformance(c){
@@ -4979,6 +5070,10 @@ function eqTechPanel(c, lang){
       val = (sup ? 'support ' + sup : '') + (sup && res ? ' \u00b7 ' : '') + (res ? 'resistance ' + res : '');
     } else if(typeof val === 'boolean') val = val ? 'Yes' : 'No';
     else if(val && typeof val === 'object') val = '';
+    /* Large raw numbers (on-balance volume runs to crores of shares) in the
+       Indian grouping, not as an unbroken string of digits (build 23). */
+    else if(typeof val === 'number' && Math.abs(val) >= 10000) val = n(val, 0);
+    else if(k === 'momentum' && typeof val === 'number') val = n(val, 1) + '%';
     if(val == null || val === '') val = '\u2014';
     var note = '';
     if(k === 'breakout'){
@@ -5127,34 +5222,102 @@ function eqMispricing(c, lang){
    shown in the same table so the comparison is visible rather than implied.
    Payloads written against the older schema still carry metric1/metric2, so
    those are printed under a Note rather than dropped. */
-function eqPeers(c, lang){
-  var pr=arr(c.peers);
-  if(!pr.length) return gapNote('No peer comparison was supplied.');
-  var rich = pr.some(function(x){
-    return x && (x.pe!=null || x.evEbitda!=null || x.roe!=null
-      || x.revGrowth!=null || x.ebitdaMargin!=null || x.marketCap!=null); });
-  if(!rich){
-    return tbl(['Peer','Listed','Metric 1','Metric 2','Note'], pr.map(function(x){
-      return { cells:[ '<b>'+e(S(x.name))+'</b>', x.listed?'Yes':'No',
-        eqNum(x.metric1), eqNum(x.metric2), '<span class="mut">'+e(S(x.note))+'</span>' ]};
-    }), { num:[2,3] })
-    + gapNote('This run predates the fuller peer matrix, so only the two unnamed metrics were supplied.');
+/* Peers (build 23). Tejas: "Fix no data for EV/EBITDA, Rev growth %, EBITDA
+   margin %. Also it has no data for last comparable peer Bank of Baroda. Also
+   Fig. 9 doesn't mark and show up PNB and BOB in the graph." EV/EBITDA and
+   EBITDA margin do not exist for a bank — there is no EBITDA in a bank's
+   accounts — so the table asked for columns that could only ever be blank.
+   The columns now follow the industry: a lender is compared on price to book,
+   return on assets, net interest margin, gross NPA and advances growth. The
+   subject's own row is computed by the application from its accounts and its
+   industry panel. A peer the research returned no figures for is named as
+   such rather than printed as a row of dashes, and the chart marks the
+   subject and says which peers it could not place. */
+function peerCols(c){
+  var lender = c.industry && c.industry.family === 'lender';
+  return lender ? [
+      ['marketCap','Market cap, ₹ Crs', 0], ['pe','P/E', 1], ['pb','P/B', 2],
+      ['roe','ROE %', 1], ['roa','ROA %', 2], ['nim','NIM %', 2], ['gnpa','GNPA %', 2],
+      ['advancesGrowth','Advances growth %', 1] ]
+    : [ ['marketCap','Market cap, ₹ Crs', 0], ['pe','P/E', 1], ['evEbitda','EV/EBITDA', 1],
+      ['roe','ROE %', 1], ['revGrowth','Revenue growth %', 1], ['ebitdaMargin','EBITDA margin %', 1] ];
+}
+var PEER_ALIASES = { pb:['pb','priceToBook','pbv'], roa:['roa','returnOnAssets'],
+  nim:['nim','netInterestMargin'], gnpa:['gnpa','grossNpa','gnpaPct'],
+  advancesGrowth:['advancesGrowth','loanGrowth','creditGrowth'],
+  revGrowth:['revGrowth','revenueGrowth','salesGrowth'], ebitdaMargin:['ebitdaMargin'],
+  evEbitda:['evEbitda','evToEbitda'], pe:['pe','peRatio','priceToEarnings'], roe:['roe','returnOnEquity'],
+  marketCap:['marketCap','mcap'] };
+function peerVal(x, k){
+  var names = PEER_ALIASES[k] || [k];
+  for(var i=0;i<names.length;i++){
+    var v = x[names[i]];
+    if(typeof v === 'number' && isFinite(v) && v !== 0) return v;
   }
-  var rows = pr.map(function(x){
-    return { cells:[ '<b>'+e(S(x.name))+'</b>',
-      x.marketCap == null ? '—' : n(x.marketCap, 1), ratioCell(x.pe),
-      ratioCell(x.evEbitda), ratioCell(x.roe),
-      x.revGrowth == null ? '—' : n(x.revGrowth, 1), ratioCell(x.ebitdaMargin) ]};
+  return null;
+}
+function eqPeers(c, lang){
+  var pr=arr(c.peers).filter(function(x){ return x && S(x.name); });
+  if(!pr.length) return gapNote('No peer comparison was supplied.');
+  var cols = peerCols(c);
+  var empty = [];
+  var rows = [];
+  var self = eqSelfPeer(c);
+  if(self) rows.push({ __cls:'tot', cells:['<b>' + e(S(c.name) || S(c.symbol)) + '</b>'].concat(cols.map(function(k){
+    return self[k[0]] == null ? '<span class="mut">—</span>' : n(self[k[0]], k[2]); })) });
+  pr.forEach(function(x){
+    var vals = cols.map(function(k){ return peerVal(x, k[0]); });
+    if(vals.every(function(v){ return v == null; })){ empty.push(S(x.name)); }
+    rows.push({ cells:['<b>' + e(S(x.name)) + '</b>'].concat(vals.map(function(v, i){
+      return v == null ? '<span class="mut">—</span>' : n(v, cols[i][2]); })) });
   });
-  /* The subject company on the same axes, computed from the financials the
-     payload already carries. The first version printed the name and five
-     dashes, which is worse than omitting the row: it says the comparison was
-     attempted and failed. Nothing here is guessed — each figure is arithmetic
-     on stated numbers, and anything whose inputs are missing stays a dash. */
-  var self = eqSelfPeerRow(c);
-  if(self) rows.unshift(self);
-  return tbl(['Company','Market cap','P/E','EV/EBITDA','ROE %','Rev growth %','EBITDA margin %'],
-    rows, { num:[1,2,3,4,5,6] });
+  var w = cols.length === 8 ? ['20%','12%','8%','8%','9%','9%','9%','9%','16%'].slice(0, 9)
+    : ['24%','14%','10%','12%','10%','15%','15%'];
+  var out = tbl(['Company'].concat(cols.map(function(k){ return k[1]; })), rows,
+    { num:cols.map(function(_, i){ return i + 1; }), headWrap:true, widths:w });
+  var asOf = pr.map(function(x){ return S(x.asOf); }).filter(Boolean)[0];
+  out += '<div class="mut" style="margin-top:1.2mm">' + e(S(c.name) || S(c.symbol))
+    + '’s row is computed by the application from its own accounts'
+    + (c.industry && c.industry.family === 'lender' ? ' and the measures in the industry section' : '')
+    + '; the peers’ figures are as the research stated them' + (asOf ? ', ' + e(asOf) : '') + '.</div>';
+  if(empty.length) out += gapNoteRich(e(empty.join(', ')) + (empty.length === 1 ? ' was' : ' were')
+    + ' named as a peer, but the research returned no figures for '
+    + (empty.length === 1 ? 'it' : 'them') + ', so the comparison cannot use '
+    + (empty.length === 1 ? 'it' : 'them') + '. The follow-up prompt on the import card asks for them.',
+    'No figures for ' + e(empty.join(', ')) + '.');
+  return out;
+}
+/* The subject company on the peers' axes, computed by the application. */
+function eqSelfPeer(c){
+  var num = function(v){ return (typeof v === 'number' && isFinite(v)) ? v : null; };
+  var snap = c.snapshot || {};
+  var ann = arr(c.financials && c.financials.annual).slice().sort(function(a, b){
+    return String(b.period || '').localeCompare(String(a.period || '')); });
+  var cur = ann[0] || null, prv = ann[1] || null;
+  var f = (c.forensic && c.forensic.current) || {};
+  var mcap = num(snap.marketCap);
+  var netProfit = num(cur && cur.netProfit) != null ? cur.netProfit : num(f.netProfit);
+  var revenue = num(cur && cur.revenue) != null ? cur.revenue : num(f.revenue);
+  var prevRev = num(prv && prv.revenue);
+  var equity = num(cur && cur.shareholdersEquity);
+  var assets = num(cur && cur.totalAssets);
+  var ebitda = num(cur && cur.ebitda);
+  var debt = num(cur && cur.totalDebt), cash = num(cur && cur.cashAndEquivalents);
+  var im = {};
+  arr(c.industry && c.industry.metrics).forEach(function(m){ im[m.key] = m.value; });
+  var o = {
+    marketCap: mcap,
+    pe: (mcap != null && netProfit) ? mcap / netProfit : null,
+    pb: (mcap != null && equity) ? mcap / equity : null,
+    roe: (netProfit != null && equity) ? netProfit / equity * 100 : null,
+    roa: num(im.roa) != null ? im.roa : ((netProfit != null && assets) ? netProfit / assets * 100 : null),
+    nim: num(im.nim), gnpa: num(im.gnpa), advancesGrowth: num(im.advancesGrowth),
+    revGrowth: (revenue != null && prevRev) ? (revenue - prevRev) / prevRev * 100 : null,
+    ebitdaMargin: (ebitda != null && revenue) ? ebitda / revenue * 100 : null,
+    evEbitda: (mcap != null && ebitda && debt != null && cash != null) ? (mcap + debt - cash) / ebitda : null
+  };
+  var any = Object.keys(o).some(function(k){ return o[k] != null; });
+  return any ? o : null;
 }
 
 /* A ratio of exactly zero is almost never a real reading — it is how a model
@@ -5663,22 +5826,34 @@ function eqSectorMixChart(c){
    point and a chart that omits it makes the reader estimate. */
 function eqPeerScatter(c){
   var K = CH_(); if(!K) return '';
-  var pr = arr(c.peers).filter(function(x){ return x && x.pe != null && x.roe != null; });
-  if(pr.length < 2) return '';
-  var pts = pr.map(function(x){
-    return { x: x.roe, y: x.pe, label:'', title: S(x.name) };
+  /* A bank is priced on its book, so a lender is plotted price-to-book
+     against return on equity; everything else price-to-earnings against it.
+     The subject is always on the chart, marked, and any peer that could not
+     be placed is named under it (build 23). */
+  var lender = c.industry && c.industry.family === 'lender';
+  var yk = lender ? 'pb' : 'pe', yl = lender ? 'P/B, x' : 'P/E, x';
+  var self = eqSelfPeer(c) || {};
+  var pts = [], missing = [];
+  if(self.roe != null && self[yk] != null)
+    pts.push({ x:self.roe, y:self[yk], title:S(c.name) || S(c.symbol), emph:true });
+  arr(c.peers).forEach(function(x){
+    if(!x || !S(x.name)) return;
+    var r = peerVal(x, 'roe'), v = peerVal(x, yk);
+    if(r != null && v != null) pts.push({ x:r, y:v, title:S(x.name) });
+    else missing.push(S(x.name));
   });
+  if(pts.length < 2) return '';
   var xs = pts.map(function(p){ return p.x; }), ys = pts.map(function(p){ return p.y; });
   var pad = function(a){ var lo=Math.min.apply(null,a), hi=Math.max.apply(null,a);
-    var g=(hi-lo)||1; return [Math.max(0, lo-g*0.2), hi+g*0.2]; };
+    var g=(hi-lo)||1; return [Math.max(0, lo-g*0.25), hi+g*0.25]; };
   return K.scatter({ points: pts, xRange: pad(xs), yRange: pad(ys),
-    /* Half the usual height: two axes and a handful of points do not need a
-       page to say what they say. */
-    cap: 96,
-    xLabel:'Return on equity %', yLabel:'P/E',
+    xLabel:'Return on equity %', yLabel: yl,
     title: 'Peers — what you pay against what the business earns',
-    source: 'Company filings and exchange data',
-    note: 'Upper left is expensive for the return earned; lower right is the opposite.' });
+    source: 'Company filings and exchange data; ' + (S(c.name) || S(c.symbol)) + ' computed by the application',
+    note: (S(c.name) || S(c.symbol)) + ' is the dark point. Up and to the left is expensive for the return earned; '
+      + 'down and to the right is the opposite.'
+      + (missing.length ? ' Not plotted, for want of ' + (lender ? 'a P/B' : 'a P/E') + ' or an ROE: '
+        + missing.join(', ') + '.' : '') });
 }
 
 /* Return on capital, taken apart. Three numbers that multiply to ROE, and the
@@ -5743,11 +5918,14 @@ function eqCapitalCycle(c){
 function eqWacc(c){
   var w = c.valuation && c.valuation.waccBuildup;
   if(!w) return '';
-  var pct = function(v){ return v==null ? '—' : n(v*100,2); };
-  return tbl(['','%'], [
+  /* Build 23: every rate carries its % sign, as Tejas asked; beta is a
+     multiple and says so. A column header saying "%" over bare numbers is not
+     a percentage format, and the beta sat under it as if it were one. */
+  var pct = function(v){ return v==null ? '—' : n(v*100,2) + '%'; };
+  return tbl(['Component','Rate'], [
     { cells:['Risk-free rate', pct(w.riskFreeRate)] },
     { cells:['Equity risk premium', pct(w.equityRiskPremium)] },
-    { cells:['Levered beta', w.leveredBeta==null?'—':n(w.leveredBeta,2)] },
+    { cells:['Levered beta', w.leveredBeta==null?'—':n(w.leveredBeta,2) + 'x'] },
     { cells:['<b>Cost of equity</b>', '<b>'+pct(w.costOfEquity)+'</b>'] },
     { cells:['Pre-tax cost of debt', pct(w.pretaxCostOfDebt)] },
     { cells:['Tax rate', pct(w.taxRate)] },
@@ -6611,26 +6789,40 @@ function buildScorecard(p, lang){
      arithmetic that turns all of it into the overall figure on the front. */
   var body = Object.keys(PIL).map(pillarBlock).join('');
 
-  /* The four dimensions that have no pillar of their own. They belong with the
-     four that do — above the forensic tests, not below them — because the
-     build table underneath adds all eight together. */
-  var dimRows = ['financialQuality','managementGovernance','technicalEntry','catalysts'].map(function(k){
+  /* The four dimensions that have no pillar of their own (build 23). Each is
+     now built from its bases, like a pillar — the research's rating is one
+     basis and the application measures the rest — and printed the same way:
+     every basis with the points it earned out of the points it could. */
+  var dimBlock = function(k){
+    var db = co.dimensionBases && co.dimensionBases[k];
+    var label = DIM_LABEL[k] || titleCase(k);
     var r = (co.ratings && co.ratings.dimensions && co.ratings.dimensions[k]) || {};
-    var sc = (r.score == null) ? null : r.score;
-    var label = DIM_LABEL[k] || k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){ return c.toUpperCase(); });
-    return { cells:[
-      '<span class="ti">' + e(label) + '</span>',
-      '<span class="scbar"><i style="width:' + pct(sc).toFixed(0) + '%;background:' + ragBarHex(pct(sc)) + '"></i></span>',
-      sc == null ? '<span class="mut">&mdash;</span>' : '<b class="en">' + sc.toFixed(0) + '</b>',
-      '<span class="en">' + Math.round((OW[k]||0)*100) + '%</span>',
-      sc == null ? '<span class="mut">' + e(S(r.reason) || 'Not assessed.') + '</span>'
-                 : '<b>' + e(S(r.band) || '') + '.</b> ' + e(S(r.evidence) || '')
-    ]};
-  });
-  body += '<div class="sc-blk">' + sec('', 'Overall Dimensions')
-        + tbl(['Dimension','','Score','Weight','Rating and evidence'], dimRows,
-              { num:[2,3], cls:'sctab', chunk:false })
-        + '</div>'
+    var sco = db && db.score != null ? db.score : r.score;
+    var rows = (db ? db.bases : [{ label:'Research assessment', of:100,
+        points: r.score == null ? null : r.score, reading: r.evidence }]).map(function(bs){
+      var frac = bs.points == null ? null : bs.points / bs.of * 100;
+      var isAnalyst = bs.key === 'analyst';
+      return { cells:[
+        '<span class="ti">' + e(bs.label) + '</span>',
+        '<span class="scbar"><i style="width:' + pct(frac).toFixed(0) + '%;background:' + ragBarHex(pct(frac)) + '"></i></span>',
+        bs.points == null ? '<span class="mut">&mdash;</span>' : '<b class="en">' + bs.points.toFixed(2) + '</b>',
+        '<span class="en">' + bs.of + '</span>',
+        bs.points == null ? '<span class="mut">' + e(S(bs.reading) || 'Not assessed.') + '</span>'
+          : (isAnalyst && S(r.band) ? '<b>' + e(S(r.band)) + '.</b> ' : '') + e(S(bs.reading))
+      ]};
+    });
+    var ran = db ? db.bases.filter(function(x){ return x.points != null; }) : [];
+    var note = db && ran.length < db.bases.length
+      ? '<div class="mut" style="margin-top:1mm">Scored on the ' + ran.length + ' of ' + db.bases.length
+        + ' bases that could be measured (' + ran.reduce(function(a, x){ return a + x.of; }, 0)
+        + ' points), rescaled to 100.</div>' : '';
+    return '<div class="sc-blk">'
+      + sec('', label + (sco == null ? '' : ' \u2014 ' + Number(sco).toFixed(1))
+        + ', ' + Math.round((OW[k]||0)*100) + '% of the overall')
+      + tbl(['Basis','','Points','Of','Rating and evidence'], rows, { num:[2,3], cls:'sctab', chunk:false })
+      + note + '</div>';
+  };
+  body += ['financialQuality','managementGovernance','technicalEntry','catalysts'].map(dimBlock).join('')
         + forensicBlock()
         + overallBlock();
 

@@ -303,7 +303,13 @@
     var cv = wide ? WIDE : HALF;
     var cols = series.map(function (s, si) { return s.color || C.series[si % C.series.length]; });
     var lg = legendRow(series.map(function (s) { return s.name; }), cols, cv.w, opts.unit ? 27 : 17);
-    var ticks = niceTicks(Math.min(0, Math.min.apply(null, flat)), Math.max.apply(null, flat) * 1.08, 4);
+    /* Reference lines (build 23): a horizontal mark across the plot for a
+       rate the reader should compare every bar against — the company's own
+       return on equity on the multibagger chart. Their values join the range
+       so a line is never drawn off the top. */
+    var refs = (opts.refLines || []).filter(function (r) { return r && isNum(r.value); });
+    var span = flat.concat(refs.map(function (r) { return r.value; }));
+    var ticks = niceTicks(Math.min(0, Math.min.apply(null, span)), Math.max.apply(null, span) * 1.08, 4);
     var f = frame(cv, { yTicks: ticks, xLabels: cats, yFmt: opts.yFmt, unit: opts.unit,
       xTitle: opts.xTitle, legendG: lg.g, legendH: lg.h });
     var body = f.g;
@@ -320,7 +326,7 @@
           if (showVals && hh > 11) body += T(x + bw / 2, (y0 + y1) / 2 + 3, vf(v), 'ax val', 'middle', '#fff');
           base += v;
         });
-        if (showVals) body += T(x + bw / 2, f.y(base) - 3, vf(base), 'ax val', 'middle');
+        if (showVals && opts.total !== false) body += T(x + bw / 2, f.y(base) - 3, vf(base), 'ax val', 'middle');
       } else {
         var group = Math.min(f.step * 0.78, series.length * 34);
         var bw2 = group / series.length, gx = f.padL + f.step * i + (f.step - group) / 2;
@@ -333,6 +339,15 @@
           }
         });
       }
+    });
+
+    refs.forEach(function (r, ri) {
+      var yy = f.y(r.value), col = r.color || C.navy;
+      body += Ln(f.padL, yy, cv.w - f.padR, yy, col, 1.1, '4 3');
+      /* The label sits on a white tab so it reads over the bars it crosses. */
+      var lab = fitLabel(r.label, f.plotW * 0.6), lw = lab.length * CH * 1.02 + 6;
+      body += R(cv.w - f.padR - lw, yy - 12, lw, 10, '#FFFFFF');
+      body += T(cv.w - f.padR - 3, yy - 4, lab, 'ax val', 'end', col);
     });
 
     var note = opts.note;
@@ -604,7 +619,19 @@
     if (!pts.length) return unavailable(opts.title, 'No points supplied.');
     var cv = opts.wide ? WIDE : HALF;
     var w = cv.w, h = cv.h + 14;
-    var xr = opts.xRange || [0, 100], yr = opts.yRange || [0, 100];
+    var xr = (opts.xRange || [0, 100]).slice(), yr = (opts.yRange || [0, 100]).slice();
+    /* Build 23. A point outside the stated range was drawn outside the plot —
+       on PNB's risk chart, through the catalyst table above it. The range now
+       grows to hold every point, so nothing lands off the chart. */
+    var grow = function (r, vals) {
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      var span = (Math.max(hi, r[1]) - Math.min(lo, r[0])) || 1;
+      if (lo < r[0]) r[0] = lo - span * 0.06;
+      if (hi > r[1]) r[1] = hi + span * 0.06;
+      return r;
+    };
+    xr = grow(xr, pts.map(function (p) { return p.x; }));
+    yr = grow(yr, pts.map(function (p) { return p.y; }));
     var xt = niceTicks(xr[0], xr[1], 4).filter(function (t) { return t >= xr[0] && t <= xr[1]; });
     var yt = niceTicks(yr[0], yr[1], 4).filter(function (t) { return t >= yr[0] && t <= yr[1]; });
     var padL = Math.max(26, Math.max.apply(null, yt.map(function (t) { return fmt(t).length; })) * CH + 9);
@@ -620,13 +647,24 @@
     body += Ln(padL, top + plotH, w - padR, top + plotH, C.rule, 0.9) + Ln(padL, top, padL, top + plotH, C.rule, 0.9);
     if (opts.yLabel) body += T(2, 9, '(' + opts.yLabel + ')', 'ax');
     if (opts.xLabel) body += T(padL + plotW / 2, h - 3, opts.xLabel, 'ax axt', 'middle');
+    var placed = [];
     pts.forEach(function (p, i) {
-      var col = p.color || C.series[i % C.series.length];
-      body += '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="' + (p.label && !p.title ? 7 : 4.5)
+      var col = p.emph ? C.navy : (p.color || C.series[i % C.series.length]);
+      body += '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="' + (p.emph ? 6 : p.label && !p.title ? 7 : 4.5)
         + '" fill="' + col + '" stroke="#fff" stroke-width="0.8"/>';
       if (p.title) {
         var right = X(p.x) < padL + plotW * 0.66;
-        body += T(X(p.x) + (right ? 7 : -7), Y(p.y) + 3, fitLabel(p.title, plotW * 0.34), 'ax ink', right ? 'start' : 'end');
+        var lab = fitLabel(p.title, plotW * 0.34);
+        var lw = lab.length * CH * 1.02, lx0 = right ? X(p.x) + 8 : X(p.x) - 8 - lw;
+        /* Labels of nearby points are moved apart vertically so two names
+           never print on top of each other (build 23: PNB, Union Bank and
+           Canara Bank sat on one line). */
+        var base = Y(p.y) + 3, ly = base, offs = [10, -10, 20, -20, 30, -30], tries = 0;
+        var clash = function (yv) { return placed.some(function (b) { return lx0 < b.x2 && lx0 + lw > b.x1 && Math.abs(yv - b.y) < 9; }); };
+        while (clash(ly) && tries < offs.length) { ly = base + offs[tries++]; }
+        placed.push({ x1: lx0, x2: lx0 + lw, y: ly });
+        if (Math.abs(ly - (Y(p.y) + 3)) > 1) body += Ln(X(p.x), Y(p.y), right ? lx0 - 1 : lx0 + lw + 1, ly - 3, '#B8C2CC', 0.5);
+        body += T(X(p.x) + (right ? 8 : -8), ly, lab, p.emph ? 'ax val' : 'ax ink', right ? 'start' : 'end');
       } else if (p.label) {
         body += T(X(p.x), Y(p.y) + 3, p.label, 'ax val', 'middle', '#fff');
       }
