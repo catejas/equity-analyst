@@ -185,7 +185,11 @@ function runForensic(c) {
    contract. Nothing here invents a figure: every fallback is a field the
    payload supplied, or plain arithmetic over two of them. */
 function financialsFor(c) {
-  const series = c.financials?.annual;
+  /* The latest year, by period. The schema writes years newest first, and this
+     read the array's last row, so every computed metric (ROE, ROA, margins)
+     was the OLDEST year's: PNB's report showed FY24 ROE of 7.74% beside FY26
+     statements (found in build 25 on the 16-11-2026 run). */
+  const series = orderedAnnual(c.financials);
   const stated = (Array.isArray(series) && series.length ? series[series.length - 1]
     : (c.financials && !Array.isArray(c.financials) ? c.financials : null)) || {};
   const fx = c.forensic || {};

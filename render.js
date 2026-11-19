@@ -8862,7 +8862,353 @@ function buildSector(p, lang){
   });
 }
 
-global.EQDocs = { buildCompany:buildCompany, buildExec:buildExec,
+/* ===================================================================
+   The Update Summary (build 25).
+
+   Tejas: "a quick executive summary which will show previous data / fact /
+   figure and new data / fact / figure with commentary on what has changed
+   and what it means, rather than taking a full new report and compare old
+   report and new reports."
+
+   Built from `p.update`, which src/core/update.js computes from the two saved
+   versions. Every "previous", "now" and "change" figure here is the app's own
+   reading of the two payloads. The research tool's account of what changed
+   is printed in its own section, and where its numbers disagree with the
+   app's, the row says so.
+   =================================================================== */
+function updFig(row, v, rep){
+  if(v == null || !isNum_(v)) return '<span class="mut">not reported</span>';
+  var r = (rep && rep.run && rep.run.reporting) || {};
+  if(row.kind === 'price') return '₹' + n(v, 2);
+  if(row.kind === 'money') return money(v, r, 0);
+  if(row.kind === 'score') return n(v, 1);
+  if(row.kind === 'pct'){
+    var u = S(row.unit).replace(/^%\s*/, '');
+    return n(v, 2) + '%' + (u ? ' <span class="mut">' + e(u) + '</span>' : '');
+  }
+  return n(v, 2) + (row.unit ? ' ' + e(S(row.unit)) : '');
+}
+function updChange(row){
+  if(!isNum_(row.prev) || !isNum_(row.cur)) return '&mdash;';
+  var d = row.cur - row.prev, sg = d > 0 ? '+' : d < 0 ? '−' : '';
+  if(d === 0) return 'no change';
+  if(row.kind === 'score') return sg + n(Math.abs(d), 1) + ' pts';
+  if(row.kind === 'pct') return sg + n(Math.abs(d), 2) + ' pp';
+  if(isNum_(row.changePct)) return sg + n(Math.abs(row.changePct), 1) + '%';
+  return sg + n(Math.abs(d), 2);
+}
+var UPD_VERDICT = { better:'<span class="pos"><b>Better</b></span>', worse:'<span class="neg"><b>Worse</b></span>',
+  neutral:'Moved', unchanged:'<span class="mut">Unchanged</span>', 'new':'Now reported',
+  dropped:'<span class="mut">No longer reported</span>', basis:'<span class="mut">Basis changed</span>' };
+function updMeaning(row){
+  if(row.verdict === 'basis') return 'Not comparable: the previous version reported this ' + e(S(row.prevBasis))
+    + ', this one ' + e(S(row.curBasis)) + '. The two figures describe different perimeters.';
+  if(row.verdict === 'new') return 'Not in the previous version, so there is nothing to compare it with yet.'
+    + (row.why ? ' ' + e(S(row.why)) : '');
+  if(row.verdict === 'dropped') return 'The earlier version reported it; this one does not.';
+  if(row.verdict === 'unchanged') return '';
+  var p = (row.prevPeriod && row.curPeriod && row.prevPeriod !== row.curPeriod)
+    ? 'A new period (' + e(S(row.prevPeriod)) + ' to ' + e(S(row.curPeriod)) + '). ' : '';
+  return p + (row.why ? e(S(row.why)) : '');
+}
+/* Items already escaped where they were built. */
+function updList(items){
+  items = arr(items).filter(Boolean);
+  return items.length ? '<ul class="ir-ul">' + items.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul>' : '';
+}
+function updWhen(iso, ts){ return iso ? dmy(iso) : (ts ? dmy(new Date(ts).toISOString().slice(0, 10)) : '—'); }
+
+function buildUpdate(p, lang){
+  lang = lang || 'en';
+  var u = (p && p.update) || {}, rep = eqRep(p);
+  var V = u.versions || {}, A = u.asOf || {};
+  var out = '', no = 0;
+  function S3(t){ no += 1; return sec(no < 10 ? '0' + no : String(no), t); }
+  var isCo = u.kind === 'company';
+  var title = isCo ? (S(u.subject && u.subject.name) || 'Company') : (S(u.subject && u.subject.name) || eqTitle(p));
+  var since = (isNum_(A.days) ? A.days + ' days' : 'the interval') + ' between the two';
+  var vline = 'Version ' + (V.cur || '?') + ' (' + updWhen(A.cur, V.curTs) + ') against version '
+    + (V.prev || '?') + ' (' + updWhen(A.prev, V.prevTs) + ') · ' + since;
+
+  var tiles = '', verdictHtml = '';
+  if(isCo){
+    var sc = u.verdict && u.verdict.score || {};
+    var fig = function(k){ return arr(u.figures).filter(function(r){ return r.key === k; })[0]; };
+    var tile = function(label, row, fmt){
+      if(!row) return '';
+      return '<div class="tile"><div class="k">' + e(label) + '</div>'
+        + '<div class="v">' + (fmt ? fmt(row.cur) : updFig(row, row.cur, rep)) + '</div>'
+        + '<div class="s">was ' + (fmt ? fmt(row.prev) : updFig(row, row.prev, rep)) + '</div></div>';
+    };
+    tiles = '<div class="tiles" style="margin-top:4mm">'
+      + tile('Overall score', fig('score'))
+      + tile('Share price', fig('price'))
+      + tile('Base-case fair value', fig('fairValue'))
+      + tile('Upside to base case', fig('upside'), function(v){ return isNum_(v) ? (v > 0 ? '+' : '') + n(v, 1) + '%' : '—'; })
+      + '</div>';
+    verdictHtml = eqNum(sc.cur) + ' / 100 · ' + e(S(u.verdict && u.verdict.word && u.verdict.word.cur))
+      + ' <span class="mut" style="font-weight:400">(was ' + eqNum(sc.prev) + ', '
+      + e(S(u.verdict && u.verdict.word && u.verdict.word.prev)) + ')</span>';
+  } else {
+    var t3 = u.top3 || {};
+    verdictHtml = (arr(t3.entered).length || arr(t3.left).length)
+      ? 'The Top 3 changed: ' + (arr(t3.entered).length ? e(arr(t3.entered).join(', ')) + ' in' : '')
+        + (arr(t3.entered).length && arr(t3.left).length ? '; ' : '')
+        + (arr(t3.left).length ? e(arr(t3.left).join(', ')) + ' out' : '') + '.'
+      : 'The same Top 3: ' + e(arr(t3.stayed).join(', ') || 'none named') + '.';
+  }
+
+  var leadIn = '<div style="height:3mm"></div>'
+    + '<div class="eyebrow en">' + e('Update Summary') + ' &nbsp;·&nbsp; ' + e(isCo ? eqTitle(p) : 'Sector study') + '</div>'
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:14.3pt">' + e(title) + '</h1>'
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">' + e(vline) + '</div>'
+    + '<div style="height:.9mm;background:var(--accent);width:22mm;margin:3mm 0 4mm"></div>'
+    + '<div class="vb"><div class="h">Where it stands now</div><div class="c"><div class="v">' + verdictHtml + '</div></div></div>'
+    + tiles;
+
+  if(window.EQCharts) window.EQCharts.resetFigures();
+
+  /* 01 — the headlines */
+  if(isCo){
+    var hl = arr(u.headline).map(function(h){
+      if(h.text) return (h.tone === 'worse' ? '<span class="neg">' : h.tone === 'better' ? '<span class="pos">' : '<span>')
+        + e(h.text) + '</span>';
+      var r = h.row;
+      return '<b>' + e(r.label) + '</b> ' + (r.cur > r.prev ? 'rose' : 'fell') + ' from ' + updFig(r, r.prev, rep)
+        + ' to ' + updFig(r, r.cur, rep) + ' (' + updChange(r) + ')'
+        + (r.verdict === 'better' ? ' — <span class="pos">better</span>' : r.verdict === 'worse' ? ' — <span class="neg">worse</span>' : '')
+        + '.';
+    });
+    out += S3('What changed, in brief') + (hl.length ? updList(hl)
+      : '<div class="lead"><p>No measured figure moved materially between the two versions.</p></div>');
+  } else {
+    var sb = [];
+    var t3b = u.top3 || {};
+    arr(t3b.rows).forEach(function(r){
+      if(r.status === 'entered') sb.push('<b>' + e(r.name) + '</b> entered the Top 3' + (r.curRank ? ' at rank ' + r.curRank : '') + '. ' + e(r.why));
+      if(r.status === 'left') sb.push('<b>' + e(r.name) + '</b> left the Top 3' + (r.curRank ? ' (now rank ' + r.curRank + ')' : '') + '. ' + e(r.why));
+    });
+    arr(u.macro).forEach(function(m){
+      if(isNum_(m.prev) && isNum_(m.cur) && Math.abs(m.cur - m.prev) >= Math.max(0.25, Math.abs(m.prev) * 0.05)){
+        var pc = m.key === 'currency' ? '' : '%';
+        sb.push('<b>' + e(m.label) + '</b> ' + (m.cur > m.prev ? 'rose' : 'fell') + ' from ' + n(m.prev, 2) + pc + ' (' + e(S(m.prevPeriod)) + ') to '
+          + n(m.cur, 2) + pc + ' (' + e(S(m.curPeriod)) + ').');
+      }
+    });
+    if(arr(u.policy && u.policy.added).length) sb.push(arr(u.policy.added).length + ' policy or scheme '
+      + (arr(u.policy.added).length === 1 ? 'entry is' : 'entries are') + ' new: ' + e(arr(u.policy.added).map(function(x){ return x.name; }).join('; ')) + '.');
+    out += S3('What changed, in brief') + (sb.length ? updList(sb)
+      : '<div class="lead"><p>The Top 3 and the macro readings are unchanged between the two versions.</p></div>');
+  }
+
+  if(isCo){
+    /* 02 — key figures */
+    var rows = arr(u.figures).filter(function(r){ return !/^pillar\./.test(r.key) && r.key !== 'score'; });
+    out += S3('Key figures, previous and now')
+      + '<p class="mut">Each figure as the two saved versions state it; the change is the app’s arithmetic. '
+      + 'Periods are shown where the research dated the figure.</p>'
+      + tbl(['Measure', 'Previous', 'Now', 'Change', 'Reading', 'What it means'], rows.map(function(r){
+          return { cells: [ '<b>' + e(r.label) + '</b>'
+              + ((r.prevPeriod || r.curPeriod) ? '<br><span class="mut">' + e(S(r.prevPeriod || '—')) + ' → ' + e(S(r.curPeriod || '—')) + '</span>' : ''),
+            updFig(r, r.prev, rep), updFig(r, r.cur, rep), updChange(r), UPD_VERDICT[r.verdict] || e(r.verdict),
+            '<span class="mut">' + updMeaning(r) + '</span>' ] };
+        }), { num:[1, 2, 3], headWrap:true, widths:['20%', '13%', '13%', '10%', '11%', '33%'], chunk: 5 });
+
+    /* 03 — the scores */
+    var pil = arr(u.figures).filter(function(r){ return /^pillar\./.test(r.key) || r.key === 'score'; });
+    out += S3('The scores')
+      + tbl(['Score', 'Previous', 'Now', 'Change', 'Reading'], pil.map(function(r){
+          return { cells: [ e(r.label), updFig(r, r.prev, rep), updFig(r, r.cur, rep), updChange(r), UPD_VERDICT[r.verdict] || '' ] };
+        }), { num:[1, 2, 3], widths:['36%', '15%', '15%', '15%', '19%'] })
+      + (u.verdict && u.verdict.eligible && u.verdict.eligible.prev !== u.verdict.eligible.cur
+          ? '<div class="note warn"><b>The safety screen.</b> ' + (u.verdict.eligible.cur ? 'It now clears the screen.' : 'It no longer clears the screen.') + '</div>' : '');
+
+    /* 04 — the thesis */
+    var th = u.thesis || {};
+    if(arr(th.check).length){
+      out += S3('The thesis, checked')
+        + tbl(['Thesis line (previous version)', 'Status', 'Evidence'], arr(th.check).map(function(t){
+            return { cells: [ e(t.thesis), t.status === 'broken' ? '<span class="neg"><b>Broken</b></span>'
+                : t.status === 'weakened' ? '<b>Weakened</b>' : t.status === 'holds' ? '<span class="pos"><b>Holds</b></span>' : e(t.status),
+              '<span class="mut">' + e(t.evidence) + '</span>' ] };
+          }), { widths:['46%', '12%', '42%'], chunk: 6 });
+    } else if(arr(th.added).length || arr(th.dropped).length){
+      out += S3('The thesis')
+        + '<p class="mut">The research did not check the previous thesis line by line, so the two versions’ lines are set side by side.</p>'
+        + (arr(th.dropped).length ? '<h4>In the previous version</h4>' + eqList(arr(th.dropped)) : '')
+        + (arr(th.added).length ? '<h4>In this version</h4>' + eqList(arr(th.added)) : '')
+        + (arr(th.kept).length ? '<h4>In both</h4>' + eqList(arr(th.kept)) : '');
+    }
+
+    /* 05 — risks and red flags */
+    var rk = u.risks || {}, fl = u.flags || {};
+    var riskRows = [].concat(
+      arr(rk.added).map(function(x){ return { cells: [ '<b>New</b>', e(x.risk), e(x.severity), isNum_(x.probability) ? n(x.probability * 100, 0) + '%' : '—' ] }; }),
+      arr(rk.changed).map(function(x){ return { cells: [ 'Re-rated', e(x.risk), e(x.was.severity) + ' → ' + e(x.severity),
+        (isNum_(x.was.probability) ? n(x.was.probability * 100, 0) + '%' : '—') + ' → ' + (isNum_(x.probability) ? n(x.probability * 100, 0) + '%' : '—') ] }; }),
+      arr(rk.removed).map(function(x){ return { cells: [ '<span class="mut">No longer listed</span>', e(x.risk), e(x.severity), '—' ] }; }));
+    var flagRows = [].concat(
+      arr(fl.added).map(function(x){ return { cells: [ '<b>New</b>', e(x.category), x.severity === 'severe' ? '<span class="neg"><b>severe</b></span>' : e(x.severity), e(x.detail) ] }; }),
+      arr(fl.severity).map(function(x){ return { cells: [ 'Re-graded', e(x.category), e(x.from) + ' → ' + e(x.to), '' ] }; }),
+      arr(fl.removed).map(function(x){ return { cells: [ '<span class="mut">Resolved or dropped</span>', e(x.category), e(x.severity), e(x.detail) ] }; }));
+    if(riskRows.length || flagRows.length){
+      out += S3('Risks and red flags')
+        + (riskRows.length ? '<h4>Risks</h4>' + tbl(['', 'Risk', 'Severity', 'Probability'], riskRows, { widths:['16%', '54%', '16%', '14%'], chunk: 8 }) : '')
+        + (flagRows.length ? '<h4>Red flags</h4>' + tbl(['', 'Category', 'Severity', 'Finding'], flagRows, { widths:['16%', '16%', '12%', '56%'], chunk: 8 }) : '');
+    }
+
+    /* 06 — legal and regulatory */
+    var lg = u.litigation || {};
+    if(arr(lg.added).length){
+      out += S3('Legal and regulatory matters')
+        + '<p class="mut">Matters in this version’s register search that the previous version did not record.</p>'
+        + tbl(['Register', 'Severity', 'Matter', 'Status'], arr(lg.added).map(function(m){
+            return { cells: [ e(m.register || '—'), /severe|high/i.test(m.severity) ? '<span class="neg"><b>' + e(m.severity) + '</b></span>' : e(m.severity),
+              e(m.summary), '<span class="mut">' + e(m.status) + '</span>' ] };
+          }), { widths:['14%', '10%', '56%', '20%'], chunk: 6 });
+    }
+
+    /* 07 — catalysts */
+    var ct = u.catalysts || {};
+    if(arr(ct.dueSince).length || arr(ct.added).length){
+      out += S3('Dated events')
+        + (arr(ct.dueSince).length ? '<h4>Due since the previous version</h4>'
+            + tbl(['Event', 'When', 'Why it mattered'], arr(ct.dueSince).map(function(x){
+                return { cells: [ e(x.event), e(dmy(x.window)), '<span class="mut">' + e(x.impact) + '</span>' ] }; }), { chunk: 6 }) : '')
+        + (arr(ct.added).length ? '<h4>New on the calendar</h4>'
+            + tbl(['Event', 'When', 'Why it matters'], arr(ct.added).map(function(x){
+                return { cells: [ e(x.event), e(dmy(x.window)), '<span class="mut">' + e(x.impact) + '</span>' ] }; }), { chunk: 6 }) : '');
+    }
+  } else {
+    /* 02 — the Top 3 */
+    var t3s = u.top3 || {};
+    out += S3('The Top 3')
+      + '<p class="mut">The application’s screen chooses the three from each version’s ratings, with equal weights on the four pillars.'
+      + (t3s.prevSource !== 'screened' ? ' The previous version named its three itself rather than carrying a rated shortlist, so its ranks are the order it gave.' : '')
+      + '</p>'
+      + tbl(['Company', 'Status', 'Rank then', 'Rank now', 'Score then', 'Score now', 'Why'], arr(t3s.rows).map(function(r){
+          return { cells: [ '<b>' + e(r.name) + '</b>', r.status === 'entered' ? '<span class="pos"><b>Entered</b></span>'
+              : r.status === 'left' ? '<span class="neg"><b>Left</b></span>' : 'Stayed',
+            r.prevRank == null ? '—' : String(r.prevRank), r.curRank == null ? '—' : String(r.curRank),
+            eqNum(r.prevScore), eqNum(r.curScore), '<span class="mut">' + e(r.why) + '</span>' ] };
+        }), { num:[2, 3, 4, 5], headWrap:true, widths:['20%', '10%', '8%', '8%', '9%', '9%', '36%'] })
+      + (arr(t3s.entered).length ? '<div class="note"><b>New to the Top 3.</b> ' + e(arr(t3s.entered).join(', '))
+          + ' had no research under the previous version, so each slot on the Company page offers the full research prompt.</div>' : '');
+
+    /* 03 — the whole shortlist */
+    if(arr(u.ranking).length){
+      out += S3('The shortlist, re-ranked')
+        + tbl(['Company', 'Rank then', 'Rank now', 'Score then', 'Score now', 'Move'], arr(u.ranking).map(function(r){
+            var mv = (r.prevRank != null && r.curRank != null) ? r.prevRank - r.curRank : null;
+            return { cells: [ e(r.name), r.prevRank == null ? '<span class="mut">not listed</span>' : String(r.prevRank),
+              r.curRank == null ? '<span class="mut">not listed</span>' : String(r.curRank), eqNum(r.prevScore), eqNum(r.curScore),
+              mv == null ? '—' : mv > 0 ? '<span class="pos">up ' + mv + '</span>' : mv < 0 ? '<span class="neg">down ' + (-mv) + '</span>' : 'same' ] };
+          }), { num:[1, 2, 3, 4], widths:['34%', '12%', '12%', '13%', '13%', '16%'], chunk: 14 });
+    }
+
+    /* 04 — the macro backdrop */
+    if(arr(u.macro).length){
+      out += S3('The macro backdrop')
+        + tbl(['Reading', 'Previous', 'Period then', 'Now', 'Period now', 'Change'], arr(u.macro).map(function(m){
+            var d = (isNum_(m.prev) && isNum_(m.cur)) ? m.cur - m.prev : null;
+            var isFx = m.key === 'currency';
+            return { cells: [ e(m.label), isNum_(m.prev) ? n(m.prev, 2) + (isFx ? '' : '%') : '—', e(S(m.prevPeriod)),
+              isNum_(m.cur) ? n(m.cur, 2) + (isFx ? '' : '%') : '—', e(S(m.curPeriod)),
+              d == null ? '—' : (d > 0 ? '+' : d < 0 ? '−' : '') + n(Math.abs(d), 2) + (isFx ? '' : ' pp') ] };
+          }), { num:[1, 3, 5], headWrap:true, widths:['22%', '12%', '18%', '12%', '22%', '14%'] });
+    }
+
+    /* 05 — market size and competition */
+    var mk = arr(u.market), cp = u.competition || {};
+    if(mk.length || arr(cp.players).length){
+      out += S3('Market size and competition');
+      if(mk.length){
+        out += tbl(['Measure', 'Previous', 'Now', 'Change'], mk.map(function(r){
+          var same = S(r.prevUnit).toLowerCase() === S(r.curUnit).toLowerCase();
+          return { cells: [ e(r.label),
+            isNum_(r.prev) ? amountIn(r.prev, r.prevUnit, 0) + (r.prevYear ? '<br><span class="mut">' + e(r.prevYear) + '</span>' : '') : '—',
+            isNum_(r.cur) ? amountIn(r.cur, r.curUnit, 0) + (r.curYear ? '<br><span class="mut">' + e(r.curYear) + '</span>' : '') : '—',
+            (isNum_(r.prev) && isNum_(r.cur)) ? (same ? ((r.cur >= r.prev ? '+' : '−') + n(Math.abs((r.cur / r.prev - 1) * 100), 1) + '%')
+              : '<span class="mut">different units — not compared</span>') : '—' ] };
+        }), { num:[1, 2], widths:['30%', '26%', '26%', '18%'] });
+      }
+      if(arr(cp.players).length){
+        out += '<h4>Market shares</h4>'
+          + '<p class="mut">' + (cp.comparable
+              ? 'Both versions measure share the same way (' + e(cp.curMetric) + '), so the shares compare.'
+              : 'The two versions measure share differently — then: ' + e(cp.prevMetric || 'not stated') + (cp.prevPeriod ? ', ' + e(cp.prevPeriod) : '')
+                + '; now: ' + e(cp.curMetric || 'not stated') + (cp.curPeriod ? ', ' + e(cp.curPeriod) : '')
+                + '. Read each column on its own; the difference between them is not a change in share.') + '</p>'
+          + tbl(['Player', 'Share then', 'Share now'], arr(cp.players).map(function(x){
+              return { cells: [ e(x.name), isNum_(x.prev) ? n(x.prev, 2) + '%' : '<span class="mut">not listed</span>',
+                isNum_(x.cur) ? n(x.cur, 2) + '%' : '<span class="mut">not listed</span>' ] };
+            }), { num:[1, 2], widths:['56%', '22%', '22%'], chunk: 12 });
+      }
+      var vv = u.valuation || {};
+      if(vv.prev || vv.cur){
+        out += '<h4>Sector valuation</h4>' + tbl(['', 'Previous', 'Now'], [ { cells: [ 'Multiple',
+          vv.prev ? n(vv.prev.value, 2) + '<br><span class="mut">' + e(vv.prev.metric) + '</span>' : '—',
+          vv.cur ? n(vv.cur.value, 2) + '<br><span class="mut">' + e(vv.cur.metric) + '</span>' : '—' ] } ], { widths:['30%', '35%', '35%'] });
+      }
+    }
+
+    /* 06 — policy and regulation */
+    var pol = u.policy || {};
+    if(arr(pol.added).length || arr(pol.removed).length || (u.underReview && u.underReview.cur && u.underReview.cur !== u.underReview.prev)){
+      out += S3('Policy and regulation')
+        + (arr(pol.added).length ? '<h4>New in this version</h4>' + tbl(['Policy or scheme', 'Objective', 'How it reaches the sector'],
+            arr(pol.added).map(function(x){ return { cells: [ '<b>' + e(x.name) + '</b>', e(x.objective), '<span class="mut">' + e(x.reachesSector) + '</span>' ] }; }),
+            { widths:['28%', '36%', '36%'], chunk: 6 }) : '')
+        + (arr(pol.removed).length ? '<h4>No longer listed</h4>' + eqList(arr(pol.removed).map(function(x){ return x.name; })) : '')
+        + (u.underReview && u.underReview.cur && u.underReview.cur !== u.underReview.prev
+            ? '<h4>Under review now</h4><div class="lead"><p>' + e(u.underReview.cur) + '</p></div>' : '');
+    }
+  }
+
+  /* The research tool's own account, checked */
+  var ch = arr(u.changes);
+  if(ch.length){
+    var ord = { high: 0, medium: 1, low: 2 };
+    ch = ch.slice().sort(function(a, b){ return (ord[a.significance] == null ? 1 : ord[a.significance]) - (ord[b.significance] == null ? 1 : ord[b.significance]); });
+    out += S3('What the research says changed, and why')
+      + '<p class="mut">In the research tool’s own words. The last column is the application’s check of its numbers '
+      + 'against the two saved versions: <b>agrees</b>, <b>differs</b> (with both readings), or <b>not checked</b> where the item '
+      + 'is not one of the measured figures.</p>'
+      + tbl(['Item', 'Previous', 'Now', 'Why it changed and what it means', 'Check'], ch.map(function(c){
+          return { cells: [ '<b>' + e(c.item || c.area) + '</b>' + (c.significance ? '<br><span class="mut">' + e(c.area) + ' · ' + e(c.significance) + '</span>' : ''),
+            e(c.previous), e(c.current),
+            e(c.why) + (c.source ? '<br><span class="mut">' + e(c.source) + (c.date ? ', ' + e(dmy(c.date)) : '') + '</span>' : ''),
+            c.check === 'differs' ? '<span class="neg"><b>Differs</b></span><br><span class="mut">' + e(c.detail) + '</span>'
+              : c.check === 'agrees' ? '<span class="pos">Agrees</span>' : '<span class="mut">Not checked</span>' ] };
+        }), { headWrap:true, widths:['17%', '14%', '14%', '41%', '14%'], chunk: 8 });
+  } else {
+    out += S3('What the research says changed')
+      + '<div class="lead"><p>The newer version carries no account of its own changes — it was not produced by the '
+      + 'Update prompt, or the tool left the change log out. Every figure above is still the application’s own comparison.</p></div>';
+  }
+
+  /* What to watch next */
+  var watch = isCo ? arr(u.thesisBreakers) : arr(u.monitorables && u.monitorables.added);
+  if(watch.length){
+    out += S3(isCo ? 'What would break the thesis now' : 'New things to watch') + eqList(watch.slice(0, 8));
+  }
+
+  out += S3('How to read this')
+    + '<div class="lead"><p>This compares two saved versions of the same research. Previous, now and change are '
+    + 'computed by the application from the two payloads; nothing in those columns is the research tool’s assertion. '
+    + 'The full report for either version is on the ' + (isCo ? 'Company' : 'Sector') + ' page — choose the version '
+    + 'in its picker. Nothing here is a recommendation or advice; check each figure against the filings before acting.</p></div>';
+
+  var built = blocksFromBody(out);
+  return packDoc(p, lang, {
+    B: built.B, TITLES: built.TITLES, leadIn: leadIn,
+    runHead: 'Update Summary', docName: 'Update Summary',
+    shellTitle: title + ' — Update Summary',
+    toc: true, seedPages: 10, maxPages: 10
+  });
+}
+
+global.EQDocs = { buildCompany:buildCompany, buildExec:buildExec, buildUpdate:buildUpdate,
                    buildCompanyExec:buildCompanyExec,
                    buildSector:buildSector,
                    charts:{ financials:chartFinancials, gauge:chartGauge,

@@ -26,6 +26,31 @@ behave and it is not a fault.
 
 ## Current build
 
+`19-11-2026.25` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 25 is saved research brought up to date. Every sector study, Top 3
+company and independent company keeps every version (a line joins them:
+`src/core/update.js` `lineKey`); nothing is replaced on import any more. An
+**Update** button copies an update brief — the full research brief preceded by
+a digest of the saved version, asking for a complete payload plus a `changes`
+log and, for a company, a `thesisCheck`. The reply is saved as the next
+version wherever it is imported. A **version picker** on the Sector page and
+the independent-company box selects any version; an older study version
+brings back its own Top 3 on the Company page. After a sector update each slot
+says whether it carries earlier research (**Update**) or is new to the Top 3
+(**Research**, the full prompt). A new document, the **Update Summary**,
+compares a version with the one before: figures previous / now / change /
+what it means, computed by the app; Top 3 entered / left / stayed with the
+ratings behind it; macro, market, competition, policy; the tool's own account
+of the changes, each checked against the numbers (agrees / differs / not
+checked). Each saved version shows its research date, age and why an update
+is due (age, price move of 10% from a daily background check, dated events
+passed, results due, year-old macro). Also fixed: computed metrics (ROE, ROA,
+margins) used the OLDEST annual year for payloads listed newest first.
+New suites `versions.mjs` (49 checks, real app) and `update-engine.mjs` (40).
+
+Previous: `19-11-2026.24`.
+
 `19-11-2026.24` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 24 makes the test suite run anywhere and fixes three defects that the

@@ -45,6 +45,11 @@ function currentPayload(kind){
      through doAction still resolves to the right record. */
   var spc = splitKind(kind);
   if(spc.who){ DOC_SUBJECT = spc.who; kind = spc.kind; }
+  /* Build 25: the Update Summary compares the version on screen with the one
+     before it. The app shell knows the versions; it hands over the comparison. */
+  if(kind === 'update'){
+    return typeof window.updatePayload === 'function' ? window.updatePayload(DOC_SUBJECT || 'sector') : null;
+  }
   /* An independent company is its own run. Its documents are built from its own
      payload, addressed by the picker in its own box — not through the Saved
      Company Research list, which is what made its PDF button hand over whichever
@@ -103,7 +108,7 @@ function shareTitle(p, kind){
   return EQDocs.S((p.meta && (p.meta.sector || p.meta.company)) || 'Equity Analyst');
 }
 function companyIndexFor(p, kind){
-  if(kind === 'solo') return (p && p.companyIndex) || 0;
+  if(kind === 'solo' || kind === 'update') return (p && p.companyIndex) || 0;
   var m = /^co([123])$/.exec(kind);
   if(m) return Number(m[1]) - 1;
   return (p && p.companyIndex) || 0;
@@ -115,7 +120,8 @@ function fileBase(p, kind, lang){
   /* An executive summary for a company is named after that company, not after
      the sector run; the sector's own summary keeps the sector name. */
   var perCompany = kind === 'solo' || /^co[123]$/.test(kind) || kind === 'score'
-    || kind === 'scorepng' || (kind === 'exec' && DOC_SUBJECT && DOC_SUBJECT !== 'sector');
+    || kind === 'scorepng' || (kind === 'exec' && DOC_SUBJECT && DOC_SUBJECT !== 'sector')
+    || (kind === 'update' && DOC_SUBJECT && DOC_SUBJECT !== 'sector');
   var co = null;
   if(perCompany && p.report && p.report.full){
     co = p.report.full[companyIndexFor(p, kind)];
@@ -147,6 +153,7 @@ function fileBase(p, kind, lang){
   var k = kind==='sector' ? 'Sector_Research'
         : (kind==='solo' || /^co[123]$/.test(kind)) ? 'Company_Research'
         : kind==='exec' ? 'Executive_Summary'
+        : kind==='update' ? 'Update_Summary'
         : 'Scorecard';
   return nm + '_' + k;
 }
@@ -177,7 +184,8 @@ function splitKind(kind){
   return { who: bits[0],
     kind: bits[1] === 'report' ? bits[0]
         : bits[1] === 'exec' ? 'exec'
-        : bits[1] === 'score' ? 'score' : bits[0] };
+        : bits[1] === 'score' ? 'score'
+        : bits[1] === 'update' ? 'update' : bits[0] };
 }
 function buildHTML(p, kind, lang){
   p = withLocalGmp(p);
@@ -189,6 +197,7 @@ function buildHTML(p, kind, lang){
     return EQDocs.buildCompany(Object.assign({}, p, { companyIndex: companyIndexFor(p, kind) }), lang);
   }
   if(kind === 'sector') return EQDocs.buildSector(p, lang);
+  if(kind === 'update') return EQDocs.buildUpdate(p, lang);
   if(kind === 'exec'){
     /* A company's executive summary is a summary of that company, not of the
        sector. The sector summary is still what the Sector page produces. */
@@ -600,7 +609,9 @@ function share(files, title){
 function needPayload(kind){
   var p = currentPayload(kind);
   if(!p){
-    msg(kind === 'solo'
+    msg(kind === 'update'
+      ? 'There is no earlier version to compare with yet. Press Update, import the reply, and the Update Summary appears.'
+      : kind === 'solo'
       ? 'Import an independent company first — its report is built from its own research.'
       : 'Import a research payload first.', true);
     return null;

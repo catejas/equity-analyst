@@ -83,7 +83,9 @@ console.log('  after imports  :', [...d.querySelectorAll('#coBoxes .runbox h2')]
 console.log('  saved companies:', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent.split('  ·')[0]).join(', '));
 
 console.log('\n--- 5. Top 3 research button ---');
-clip=null; d.querySelector('.co-search[data-rank="1"]').click(); await pause();
+/* Build 25: once a company is imported, its slot's main button is Update
+   (the update brief) rather than Research; either must copy a prompt naming it. */
+clip=null; d.querySelector('.co-update[data-rank="1"], .co-search[data-rank="1"]').click(); await pause();
 console.log('  copied:', clip?clip.length+' chars':'NOTHING', '| names it:', clip?clip.includes('State Bank'):'-');
 
 console.log('\n--- 6. documents ---');

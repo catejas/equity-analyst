@@ -11,6 +11,7 @@ import { HORIZONS } from './multibagger.js';
 import { registerChecklist } from './litigation.js';
 import { DISCLOSURE_CHECKS } from './forensic.js';
 import { INDUSTRY_METRIC_SETS, INDUSTRY_LINES } from './industry.js';
+import { digest as updateDigest } from './update.js';
 
 /* The metric keys, listed for the research brief, built from the engine's own
    sets so the prompt and the engine cannot drift apart. Asking for a key the
@@ -1310,3 +1311,70 @@ export const PROMPT_USAGE = [
   'Save its reply as a .json file.',
   'Import that file here to build the report.',
 ];
+
+/* ── The update brief (build 25) ─────────────────────────────────────────
+ * Saved research brought up to date. It is the full research brief — the same
+ * schema, the same rules, a COMPLETE payload — with three things in front of
+ * it: what the saved version said (the digest), the instruction to re-verify
+ * every figure rather than copy it, and two extra blocks the app reads to
+ * write the Update Summary: `changes` (the tool's account of what moved and
+ * why) and, for a company, `thesisCheck`. The app computes every previous
+ * against current figure itself; the tool's account is checked against them.
+ *
+ * Why the whole payload and not just the changes: a reply carrying only what
+ * changed leaves the old figures standing beside the new ones with different
+ * dates, and a field the tool did not mention reads as "unchanged" when it
+ * means "not checked". */
+export function buildUpdatePrompt({ previous, previousTs = null, version = null, line = null,
+  sector = '', subSector = '', company = '', mode = null, horizon = '3-5', shortlistSize = 12 } = {}) {
+  if (!previous || typeof previous !== 'object') throw new Error('An update needs the saved version it updates.');
+  const single = (mode === 'company') || Boolean(company && company.trim());
+  const base = buildResearchPrompt({ sector, subSector, company, mode, horizon, shortlistSize });
+  const prevAsOf = (previous.run && previous.run.generatedAt) || (previousTs ? new Date(previousTs).toISOString() : null);
+  const what = single ? `the company ${company}` : `the ${sector}${subSector ? ' — ' + subSector : ''} sector study`;
+  const dg = updateDigest(previous, { savedTs: previousTs, version });
+  return `UPDATE OF SAVED RESEARCH — read this section first.
+
+This is an UPDATE of ${what}, researched before${prevAsOf ? ' (dated ' + prevAsOf.slice(0, 10) + ')' : ''}.
+The application keeps every version and writes an Update Summary that sets
+the previous version beside this one. For that it needs, from you:
+
+1. A COMPLETE payload in exactly the schema below — every section, every
+   array at its full minimum count. Not only what changed. A section you leave
+   out is read as "no longer known", not as "unchanged".
+2. Every figure RE-VERIFIED with a fresh web search as at today. Do not copy a
+   number from the saved version below: it is there so you know what to check,
+   not as a source. Where a figure has genuinely not changed (an annual figure
+   with no new year since), search and confirm it, and say so in the change log.
+3. In "run", add:
+     "update": { "line": ${JSON.stringify(line || null)}, "previousAsOf": ${JSON.stringify(prevAsOf ? prevAsOf.slice(0, 10) : null)}, "previousVersion": ${JSON.stringify(version || null)} }
+4. A top-level "changes" array — your account of what moved since the saved
+   version, most important first, at least ${single ? 'ten' : 'twelve'} rows:
+     "changes": [ { "area": "${single ? 'price | results | ratios | valuation | ratings | ownership | management | litigation | guidance | risk | catalyst | other' : 'top3 | ratings | macro | policy | budget | regulation | competition | market size | valuation | geopolitics | other'}",
+                    "item": "the measure or event, named as the schema names it",
+                    "previous": "the saved value or state, with its period",
+                    "current": "today's value or state, with its period",
+                    "direction": "better | worse | neutral",
+                    "significance": "high | medium | low",
+                    "why": "one or two sentences: what caused it and what it means for an investor",
+                    "source": "where today's figure comes from", "date": "DD-MM-YYYY" } ]
+   Put the numbers in "previous" and "current" exactly as you would print them;
+   the application checks them against the payloads and flags any that disagree.
+${single ? `5. A top-level "thesisCheck" array, one row for each thesis line in the saved
+   version below:
+     "thesisCheck": [ { "thesis": "the saved line, verbatim", "status": "holds | weakened | broken", "evidence": "the fact that decides it, dated" } ]
+   And state in "changes" whether any saved thesis breaker has been hit.` : `5. The shortlist is RE-RATED from scratch on today's evidence. The application's
+   screen picks the Top 3 from your ratings, and it may be a different three from
+   last time: say in "changes" (area "top3") which companies' ratings moved most
+   and why. Rate every company on the saved shortlist again, plus any company
+   that now belongs on it.`}
+
+What the saved version said:
+──────────────────────────────
+${dg}
+──────────────────────────────
+
+Everything below is the full research brief. Follow all of it.
+
+${base}`;
+}

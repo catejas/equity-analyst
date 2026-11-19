@@ -275,6 +275,17 @@ details .in{padding:0 14px 14px;}
 .pickpanel .pkempty{padding:12px 14px;color:var(--mut);font-size:.85rem;}
 .runbox{margin-bottom:12px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+/* Build 25: how current a saved version is, and why it is due for an update. */
+.agebox{margin-top:10px;padding:8px 10px;border-left:3px solid var(--green);border-radius:6px;
+  background:rgba(42,157,74,.08);font-size:.8rem;line-height:1.4;}
+.agebox b{font-size:.78rem;letter-spacing:.02em;margin-right:6px;}
+.agebox span{color:var(--mut);}
+.agebox ul{margin:5px 0 0 16px;padding:0;}
+.agebox .an{margin-top:5px;}
+.agebox.age-a{border-left-color:#D99A1E;background:rgba(217,154,30,.10);}
+.agebox.age-r{border-left-color:var(--red);background:rgba(230,103,103,.10);}
+.slotver{font-size:.74rem;color:var(--mut);margin-top:4px;}
 
 /* The picker panel. A native select hands the phone its own wheel, which is
    reliable but tiny and truncates a run label to a few words. This lists the
@@ -540,7 +551,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="19-11-2026.24";</script>
+<script>window.APP_BUILD="19-11-2026.25";</script>
 </head>
 <body>
 
@@ -589,12 +600,16 @@ body.previewing{overflow:hidden;}
 
     <label for="segPick" style="margin-top:10px;">Saved Sector / Sub-sector Research</label>
     <div class="selwrap"><select id="segPick"><option value="">— none imported —</option></select></div>
+    <label for="segVer" style="margin-top:8px;">Version</label>
+    <div class="selwrap"><select id="segVer" disabled><option value="">— no saved versions —</option></select></div>
 
-    <div class="grid3" style="margin-top:11px;">
+    <div class="grid4" style="margin-top:11px;">
       <button class="btn sm pri" id="btnSegSearch" style="margin:0;">Research</button>
+      <button class="btn sm" id="btnSegUpdate" style="margin:0;" disabled>Update</button>
       <button class="btn sm" id="btnImport" style="margin:0;">Import Data</button>
       <button class="btn sm dang" id="btnDelRep" style="margin:0;">Delete</button>
     </div>
+    <div id="segAge"></div>
 
     <label style="margin-top:16px;">Open AI tool</label>
     <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
@@ -617,6 +632,11 @@ body.previewing{overflow:hidden;}
         <span class="doc-name">Executive Summary<small>sector and companies, high level</small></span>
         <button class="ico ico-pdf" data-doc="exec" data-act="make" aria-label="Generate Executive Summary">PDF</button>
         <button class="ico ico-sh" data-doc="exec" data-act="share" aria-label="Share Executive Summary">&#8682;</button>
+      </div>
+      <div class="doc-row hidden" id="segUpdRow">
+        <span class="doc-name">Update Summary<small id="segUpdNote">this version against the one before</small></span>
+        <button class="ico ico-pdf" data-doc="sector:update" data-act="make" aria-label="Generate Update Summary">PDF</button>
+        <button class="ico ico-sh" data-doc="sector:update" data-act="share" aria-label="Share Update Summary">&#8682;</button>
       </div>
     </div>
       <div id="docMsg" class="note" style="margin-top:8px;"></div>
@@ -653,11 +673,15 @@ body.previewing{overflow:hidden;}
 
     <label for="soloPick" style="margin-top:10px;">Imported independently</label>
     <div class="selwrap"><select id="soloPick"><option value="">— none imported —</option></select></div>
-    <div class="grid3" style="margin-top:11px;">
+    <label for="soloVer" style="margin-top:8px;">Version</label>
+    <div class="selwrap"><select id="soloVer" disabled><option value="">— no saved versions —</option></select></div>
+    <div class="grid4" style="margin-top:11px;">
       <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
+      <button class="btn xs" id="btnSoloUpdate" style="margin:0;" disabled>Update</button>
       <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
       <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
     </div>
+    <div id="soloAge"></div>
     <div id="soloDocs"></div>
     <div id="soloDepth"></div>
     <div id="soloMsg" class="note" style="margin-top:8px;"></div>
@@ -3151,12 +3175,14 @@ function auditPayload(d){
    buttons. Previously only the run selected on the Sector page had document
    buttons at all, so five saved independent companies had no way to produce a
    report for any but the one on screen. */
-function docRows(kind, ready, label){
+function docRows(kind, ready, label, hasPrev){
   var docs = [
     { k:'report', n:'Research Report' },
     { k:'exec',   n:'Executive Summary' },
     { k:'score',  n:'Score Card' }
   ];
+  /* Build 25: the previous version against this one, when there is one. */
+  if(hasPrev) docs.push({ k:'update', n:'Update Summary' });
   return '<div class="docrows">' + docs.map(function(d){
     var doc = kind + ':' + d.k;
     return '<div class="docrow' + (ready ? '' : ' off') + '">'
@@ -3254,6 +3280,21 @@ function showReview(res, raw){
   pendingImport = { res:res, raw:raw, fixes:{} };
   var d = res.data;
   var html = '<div class="rv">';
+
+  /* Build 25: an update reply says which line it belongs to, so it goes there
+     whichever Import button was pressed — a Top 3 company into its slot in the
+     study on screen, an independent company into its own line. */
+  var upd0 = d && d.run && d.run.update;
+  if(res.v3 && upd0 && upd0.line && window.EQ && EQ.compose){
+    var L0 = String(upd0.line), c00 = d.companies && d.companies[0];
+    if(/^S\|/.test(L0)) IMPORT_TARGET = { kind:'sector', rank:0 };
+    else if(/^C\|/.test(L0)) IMPORT_TARGET = { kind:'company', rank:0 };
+    else if(/^T\|/.test(L0) && c00){
+      var slotHit = runSlots().filter(function(x){
+        return EQ.compose.sameCompany({ symbol: x.symbol, name: x.name }, c00); })[0];
+      if(slotHit) IMPORT_TARGET = { kind:'company', rank: slotHit.rank };
+    }
+  }
 
   /* A follow-up block is an addition to research already saved, not a run of
      its own. It is folded into that record here, so everything below — what
@@ -3872,15 +3913,22 @@ $('#btnSaveImport').addEventListener('click', function(){
       return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth()
         && x.getDate() === y.getDate();
     };
-    var dup = sectorRecords().filter(function(r){
-      return (r.sector || '') === (pr.sector || '')
-        && (r.subSector || '') === (pr.subSector || '')
-        && (r.source || '') === (pr.source || '')
-        && sameDay(r.ts, pr.ts);
-    })[0];
-    if(dup){
-      libWrite(libRead().filter(function(r){ return r.id !== dup.id && r.parentId !== dup.id; }));
+    /* Build 25: nothing is replaced. The same study saved again is its next
+       VERSION, and the earlier one keeps its own Top 3. An update reply names
+       the line it belongs to, so a tool that respells the sector cannot start
+       a second line by accident. The one thing refused is the identical reply
+       pasted twice. */
+    var upd = d.run && d.run.update;
+    if(upd && upd.line && /^S\|/.test(String(upd.line))
+       && sectorRecords().some(function(r){ return recLine(r) === upd.line; })) pr.line = upd.line;
+    var sameLine = sectorRecords().filter(function(r){ return recLine(r) === recLine(pr); })
+      .sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+    if(sameLine[0] && JSON.stringify(sameLine[0].data) === JSON.stringify(d)){
+      alert('This exact reply is already saved, as version ' + versionNo(sameLine[0]) + ' of the '
+        + (pr.sector || 'sector') + ' study. Nothing was added.');
+      return;
     }
+    void sameDay;
     if(!saveToLibrary(pr)) return;      /* the failure has already been reported */
     selectSector(pr.id);
     IMPORT_TARGET = { kind:'sector', rank:0 };
@@ -3890,6 +3938,19 @@ $('#btnSaveImport').addEventListener('click', function(){
     pendingImport = null;
     renderScoreTab();
     var named = (d.run && Array.isArray(d.run.top3)) ? d.run.top3.length : 0;
+    var nv = versionsOf(pr).length;
+    if(nv > 1){
+      /* Which of this version's Top 3 carry earlier research (Update) and which
+         are new to it (Research, the full prompt). */
+      var lines = runSlots().filter(function(x){ return x.name; }).map(function(x){
+        return x.rank + '. ' + x.name + ' \u2014 ' + (x.carried ? 'researched under an earlier version: press Update'
+          : x.record ? 'already imported' : 'new to the Top 3: press Research for the full prompt');
+      });
+      alert('Saved as version ' + nv + ' of the ' + (pr.sector || 'sector') + ' study. Every earlier version is kept, '
+        + 'and the Update Summary on the Sector page compares this version with the last.\n\n'
+        + 'Top 3 in this version:\n' + lines.join('\n'));
+      return;
+    }
     alert('Sector / Sub-sector research saved.' + (named ? ('\n\n' + named + ' companies named for a full report. '
       + 'Each has its own box below \u2014 research and import them one at a time.') : ''));
     return;
@@ -3917,18 +3978,19 @@ $('#btnSaveImport').addEventListener('click', function(){
                 : (seg + (sub ? ' — ' + sub : '')),
               data:d };
   if(isCompanyRun){
-    var firstSym = firstCo && firstCo.symbol;
-    var keep = libRead().filter(function(r){
-      if(r.kind !== 'company') return true;
-      if(rec.standalone){
-        /* one record per company researched on its own */
-        var s0 = r.data && r.data.companies && r.data.companies[0];
-        return !(r.standalone && s0 && firstSym
-                 && String(s0.symbol).toUpperCase() === String(firstSym).toUpperCase());
-      }
-      return !(!r.standalone && r.rank === rec.rank && r.parentId === rec.parentId);
-    });
-    libWrite(keep);
+    /* Build 25: the company researched again — on its own, or in the same
+       Top 3 slot — is its next version. Nothing is replaced. */
+    var cu = d.run && d.run.update;
+    var want = rec.standalone ? /^C\|/ : /^T\|/;
+    if(cu && cu.line && want.test(String(cu.line))
+       && companyRecords().some(function(r){ return recLine(r) === cu.line; })) rec.line = cu.line;
+    var same = companyRecords().filter(function(r){ return recLine(r) === recLine(rec); })
+      .sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+    if(same[0] && same[0].parentId === rec.parentId && JSON.stringify(same[0].data) === JSON.stringify(d)){
+      alert('This exact reply is already saved, as version ' + versionNo(same[0]) + ' of '
+        + (rec.company || 'this company') + '. Nothing was added.');
+      return;
+    }
   }
   if(!saveToLibrary(rec)) return;       /* the failure has already been reported */
   /* The company just imported is the one every page should now be showing —
@@ -3952,6 +4014,11 @@ $('#btnSaveImport').addEventListener('click', function(){
   pendingImport = null;
 
   var c = built.report.counts;
+  if(isCompanyRun && versionsOf(rec).length > 1){
+    alert('Saved as version ' + versionNo(rec) + ' of ' + (rec.company || 'this company')
+      + '. Every earlier version is kept, and its documents now include an Update Summary comparing this version with the last.');
+    return;
+  }
   alert('Saved. ' + c.scored + ' of ' + c.universe + ' companies scored, '
     + c.top3Eligible + ' cleared the kill switch.'
     + (built.warnings.length ? '\n\n' + built.warnings.length + ' gaps are reported on the documents.' : ''));
@@ -4604,9 +4671,9 @@ function segRecord(){
 function coRecords(){
   var seg = segRecord();
   if(!seg) return [];
-  return companyRecords().filter(function(r){
+  return latestOnly(companyRecords().filter(function(r){
     return !r.standalone && r.parentId === seg.id;
-  });
+  }));
 }
 /* One sector study and one company are selected at a time, and they have to
  * agree.
@@ -4620,7 +4687,7 @@ function coRecords(){
  * So choosing a company that belongs to a study selects that study, and
  * choosing a study moves the company selection onto one of its own. */
 function sectorKids(id){
-  return companyRecords().filter(function(r){ return !r.standalone && r.parentId === id; })
+  return latestOnly(companyRecords().filter(function(r){ return !r.standalone && r.parentId === id; }))
     .sort(function(a, b){ return (a.rank || 9) - (b.rank || 9); });
 }
 function selectSector(id){
@@ -4647,6 +4714,211 @@ function soloRecords(){ return companyRecords().filter(function(r){ return r.sta
 function soloRecord(){
   var l = soloRecords(); if(!l.length) return null;
   return l.filter(function(r){ return r.id === SEL.solo; })[0] || l[0];
+}
+
+/* ============================== versions (build 25) ===================
+ *
+ * Tejas, 19-11-2026: an Update button for a sector study, its Top 3 and an
+ * independently researched company, keeping every version, and "if I select
+ * an older version, the Top 3 in that version must be displayed on the
+ * company page".
+ *
+ * Every version is its own record, exactly as every import always was. What
+ * is new is the LINE that joins them: one sector and sub-sector; one company
+ * researched on its own; one company inside one sector line. Nothing is
+ * deleted on import any more — what used to replace a record now becomes the
+ * next version of it. Because a Top 3 company is attached to the sector
+ * VERSION it was imported under (parentId), choosing an older version of a
+ * study brings back that version's own Top 3 with no further logic. */
+function recCo(r){ return r && r.data && r.data.companies && r.data.companies[0] || null; }
+function recById(id){ return libRead().filter(function(r){ return r.id === id; })[0] || null; }
+function recLine(r){
+  if(!r) return null;
+  if(r.line) return r.line;
+  if(!window.EQ || !EQ.update) return 'id:' + r.id;
+  var k;
+  if(r.kind === 'company'){
+    var c = recCo(r), parent = r.parentId ? recById(r.parentId) : null;
+    k = EQ.update.lineKey({ kind:'company', symbol: c && c.symbol, name: (c && c.name) || r.company,
+      standalone: !!r.standalone, sectorLine: parent ? recLine(parent) : null });
+  } else {
+    k = EQ.update.lineKey({ kind:'sector', sector: r.sector, subSector: r.subSector });
+  }
+  return k || ('id:' + r.id);
+}
+/* Oldest first, so a version's number is its place in the list. */
+function versionsOf(r){
+  if(!r) return [];
+  var k = recLine(r), co = r.kind === 'company';
+  return libRead().filter(function(x){ return (x.kind === 'company') === co && recLine(x) === k; })
+    .sort(function(a, b){ return (a.ts || 0) - (b.ts || 0); });
+}
+function versionNo(r){ var v = versionsOf(r); var i = v.findIndex(function(x){ return x.id === r.id; }); return i + 1; }
+function latestVersion(r){ var v = versionsOf(r); return v.length ? v[v.length - 1] : r; }
+function prevVersion(r){
+  var v = versionsOf(r), i = v.findIndex(function(x){ return x.id === r.id; });
+  return i > 0 ? v[i - 1] : null;
+}
+/* One record per line: the newest. */
+function latestOnly(list){
+  var best = {};
+  (list || []).forEach(function(r){
+    var k = recLine(r);
+    if(!best[k] || (r.ts || 0) > (best[k].ts || 0)) best[k] = r;
+  });
+  return (list || []).filter(function(r){ return best[recLine(r)] === r; });
+}
+function verLabel(r){
+  var n = versionsOf(r).length, i = versionNo(r);
+  return 'Version ' + i + ' of ' + n + '  ·  ' + dmyTime(r.ts)
+    + (r.source && r.source !== 'unknown' ? '  ·  ' + r.source : '')
+    + (i === n ? '  ·  latest' : '');
+}
+function fillVersions(sel, rec){
+  var el = $(sel); if(!el) return;
+  var v = rec ? versionsOf(rec).slice().reverse() : [];
+  el.innerHTML = v.length ? v.map(function(r){
+      return '<option value="' + esc(r.id) + '"' + (r.id === rec.id ? ' selected' : '') + '>'
+        + esc(verLabel(r)) + '</option>'; }).join('')
+    : '<option value="">— no saved versions —</option>';
+  el.disabled = v.length < 2;
+}
+
+/* ---- why a saved version is due for an update ---- */
+var LIVE = {};
+try{ LIVE = JSON.parse(get('eq.live', '{}')) || {}; }catch(e){ LIVE = {}; }
+function livePriceFor(r){
+  var c = recCo(r); if(!c || !c.symbol) return null;
+  return LIVE[String(c.symbol).toUpperCase()] || null;
+}
+function updateDue(r){
+  if(!r || !r.data || !window.EQ || !EQ.update) return [];
+  try{ return EQ.update.triggers(r.data, { savedTs: r.ts, now: new Date(), livePrice: livePriceFor(r) }); }
+  catch(e){ return []; }
+}
+/* When the research was done: the date the tool stamped on it, or failing
+   that the day it was saved. "Researched 3 days ago" is what decides whether
+   to update; when it was pasted into the app is not. */
+function recAsOf(r){
+  var g = r && r.data && r.data.run && r.data.run.generatedAt;
+  var d = g ? new Date(g) : null;
+  return (d && !isNaN(d.getTime())) ? d.getTime() : (r && r.ts) || Date.now();
+}
+function ageBox(r, note){
+  if(!r) return '';
+  var t = updateDue(r);
+  var days = Math.max(0, Math.floor((Date.now() - recAsOf(r)) / 86400000));
+  var lvl = t.some(function(x){ return x.level === 'red'; }) ? 'r'
+    : t.some(function(x){ return x.level === 'amber'; }) ? 'a' : 'g';
+  return '<div class="agebox age-' + lvl + '"><b>' + (lvl === 'g' ? 'Current' : 'Update recommended') + '</b> '
+    + '<span>Researched ' + esc(dmyTs(recAsOf(r))) + ' · ' + days + (days === 1 ? ' day' : ' days') + ' ago'
+    + (dmyTs(recAsOf(r)) !== dmyTs(r.ts) ? ' · saved ' + esc(dmyTs(r.ts)) : '')
+    + (versionsOf(r).length > 1 ? ' · ' + esc('version ' + versionNo(r) + ' of ' + versionsOf(r).length) : '')
+    + '</span>'
+    + (t.length ? '<ul>' + t.map(function(x){ return '<li>' + esc(x.why) + '</li>'; }).join('') + '</ul>' : '')
+    + (note ? '<div class="an">' + note + '</div>' : '')
+    + '</div>';
+}
+/* Once a day, quietly: the last close for every company held, so "price
+   moved 10% since the research" can be said without asking the AI anything.
+   Never blocks, never alerts; a failure leaves the last value in place. */
+var LIVE_BUSY = false;
+function refreshLivePrices(){
+  if(LIVE_BUSY || !window.EQ || !EQ.prices) return Promise.resolve(0);
+  var today = new Date().toISOString().slice(0, 10), seen = {};
+  var todo = latestOnly(companyRecords()).map(recCo).filter(function(c){
+    if(!c || !c.symbol || !c.isin) return false;
+    var k = String(c.symbol).toUpperCase();
+    if(seen[k]) return false; seen[k] = true;
+    return !(LIVE[k] && LIVE[k].day === today);
+  });
+  if(!todo.length) return Promise.resolve(0);
+  LIVE_BUSY = true;
+  var got = 0;
+  return Promise.all(todo.map(function(c){
+    return EQ.prices.fetchHistoricalPrices(c, { years: 1, providers: ['upstox'] }).then(function(r){
+      var ph = r && r.priceHistory, cl = ph && ph.closes;
+      if(cl && cl.length){
+        LIVE[String(c.symbol).toUpperCase()] = { price: cl[cl.length - 1], asOf: ph.asOf || null, day: today };
+        got++;
+      }
+    }, function(){});
+  })).then(function(){
+    LIVE_BUSY = false;
+    if(got){ try{ set('eq.live', JSON.stringify(LIVE)); }catch(e){} try{ renderReportPage(); }catch(e){} }
+    return got;
+  });
+}
+window.addEventListener('eq:ready', function(){
+  (window.EQLib && EQLib.ready ? EQLib.ready : Promise.resolve()).then(function(){ setTimeout(refreshLivePrices, 4000); });
+});
+
+/* ---- the Update Summary: which two versions it compares ---- */
+function updatePair(who){
+  var cur = null;
+  if(who === 'sector') cur = segRecord();
+  else if(who === 'solo') cur = soloRecord();
+  else {
+    var m = /^co([123])$/.exec(who || '');
+    if(m){ var s = runSlots()[Number(m[1]) - 1]; cur = s && (s.record || null); }
+  }
+  if(!cur) return null;
+  var prev = prevVersion(cur);
+  return prev ? { prev: prev, cur: cur } : null;
+}
+function updatePayload(who){
+  var pair = updatePair(who);
+  if(!pair || !window.EQ || !EQ.update) return null;
+  var diff;
+  try{ diff = EQ.update.updateDiff(pair.prev.data, pair.cur.data, { prevTs: pair.prev.ts, curTs: pair.cur.ts }); }
+  catch(e){ return null; }
+  if(!diff) return null;
+  var b;
+  try{ b = EQ.buildReport(pair.cur.data); }catch(e){ return null; }
+  if(!b || !b.ok) return null;
+  diff.versions = { prev: versionNo(pair.prev), cur: versionNo(pair.cur), of: versionsOf(pair.cur).length,
+    prevTs: pair.prev.ts, curTs: pair.cur.ts };
+  return {
+    meta: { sector: pair.cur.sector, subSector: pair.cur.subSector,
+            company: pair.cur.kind === 'company' ? pair.cur.company : (pair.cur.sector || ''),
+            analysis_datetime: new Date(pair.cur.ts).toISOString() },
+    report: b.report, warnings: [], companyIndex: 0, update: diff,
+    standalone: pair.cur.kind === 'company'
+  };
+}
+window.updatePayload = updatePayload;
+window.updatePair = updatePair;
+
+/* ---- the update brief ---- */
+function updatePromptFor(rec, what){
+  if(!rec || !window.EQ || !EQ.buildUpdatePrompt) return null;
+  var last = latestVersion(rec);
+  var c = recCo(last);
+  var parent = last.parentId ? recById(last.parentId) : null;
+  try{
+    return EQ.buildUpdatePrompt({
+      previous: last.data, previousTs: last.ts, version: versionNo(last), line: recLine(last),
+      sector: last.kind === 'company' ? ((parent && parent.sector) || (last.data.run && last.data.run.sector) || '') : (last.sector || ''),
+      subSector: last.kind === 'company' ? ((parent && parent.subSector) || '') : (last.subSector || ''),
+      company: last.kind === 'company' ? ((c && (c.name || c.symbol)) || last.company || '') : '',
+      mode: last.kind === 'company' ? 'company' : 'sector',
+      horizon: ($('#horizon') && $('#horizon').value) || '3-5'
+    });
+  }catch(e){ return null; }
+}
+function updateNow(rec, what){
+  LAST_PROMPT = '';
+  if(!window.EQ || !EQ.buildUpdatePrompt){
+    alert('The research engine has not finished loading. Wait a moment and press Update again.');
+    return;
+  }
+  var text = updatePromptFor(rec, what);
+  if(!text){ alert('There is no saved research to update yet. Research it first.'); return; }
+  var last = latestVersion(rec);
+  deliverPrompt(text, 'Update prompt copied for ' + what + ' (from version ' + versionNo(last) + ', saved '
+    + dmyTs(last.ts) + ').\n\nPick a tool — the four buttons are highlighted below. Paste, send, and '
+    + 'bring the reply back with Import. It is saved as a new version; every earlier version is kept, '
+    + 'and an Update Summary comparing the two appears with the documents.');
 }
 
 /* What the form is asking for right now. The hidden inputs are kept so the
@@ -4703,7 +4975,9 @@ function runLabel(r){
     : ((r.sector || 'Sector') + (r.subSector ? ' \u2014 ' + r.subSector : ''));
   var when = r.ts ? dmyTs(r.ts) : '';
   var via = (r.source && r.source !== 'unknown') ? r.source : null;
-  return name + (when ? '  \u00b7  ' + when : '') + (via ? '  \u00b7  ' + via : '');
+  var nv = versionsOf(r).length;
+  return name + (when ? '  \u00b7  ' + when : '') + (via ? '  \u00b7  ' + via : '')
+    + (nv > 1 ? '  \u00b7  v' + versionNo(r) + ' of ' + nv : '');
 }
 /* The Score Card's company list, grouped by what each company belongs to.
    A flat list of every company ever imported gave no sign of which study a
@@ -4828,6 +5102,13 @@ function researchNow(opts, what){
     alert('Nothing to research yet. Choose a sector, or name a company.');
     return;
   }
+  deliverPrompt(text, 'Prompt copied for ' + what + '.\n\nPick a tool \u2014 the four buttons are '
+    + 'highlighted below. The tool opens with your clipboard ready: paste, send, then '
+    + 'bring the reply back with Import Data.');
+}
+/* Copy a finished prompt and point at the tool buttons. Shared by Research
+   and Update, so both behave the same way. */
+function deliverPrompt(text, message){
   LAST_PROMPT = text;
   copyText(text).then(function(){
     setPending('armed');
@@ -4841,9 +5122,7 @@ function researchNow(opts, what){
       row.classList.add('armed');
       try{ row.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){}
     }
-    alert('Prompt copied for ' + what + '.\n\nPick a tool \u2014 the four buttons are '
-      + 'highlighted below. The tool opens with your clipboard ready: paste, send, then '
-      + 'bring the reply back with Import Data.');
+    alert(message);
   }).catch(function(){
     alert('Copying was blocked by the browser. Pick a tool below and the app will copy again '
       + 'as it opens.');
@@ -4856,7 +5135,17 @@ function renderSectorPage(){
   fillSectorSelect(); fillSubSelect();
   var recs = sectorRecords(), seg = segRecord();
   if(seg) SEL.sector = seg.id;
-  fillPicker('#segPick', recs, SEL.sector, '\u2014 none imported \u2014');
+  /* One entry per study, its newest version; the version picker underneath
+     chooses within it. */
+  fillPicker('#segPick', latestOnly(recs), seg ? latestVersion(seg).id : null, '\u2014 none imported \u2014');
+  fillVersions('#segVer', seg);
+  if($('#btnSegUpdate')) $('#btnSegUpdate').disabled = !seg;
+  if($('#segAge')) $('#segAge').innerHTML = seg ? ageBox(seg, versionNo(seg) < versionsOf(seg).length
+      ? 'An older version is shown. Its own Top 3 is on the Company page. Update starts from the latest version.' : '') : '';
+  var hasPrev = !!(seg && prevVersion(seg));
+  if($('#segUpdRow')) $('#segUpdRow').classList.toggle('hidden', !hasPrev);
+  if(hasPrev && $('#segUpdNote')) $('#segUpdNote').textContent = 'version ' + versionNo(seg) + ' against version '
+    + (versionNo(seg) - 1) + ' \u00b7 what changed';
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
     ? ((seg.sector || 'Sector') + (seg.subSector ? ' \u2014 ' + seg.subSector : ''))
@@ -4890,22 +5179,43 @@ function rankOfCompany(rec){
 function runSlots(){
   var seg = segRecord();
   if(!window.EQ || !EQ.compose || !seg) return [];
-  var mine = companyRecords().filter(function(r){
+  var mine = latestOnly(companyRecords().filter(function(r){
     return !r.standalone && r.parentId === seg.id;
-  });
-  return EQ.compose.slots(seg.data, mine);
+  }));
+  var out = EQ.compose.slots(seg.data, mine);
+  /* A slot this version has not researched yet may hold a company that an
+     EARLIER version of the same study did research. That research is carried:
+     the slot offers Update rather than a full Research, and says from when.
+     A company new to the Top 3 has nothing to carry and gets the full prompt. */
+  if(EQ.update){
+    var segLine = recLine(seg);
+    out.forEach(function(s){
+      if(s.record || !(s.symbol || s.name)) return;
+      var k = EQ.update.lineKey({ kind:'company', symbol: s.symbol, name: s.name, standalone:false, sectorLine: segLine });
+      var hits = companyRecords().filter(function(r){
+        if(r.standalone || recLine(r) !== k) return false;
+        var parent = r.parentId ? recById(r.parentId) : null;
+        /* Only research saved under a version before this one. */
+        return parent && (parent.ts || 0) <= (seg.ts || 0);
+      }).sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+      if(hits.length){ s.carried = hits[0]; s.state = 'carried'; }
+    });
+  }
+  return out;
 }
 
 function renderCompanyPage(){
   var solos = soloRecords(), soloCur = soloRecord();
   if(soloCur) SEL.solo = soloCur.id;
-  fillPicker('#soloPick', solos, SEL.solo, '\u2014 none imported \u2014');
-  ['btnSoloDelete'].forEach(function(id){
+  fillPicker('#soloPick', latestOnly(solos), soloCur ? latestVersion(soloCur).id : null, '\u2014 none imported \u2014');
+  fillVersions('#soloVer', soloCur);
+  ['btnSoloDelete', 'btnSoloUpdate'].forEach(function(id){
     if($('#'+id)) $('#'+id).disabled = !soloCur;
   });
+  if($('#soloAge')) $('#soloAge').innerHTML = soloCur ? ageBox(soloCur) : '';
   /* Rows for whichever saved independent company is selected, so all five of
      them can produce their documents rather than only the newest. */
-  if($('#soloDocs')) $('#soloDocs').innerHTML = docRows('solo', !!soloCur);
+  if($('#soloDocs')) $('#soloDocs').innerHTML = docRows('solo', !!soloCur, null, !!(soloCur && prevVersion(soloCur)));
   if($('#soloDepth')) $('#soloDepth').innerHTML = depthBox(soloCur);
 
   var recs = companyRecords(), cur = coRecord();
@@ -4920,15 +5230,32 @@ function renderCompanyPage(){
   var slots = $('#coBoxes'); if(!slots) return;
   var seg = segRecord();
   if(!seg){ slots.innerHTML = ''; return; }
+  var nVer = versionsOf(seg).length, vNo = versionNo(seg);
   slots.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 from '
-      + esc(seg.sector || 'the sector study') + '</h2>'
+      + esc(seg.sector || 'the sector study')
+      + (nVer > 1 ? ' <span class="mut" style="font-size:.78rem;font-weight:600;">\u00b7 version ' + vNo + ' of ' + nVer
+          + ' \u00b7 ' + esc(dmyTs(seg.ts)) + (vNo < nVer ? ' \u00b7 an older version' : '') + '</span>' : '')
+      + '</h2>'
     + runSlots().map(function(s){
-      var named = !!s.name, done = s.state === 'imported';
+      var named = !!s.name, done = s.state === 'imported', carried = s.state === 'carried';
+      /* Research the company afresh, or bring earlier research up to date: the
+         button decides itself. A company new to this Top 3 has nothing to
+         update, so it gets the full research prompt. */
+      var prior = s.record || s.carried;
+      var mainBtn = prior
+        ? '<button class="btn xs pri co-update" data-rank="' + s.rank + '" style="margin:0;">Update</button>'
+        : '<button class="btn xs pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
+          + (named ? '' : ' disabled') + '>Research</button>';
       return '<div class="card runbox ' + (done ? 'done' : 'waiting') + '" data-rank="' + s.rank + '">'
         + '<h2><span class="rank-badge">' + s.rank + '</span>'
           + '<span>' + esc(s.name || 'Company ' + s.rank) + '</span>'
           + '<span class="tag' + (done ? ' ok' : '') + '">'
-          + (done ? 'imported' : (named ? 'to research' : 'not named')) + '</span></h2>'
+          + (done ? 'imported' : carried ? 'update due' : (named ? (nVer > 1 ? 'new entrant' : 'to research') : 'not named')) + '</span></h2>'
+        + (carried ? '<div class="slotver">Researched ' + esc(dmyTs(recAsOf(s.carried))) + ' under version '
+            + versionNo(recById(s.carried.parentId) || seg) + ' of this study. Update brings it into this version; '
+            + 'until then this version\u2019s documents do not include it.</div>'
+          : (!done && named && nVer > 1 ? '<div class="slotver">New to the Top 3 in this version \u2014 no earlier research to update, so Research copies the full prompt.</div>' : ''))
+        + (done && versionsOf(s.record).length > 1 ? '<div class="slotver">' + esc(verLabel(s.record)) + '</div>' : '')
         + (function(){
             /* The score, then the reason — but the engine's own generated
                reason already opens with the score, so it is not said twice. */
@@ -4940,13 +5267,13 @@ function renderCompanyPage(){
               + (why ? ' ' + esc(why) : '') + '</div>';
           })()
         + '<div class="grid3" style="margin-top:9px;">'
-          + '<button class="btn xs pri co-search" data-rank="' + s.rank + '" style="margin:0;"'
-            + (named ? '' : ' disabled') + '>Research</button>'
+          + mainBtn
           + '<button class="btn xs co-import" data-rank="' + s.rank + '" style="margin:0;">Import</button>'
           + '<button class="btn xs dang co-del" data-rank="' + s.rank + '" style="margin:0;"'
             + (done ? '' : ' disabled') + '>Delete</button>'
         + '</div>'
-        + docRows('co' + s.rank, done)
+        + (prior ? ageBox(prior) : '')
+        + docRows('co' + s.rank, done, null, !!(done && prevVersion(s.record)))
         + depthBox(done ? s.record : null)
         + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
@@ -5218,6 +5545,9 @@ document.addEventListener('change', function(ev){
   if(id === 'segSel'){ fillSubSelect(); return; }
   if(id === 'segPick'){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
   if(id === 'soloPick'){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
+  /* Build 25: a version of the study selected brings its own Top 3 with it. */
+  if(id === 'segVer' && ev.target.value){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
+  if(id === 'soloVer' && ev.target.value){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
   if(id === 'coPick'){ selectCompany(ev.target.value); renderReportPage(); renderScoreTab(); renderScenarioPage(); }
   if(id === 'scnCompany'){
     /* A different company is a different base case, so the overrides do not
@@ -5295,11 +5625,19 @@ document.addEventListener('click', function(ev){
       'the ' + segName + (subName ? ' \u2014 ' + subName : '') + ' sector study');
     return;
   }
+  if(ev.target.closest('#btnSegUpdate')){
+    var us = segRecord(); if(!us) return;
+    updateNow(us, 'the ' + (us.sector || 'sector') + (us.subSector ? ' \u2014 ' + us.subSector : '') + ' sector study');
+    return;
+  }
   if(ev.target.closest('#btnImport')){ openImport({ kind:'sector', rank:0 }); return; }
   if(ev.target.closest('#btnDelRep')){
     var s = segRecord(); if(!s) return;
-    if(!confirm('Delete the ' + (s.sector || 'sector') + ' research?\n\n'
-      + 'Its companies go with it, so nothing is left orphaned.')) return;
+    var sv = versionsOf(s).length;
+    if(!confirm('Delete ' + (sv > 1 ? 'version ' + versionNo(s) + ' (of ' + sv + ') of ' : '') + 'the '
+      + (s.sector || 'sector') + ' research, saved ' + dmyTs(s.ts) + '?\n\n'
+      + 'The Top 3 company research saved under ' + (sv > 1 ? 'this version' : 'it') + ' goes with it, so nothing is left orphaned.'
+      + (sv > 1 ? ' The other ' + (sv - 1) + (sv - 1 === 1 ? ' version is' : ' versions are') + ' kept.' : ''))) return;
     libWrite(libRead().filter(function(r){ return r.id !== s.id && r.parentId !== s.id; }));
     SEL.sector = null; renderReportPage(); renderScoreTab();
     return;
@@ -5312,21 +5650,37 @@ document.addEventListener('click', function(ev){
     researchNow({ company: nm }, nm);
     return;
   }
+  if(ev.target.closest('#btnSoloUpdate')){
+    var uc = soloRecord(); if(!uc) return;
+    updateNow(uc, uc.company || 'this company');
+    return;
+  }
   if(ev.target.closest('#btnSoloImport')){ openImport({ kind:'company', rank:0 }); return; }
   if(ev.target.closest('#btnSoloDelete')){
     var cr = soloRecord(); if(!cr) return;
-    if(!confirm('Delete the research for ' + (cr.company || 'this company')
-      + '?\n\nIts report goes with it. Nothing else is touched.')) return;
+    var cv = versionsOf(cr).length;
+    if(!confirm('Delete ' + (cv > 1 ? 'version ' + versionNo(cr) + ' (of ' + cv + ') of ' : '') + 'the research for '
+      + (cr.company || 'this company') + ', saved ' + dmyTs(cr.ts) + '?\n\nIts report goes with it.'
+      + (cv > 1 ? ' The other ' + (cv - 1) + (cv - 1 === 1 ? ' version is' : ' versions are') + ' kept.' : ' Nothing else is touched.'))) return;
     libWrite(libRead().filter(function(r){ return r.id !== cr.id; }));
     SEL.solo = null; SEL.company = null; renderCompanyPage(); renderScoreTab();
     return;
   }
 
   /* --- the Top 3 --- */
-  var b = ev.target.closest('.co-search, .co-import, .co-del');
+  var b = ev.target.closest('.co-search, .co-import, .co-del, .co-update');
   if(!b) return;
   var rank = Number(b.getAttribute('data-rank')) || 1;
   var sl = runSlots()[rank - 1];
+
+  if(b.classList.contains('co-update')){
+    var pr = sl && (sl.record || sl.carried);
+    if(!pr){ researchNow({ company: sl && sl.name, useSaved: true }, (sl && sl.name) || 'company ' + rank); return; }
+    /* Imported with this slot's Import button, the reply is saved into THIS
+       version of the study, as the next version of the company. */
+    updateNow(pr, (sl && sl.name) || 'company ' + rank);
+    return;
+  }
 
   if(b.classList.contains('co-search')){
     researchNow({ company: sl && sl.name, useSaved: true }, (sl && sl.name) || 'company ' + rank);
