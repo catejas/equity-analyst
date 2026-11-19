@@ -56,6 +56,25 @@ function money(v, reporting, dp){
   var suffix = unitShort(r.unit);
   return sym + n(v, dp == null ? 0 : dp) + (suffix ? ' ' + suffix : '');
 }
+/* An amount whose unit the research stated in words — "INR crore",
+   "INR crore (FY27 BE subvention outlay)", "Rs lakh". Printed the house way,
+   ₹2,13,61,435 Crs, with any qualifier kept after it. Before build 24 these
+   went out as "2,13,61,435 INR crore" in the TAM, programme and market-total
+   lines, because money() only knew the run's reporting block. A unit that is
+   not rupees in crore or lakh is printed as stated. */
+/* The research tool's own notes, printed for a reader. They talk about the
+   JSON they filled in ("SAM ... is null"), and "null" means nothing to the
+   person holding the report: it is a figure the research did not establish. */
+function notesText(t){
+  return S(t).replace(/\bnull\b/g, 'not established');
+}
+function amountIn(v, unit, dp){
+  var u = S(unit);
+  var m = /^\s*(?:INR|Rs\.?|₹)\s*(crores?|cr|lakhs?|lacs?)\b\s*(.*)$/i.exec(u);
+  if(!m) return n(v, dp == null ? 0 : dp) + (u ? ' ' + e(u) : '');
+  var word = /^l/i.test(m[1]) ? 'Lacs' : 'Crs';
+  return '₹' + n(v, dp == null ? 0 : dp) + ' ' + word + (m[2] ? ' ' + e(m[2]) : '');
+}
 function pct(v,dp){ return v==null||isNaN(v) ? '—' : Number(v).toFixed(dp==null?1:dp)+'%'; }
 function arr(a){ return Array.isArray(a) ? a : []; }
 /* Kept as a shim: with one language there is no alternate tree to look in,
@@ -2279,7 +2298,7 @@ function buildCompany(p, lang){
         if(ind && S(ind.structure)) rows.push({ cells:['Industry structure', e(S(ind.structure))] });
         if(ind && S(ind.cyclePosition)) rows.push({ cells:['Where the cycle sits', e(S(ind.cyclePosition))] });
         if(tam && tam.tam) rows.push({ cells:['Addressable market',
-          n(tam.tam.value,0)+' '+e(S(tam.tam.unit))+' ('+e(S(tam.tam.year))+')'] });
+          amountIn(tam.tam.value,tam.tam.unit,0)+' ('+e(S(tam.tam.year))+')'] });
         if(mac && mac.gdpGrowth) rows.push({ cells:['GDP growth',
           n(mac.gdpGrowth.value,2)+'% ('+e(S(mac.gdpGrowth.period))+')'] });
         if(arr(rep.policy).length) rows.push({ cells:['Policy',
@@ -4166,7 +4185,10 @@ function figGlobalGrowth(rep){
   var K=CH_(); var g=rep.global; if(!K||!g||!g.cagr) return '';
   var ks=['y15','y10','y5','y3'], labs=['15 years','10 years','5 years','3 years'];
   var vals=ks.map(function(k){ return typeof g.cagr[k]==='number'?g.cagr[k]:null; });
-  if(!vals.filter(function(v){return v!=null;}).length) return '';
+  /* One lookback is not a comparison, and a chart of one bar has nothing to
+     say (the 16-11-2026 Banking run established the five-year rate alone).
+     It is printed in the world table instead, as "Past growth, a year". */
+  if(vals.filter(function(v){return v!=null;}).length < 2) return '';
   /* The axis carries its unit. It used to print bare numbers, so a reader met
      "0.16" with nothing to say whether that was sixteen percent or a sixth of
      one. The engine now rescales a block that arrived as fractions and records
@@ -4191,11 +4213,17 @@ function eqWorld(p, lang){
   var NS = '<span class="neg">not established</span>';
   out += tbl(['Measure','Value','Year','Source'], [
     { cells:['Global market size', (typeof g.marketSize==='number' && g.marketSize)
-        ? n(g.marketSize, g.marketSize < 100 ? 1 : 0)+' '+e(S(g.unit))
+        ? amountIn(g.marketSize, g.unit, g.marketSize < 100 ? 1 : 0)
           + (S(g.marketSizeBasis) ? '<br><span class="mut">' + e(S(g.marketSizeBasis)) + '</span>' : '')
         : NS,
       g.marketSizeYear ? agedPeriod(g.marketSizeYear, runAsOf(p)) : '<span class="mut">undated</span>',
       e(S(g.source)) || NS] },
+    { cells:['Past growth, a year', (function(){
+        var c = g.cagr || {}, got = [['y15','15'],['y10','10'],['y5','5'],['y3','3']]
+          .filter(function(k){ return typeof c[k[0]]==='number'; })
+          .map(function(k){ return n(c[k[0]],1) + '% over ' + k[1] + ' years'; });
+        return got.length ? got.join(', ') : NS; })(),
+      '', e(S(g.source))] },
     { cells:['Forecast growth, a year', typeof gf.cagr==='number' && gf.cagr ? n(gf.cagr,1)+'%' : NS,
       e(S(gf.years)), e(S(gf.source))] },
     { cells:['India\u2019s share of the global market', typeof ish.value==='number' && ish.value
@@ -4594,7 +4622,7 @@ function eqTam(p, lang){
     .filter(function(k){ return t[k[0]]; })
     .map(function(k){
       var x=t[k[0]];
-      return { cells:[ k[1], (typeof x.value==='number' && x.value) ? n(x.value,0)+' '+e(S(x.unit)) : '<span class="neg">not established</span>',
+      return { cells:[ k[1], (typeof x.value==='number' && x.value) ? amountIn(x.value,x.unit,0) : '<span class="neg">not established</span>',
         agedPeriod(x.year, runAsOf(p)),
         '<span class="mut">'+e(S(x.basis)) + (S(x.method) ? '. ' + e(S(x.method)) : '') + '</span>',
         '<span class="mut">'+e(S(x.source))+'</span>' ]};
@@ -4606,7 +4634,7 @@ function eqTam(p, lang){
   var T = t.tam && t.tam.value, Sa = t.sam && t.sam.value, So = t.som && t.som.value;
   if(T && Sa && So && S(t.tam.unit) === S(t.sam.unit) && S(t.sam.unit) === S(t.som.unit) && Sa <= T && So <= Sa){
     out += '<p class="storyp">The listed companies can serve ' + n(Sa / T * 100, 0) + '% of the Indian market and have captured '
-      + n(So / Sa * 100, 0) + '% of what they can serve, so ' + n(Sa - So, 0) + ' ' + e(S(t.sam.unit))
+      + n(So / Sa * 100, 0) + '% of what they can serve, so ' + amountIn(Sa - So, t.sam.unit, 0)
       + ' of serviceable demand is still with others.</p>';
   }
   var noMethod = ['tam','sam','som'].filter(function(k){ return t[k] && !S(t[k].method) && /estimate/i.test(S(t[k].source)); });
@@ -4622,7 +4650,7 @@ function eqPrograms(p, lang){
   return pr.map(function(x){
     return '<div class="ir-box"><h4>' + e(S(x.name)) + '</h4>'
       + tbl(['','Reading'], [
-          { cells:['Scale', x.scale==null?'&mdash;':n(x.scale,0)+' '+e(S(x.unit))] },
+          { cells:['Scale', x.scale==null?'&mdash;':amountIn(x.scale,x.unit,0)] },
           { cells:['Timeline', e(S(x.timeline))] },
           { cells:['Participants', e(S(x.participants))] },
           { cells:['Challenges', e(S(x.challenges))] }
@@ -4756,7 +4784,7 @@ function eqCompetition(p, lang){
   var out = '<p class="storyp"><b>What is measured.</b> '
     + (metric ? 'Each player\u2019s share of ' + e(metric.replace(/^share of /i,'')) : 'Each player\u2019s share of the market')
     + (period ? ', in ' + e(period) : '')
-    + ((typeof mt.value==='number' && mt.value) ? ', out of a market of ' + n(mt.value,0) + ' ' + e(S(mt.unit))
+    + ((typeof mt.value==='number' && mt.value) ? ', out of a market of ' + amountIn(mt.value,mt.unit,0)
         + (S(mt.source) ? ' (' + e(S(mt.source)) + ')' : '') : '')
     + '. ' + countOf(withShare.length, 'player is', 'players are') + ' measured, and together they account for '
     + n(known,1) + '% of it.</p>';
@@ -6175,7 +6203,7 @@ function buildExec(p, lang){
     + '<div class="lead"><p>' + e(eqTitle(p)) + ' over a horizon of ' + e(S(run.horizon))
       + '. ' + countOf(rep.counts ? rep.counts.universe : 0, 'company', 'companies') + ' analysed, '
       + (rep.counts ? rep.counts.top3Eligible : 0) + ' cleared the kill switch.</p></div>'
-    + (S(run.researchNotes) ? '<div class="note">' + e(S(run.researchNotes)) + '</div>' : '')
+    + (S(run.researchNotes) ? '<div class="note">' + e(notesText(run.researchNotes)) + '</div>' : '')
     + eqFunnel(p, lang);
 
   /* The macro and policy frame, compressed. The sector report carries it in
@@ -6190,7 +6218,7 @@ function buildExec(p, lang){
   if(arr(rep.programs).length){
     out += tbl(['Programme','Scale','Listed beneficiaries'], arr(rep.programs).map(function(x){
       return { cells:[ '<b>'+e(S(x.name))+'</b>',
-        x.scale==null?'&mdash;':n(x.scale,0)+' '+e(S(x.unit)),
+        x.scale==null?'&mdash;':amountIn(x.scale,x.unit,0),
         e(arr(x.beneficiaries).map(function(b){ return S(b.symbol)||S(b.name); }).join(', ')) ]};
     }), { num:[1] });
   }
@@ -8637,7 +8665,7 @@ function buildSector(p, lang){
        showed which companies were dropped or why. A shortlist whose rejects
        are invisible is an assertion. */
     + S2('What was screened, and what was dropped') + eqFunnel(p, lang)
-    + (S(run.researchNotes) ? '<div class="note">' + e(S(run.researchNotes)) + '</div>' : '')
+    + (S(run.researchNotes) ? '<div class="note">' + e(notesText(run.researchNotes)) + '</div>' : '')
     + tbl(['Measure','Value'], [
         { cells:['Methodology version', e(S(run.methodologyVersion))] },
         { cells:['Payload schema', e(S(run.payloadSchemaVersion))] },

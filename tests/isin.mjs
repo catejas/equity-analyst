@@ -1,7 +1,8 @@
+import { ROOT, REAL } from './_paths.mjs';
 import fs from 'node:fs';
-import { parsePayload } from '/home/claude/eqapp/src/core/payload-schema.js';
+import { parsePayload } from '../src/core/payload-schema.js';
 const ril = parsePayload(fs.readFileSync('/tmp/ril.json','utf8'));
-const pnb = parsePayload(fs.readFileSync('/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/2f13d57b-PNB_gemini-code-1789969768806.json','utf8'));
+const pnb = parsePayload(fs.readFileSync(REAL + '/2f13d57b-PNB_gemini-code-1789969768806.json','utf8'));
 let fail=0; const ok=(l,c)=>{if(!c){fail=1;console.log('FAIL  '+l);}else console.log('ok    '+l);};
 const rc=ril.payload.companies[0], pc=pnb.payload.companies[0];
 console.log('      Reliance isin:', rc.isin || '(none)');

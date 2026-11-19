@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The scenario page: a page after Company where the drivers are moved and the
    report is generated on what was chosen.
  *
@@ -10,7 +11,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const SRC = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/57d8e52f-attachment.txt';
+const SRC = REAL + '/57d8e52f-attachment.txt';
 const raw = fs.readFileSync(SRC, 'utf8');
 const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
 

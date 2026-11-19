@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Page one.
  *
  * Every reference report opens on a tear sheet; ours opened on a table of
@@ -17,7 +18,7 @@ if (!fs.existsSync(FILE)) {
   console.log('FAIL  no fixture — run tests/gen-fixtures.mjs first');
   process.exit(1);
 }
-if (fs.statSync(FILE).mtimeMs < fs.statSync('/home/claude/eqapp/render.js').mtimeMs) {
+if (fs.statSync(FILE).mtimeMs < fs.statSync(ROOT + '/render.js').mtimeMs) {
   console.log('FAIL  fixture older than render.js — regenerate first');
   process.exit(1);
 }

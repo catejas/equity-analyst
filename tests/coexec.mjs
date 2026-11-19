@@ -1,7 +1,8 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const dir='/home/claude/eqapp';
+const dir=ROOT + '';
 const {parsePayload}=await import(dir+'/src/core/payload-schema.js');
 const {buildReport}=await import(dir+'/src/core/report.js');
 const scoring=await import(dir+'/src/core/scoring.js');
@@ -13,7 +14,7 @@ sb.self=sb; sb.globalThis=sb; vm.createContext(sb);
 vm.runInContext(fs.readFileSync(dir+'/charts.js','utf8'),sb,{filename:'charts.js'});
 vm.runInContext(fs.readFileSync(dir+'/render.js','utf8'),sb,{filename:'render.js'});
 
-const raw=JSON.parse(fs.readFileSync('/mnt/user-data/uploads/Anlon.json','utf8').replace(/\uFFFD/g,'-'));
+const raw=JSON.parse(fs.readFileSync(REAL + '/pnb-merged-16-11-2026.json','utf8').replace(/\uFFFD/g,'-'));
 const parsed=parsePayload(JSON.stringify(raw));
 console.log('payload valid:', parsed.valid, '| errors:', parsed.errors.length);
 const b=buildReport(parsed.payload);

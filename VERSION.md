@@ -26,6 +26,23 @@ behave and it is not a fault.
 
 ## Current build
 
+`19-11-2026.24` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 24 makes the test suite run anywhere and fixes three defects that the
+real 16-11-2026 Banking and PNB runs exposed. Money whose unit the research
+states ("INR crore", "INR crore (FY27 BE …)") now prints ₹… Crs / ₹… Lacs in
+TAM/SAM/SOM, programme scales, market total and global size (`amountIn` in
+render.js). Research notes no longer print the JSON word "null". A column
+chart with one value says so, and the global growth chart needs two
+lookbacks (a lone figure goes to the world table as "Past growth, a year").
+Tests: the suites resolve paths from the repo (`tests/_paths.mjs`), the real
+payloads are bundled in `tests/fixtures/real/` (see its README), jsdom is a
+devDependency, `notice.mjs` checks the build-22 footer rule, and the stale
+`seg.mjs` and `packer.mjs` are retired. 87/87 suites pass, twice, from a clean
+checkout.
+
+Previous: `19-11-2026.23`.
+
 `19-11-2026.23` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 23: sector documents are built only from the sector run (an

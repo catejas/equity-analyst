@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[]; const msgs=[];
+const dir=ROOT + ''; const errors=[]; const msgs=[];
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const old=JSON.parse(JSON.stringify(full));
 old.run.top3=full.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named by the model'}));

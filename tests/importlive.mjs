@@ -1,10 +1,11 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Pressing READ IT must leave the import panel standing. Four separate bugs
    have now been "a container held more than the thing being hidden", and every
    one of them survived because the tests only ever pressed the button once and
    only ever checked the review text. */
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
+const dir=ROOT + ''; const errors=[];
 const raw=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const solo={ run:{...raw.run, tool:'Claude', schemaVersion:'4.0.0', top3:undefined},
   companies:[{...raw.companies[0], symbol:'ANLON', name:'Anlon Healthcare Limited'}] };

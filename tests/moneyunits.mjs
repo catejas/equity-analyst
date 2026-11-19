@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Every money figure says what it is in, and a bank's lines are a bank's lines.
  *
  * Two findings from the same page of the same report.
@@ -18,7 +19,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { buildReport, reportingUnits } from '../src/core/report.js';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 
@@ -73,12 +74,15 @@ ok('EBITDA is not printed for a bank',
    for Crores and Lacs for Lacs." A bare 1,26,600 is a number a reader has to
    guess the size of; ₹1,26,600 Crs is one they can check against a filing. */
 ok('the key financials state their unit', /₹ Crs, except EPS in ₹/.test(seen));
+/* The form, next to its label. These were fixed figures from the September
+   PNB fixture; the document is now built from the 16-11-2026 run, so the test
+   checks the form each figure is printed in, whichever run built it. */
 ok('the market capitalisation carries the symbol and the scale',
-  /₹1,26,600 Crs/.test(seen));
-ok('so does the average daily traded value', /₹350 Crs/.test(seen));
-ok('a share price carries the symbol and no scale', /₹110\.15/.test(seen)
-  && /a share/.test(seen) && !/₹110\.15 Crs/.test(seen));
-ok('the 52-week range is in rupees a share', /₹72\.30 – ₹142\.50/.test(seen));
+  /Market capitalisation\s+₹[\d,]+(\.\d+)? Crs/.test(seen));
+ok('so does the average daily traded value', /Average daily traded value\s+₹[\d,]+(\.\d+)? Crs/.test(seen));
+ok('a share price carries the symbol and no scale', /Price(?: a share)?\s+₹[\d,]+\.\d{2}/i.test(seen)
+  && /a share/.test(seen) && !/Price(?: a share)?\s+₹[\d,]+\.\d{2} Crs/i.test(seen));
+ok('the 52-week range is in rupees a share', /52-week range\s+₹[\d,]+\.\d{2} – ₹[\d,]+\.\d{2}(?! Crs)/.test(seen));
 ok('"Crs" is used rather than "crore"', !/INR crore/i.test(seen));
 
 /* A payload stated in lakh must print Lacs, not Crs. */

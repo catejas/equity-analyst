@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Tier 0 #1 — prose column beside a figure rail.
    Checks the three ways this could go wrong:
      1. it silently does nothing (no pairs formed)
@@ -30,7 +31,7 @@ const DOCS = ['co1', 'sector', 'exec'];
     await b.close();
     process.exit(1);
   }
-  const renderer = fs.statSync('/home/claude/eqapp/render.js').mtimeMs;
+  const renderer = fs.statSync(ROOT + '/render.js').mtimeMs;
   const stale = DOCS.filter((n) => fs.statSync(`/tmp/doc-${n}.html`).mtimeMs < renderer);
   if (stale.length) {
     console.log('FAIL  fixture older than render.js: ' + stale.join(', ')

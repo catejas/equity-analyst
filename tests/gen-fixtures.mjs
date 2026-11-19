@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Write the document fixtures the layout tests measure.
  *
  * The old generator ran under jsdom, which has no layout engine at all: it can
@@ -11,7 +12,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 
 /* Two payloads that two dozen suites read from /tmp. They lived only there,
    so a fresh machine had a suite that could not start; they are kept in

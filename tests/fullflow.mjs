@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
+const dir=ROOT + ''; const errors=[];
 const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
   runScripts:'dangerously', url:'https://example.com/e/', pretendToBeVisual:true,
   beforeParse(w){ w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});

@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
+const dir=ROOT + ''; const errors=[];
 const raw=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const closes=Array.from({length:110},(_,i)=>780+90*Math.sin(i/9)+i*1.6);
 closes[closes.length-1]=Math.max(...closes)+9;

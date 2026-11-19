@@ -352,7 +352,14 @@
 
     var note = opts.note;
     if (!note) {
-      if (series.length === 1 && looksOrdered(cats)) {
+      var lone = series.length === 1
+        ? series[0].values.map(function (v, i) { return isNum(v) ? { v: v, c: cats[i] } : null; }).filter(Boolean) : [];
+      if (lone.length === 1) {
+        /* One bar is a figure, not a comparison. Say which it is and that the
+           rest of the axis is empty because nothing was established there. */
+        note = 'Only ' + lone[0].c + ' has a figure, ' + vf(lone[0].v) + '. The other '
+          + (cats.length - 1) + (cats.length - 1 === 1 ? ' is' : ' are') + ' not established.';
+      } else if (series.length === 1 && looksOrdered(cats)) {
         note = readSeries(series[0].name || opts.title, cats, series[0].values, opts.unit);
       } else if (series.length === 1) {
         var ps = [];

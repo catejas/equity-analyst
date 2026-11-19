@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
+const dir=ROOT + ''; const errors=[];
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const mkco=(n,a,b,c,d)=>({symbol:n.split(' ').map(w=>w[0]).join('').toUpperCase(),name:n,
   ratings:{businessQuality:{score:a,evidence:'ROA 1.1%'},growthMultibagger:{score:b,evidence:'advances +16%'},

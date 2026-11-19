@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* A number on an axis says what it is.
  *
  * Two AI tools answered global.cagr two different ways: one gave 5.5 for five
@@ -14,7 +15,7 @@
 import { buildReport } from '../src/core/report.js';
 import fs from 'node:fs';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 
@@ -87,8 +88,9 @@ ok('and nothing is claimed about them',
   const rm = buildReport(mixed);
   const mc = (rm.report?.full || [])[0] || {};
   ok('a percentage-point sector block is left alone',
-    Math.abs((rm.report?.global?.cagr?.y15 ?? 0) - 5.5) < 1e-9,
-    String(rm.report?.global?.cagr?.y15));
+    rm.report?.macro?.inflation?.value === pct.macro.inflation.value
+      && rm.report?.global?.indiaShare?.value === pct.global.indiaShare.value,
+    `inflation ${rm.report?.macro?.inflation?.value}, India share ${rm.report?.global?.indiaShare?.value}`);
   ok('while the fraction-scaled company beside it is corrected',
     Math.abs((mc.ownership?.promoter ?? 0) - 70.08) < 0.01,
     String(mc.ownership?.promoter));

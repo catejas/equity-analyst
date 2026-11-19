@@ -1,7 +1,8 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const dir='/home/claude/eqapp';
+const dir=ROOT + '';
 const dom=new JSDOM('<!doctype html><html><body></body></html>');
 const w=dom.window; global.window=w; global.document=w.document;
 const eng={};

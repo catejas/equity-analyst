@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
+const dir=ROOT + ''; const errors=[];
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 function segRun(sector, sub, tool, names){
   const s=JSON.parse(JSON.stringify(full));

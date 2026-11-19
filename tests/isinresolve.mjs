@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The case the bundled map exists for.
  *
  * When the research states an ISIN, nothing else is needed — that path is
@@ -10,7 +11,7 @@
  * the bundle with no network call at all. */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const raw=fs.readFileSync('/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/944cc4df-attachment.txt','utf8');
+const raw=fs.readFileSync(REAL + '/944cc4df-attachment.txt','utf8');
 const full=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1));
 delete full.companies[0].isin;                       // strip it
 full.companies[0].sources = [];                      // and block repair's recovery path

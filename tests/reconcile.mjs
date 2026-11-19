@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The reconciliation flag, which for the whole life of the application meant
    something other than what it said.
  *
@@ -19,7 +20,7 @@ import { buildReport } from '../src/core/report.js';
 import { evaluate } from '../src/core/scenario.js';
 import { dcf } from '../src/core/valuation.js';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const load = (f) => { const t = fs.readFileSync(U + f, 'utf8'); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); };
 
 let fail = 0;

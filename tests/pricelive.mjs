@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Price history end to end, on the payload shape the app actually receives.
  *
  * Tejas's device reported: instrument master blocked by CORS, but the Upstox
@@ -7,7 +8,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const SRC='/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/944cc4df-attachment.txt';
+const SRC=REAL + '/944cc4df-attachment.txt';
 const raw=fs.readFileSync(SRC,'utf8');
 const json=raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1);
 

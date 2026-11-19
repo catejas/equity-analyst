@@ -58,7 +58,9 @@ from fractions import Fraction as F
 
 getcontext().prec = 60
 
-UPLOADS = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/'
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOADS = os.path.join(ROOT, 'tests', 'fixtures', 'real') + '/'
 PAYLOADS = [
     ('Reliance', UPLOADS + '57d8e52f-attachment.txt'),
     ('PNB', UPLOADS + '2f13d57b-PNB_gemini-code-1789969768806.json'),
@@ -71,8 +73,8 @@ def js_engine(path: str) -> dict:
     """Run the JavaScript engine and hand back what it computed."""
     script = r'''
 import fs from 'node:fs';
-import { buildModel } from '/home/claude/eqapp/src/core/model.js';
-import { dcf } from '/home/claude/eqapp/src/core/valuation.js';
+import { buildModel } from '__ROOT__/src/core/model.js';
+import { dcf } from '__ROOT__/src/core/valuation.js';
 const t = fs.readFileSync(process.argv[2], 'utf8');
 const d = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
 const c = d.companies[0];
@@ -93,8 +95,9 @@ process.stdout.write(JSON.stringify({ drivers: c.model, valuation: c.valuation |
   reported: rep, built, value }));
 '''
     tmp = '/tmp/claude-0/_arith_dump.mjs'
+    os.makedirs('/tmp/claude-0', exist_ok=True)
     with open(tmp, 'w', encoding='utf-8') as fh:
-        fh.write(script)
+        fh.write(script.replace('__ROOT__', ROOT))
     out = subprocess.run([sys.executable and 'node', tmp, path],
                          capture_output=True, text=True, check=True)
     return json.loads(out.stdout)

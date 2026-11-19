@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* What is missing from a payload, and the way to go and get it.
  *
  * Tejas: "I can still see many of items of data payload are still missing."
@@ -17,11 +18,23 @@ import fs from 'node:fs';
 import { completeness, topUpPrompt, mergeTopUp, isTopUp, monthsOld } from '../src/core/completeness.js';
 import { buildReport } from '../src/core/report.js';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const rd = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 const PNB = rd('107fec97-attachment.txt'), SEC = rd('da0c46c1-attachment.txt');
 const NOW = new Date(2026, 10, 12);
+
+/* A thin sector study, derived from the real one. These checks were written
+   against the September Banking reply, which had a two-year-old GDP reading,
+   one global peer with no currency, and no moat for State Bank of India. The
+   16-11-2026 reply in tests/fixtures/real fixed all three, so each shortfall
+   is put back here, on purpose and in the open, to keep the checks honest. */
+const THIN = JSON.parse(JSON.stringify(SEC));
+THIN.macro.gdpGrowth = { value: 8.2, period: 'FY24', source: 'MoSPI' };
+THIN.global.peers = [{ name: 'JPMorgan Chase', country: 'United States', marketCap: 852.89,
+  makes: 'Universal bank' }];
+THIN.competition.players = rd('banking-psb-topup3-16-11-2026.json').competition.players
+  .map((p) => (p.symbol === 'SBIN' ? { ...p, moat: undefined, whyLeader: undefined } : p));
 
 let fail = 0, ran = 0;
 const ok = (label, pass, detail) => { ran++; if (!pass) fail++;
@@ -53,7 +66,7 @@ const find = (c, label) => c.sections.flatMap((s) => s.checks).find((x) => x.lab
     !c.missing.some((m) => /shortlist|Global peers|Glossary/.test(m.label)));
 }
 {
-  const c = completeness(SEC, { now: NOW });
+  const c = completeness(THIN, { now: NOW });
   ok('a sector study is judged as one', c.kind === 'sector');
   const st = find(c, 'Macro readings less than a year old');
   ok('macro readings a year old are found and named with their age',
@@ -168,7 +181,7 @@ const REPLY = { run: { topUp: true, schemaVersion: '5.0.0', sector: 'banking', s
     return review; };
 
   await p.click('nav button[data-tab="sector"]');
-  const secReview = await imp(SEC, () => p.click('#btnImport'));
+  const secReview = await imp(THIN, () => p.click('#btnImport'));
   ok('the sector review no longer reports "Sources — no companies" as missing',
     !/Sources with tier and date/.test(secReview));
   ok('it lists what is thin', /Still thin or missing/i.test(secReview) && /Global peers/.test(secReview));

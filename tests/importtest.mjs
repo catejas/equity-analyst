@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp';
+const dir=ROOT + '';
 const errors=[];
 const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
   runScripts:'dangerously', url:'https://example.com/equity-analyst/', pretendToBeVisual:true,

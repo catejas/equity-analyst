@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The sector study is about the screen, not about one company.
  *
  * Tejas: "Sector report talks about PNB company which is not in top 3 (top 3
@@ -19,7 +20,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 const BANK = read('da0c46c1-attachment.txt');
@@ -77,7 +78,13 @@ if (!r.screen) {
 }
 
 const h = r.html;
-const NOMINATED = ['State Bank of India', 'Indian Bank', 'Bank of Maharashtra'];
+/* The three the ratings support, worked out here from the payload's own
+   ratings on equal weights, independently of screen.js. This was a fixed list
+   for the September run; the run in tests/fixtures/real is the 16-11-2026
+   one, and the rule, not one run's answer, is what is under test. */
+const NOMINATED = BANK.shortlist
+  .map((r) => ({ n: r.name, s: Object.values(r.ratings).reduce((a, x) => a + x.score, 0) / 4 }))
+  .sort((a, b) => b.s - a.s).slice(0, 3).map((x) => x.n);
 
 ok('the screen reaches the report', r.screen.ranked === 12, `${r.screen.ranked} ranked`);
 ok('and nominates the three the ratings support',

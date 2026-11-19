@@ -1,9 +1,10 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The real case Tejas reported: a Banking sector run whose screen nominates
    SBI, Indian Bank and Bank of Maharashtra, with PNB researched in full but
    not among the three. */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 const BANK = read('da0c46c1-attachment.txt');

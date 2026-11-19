@@ -1,8 +1,9 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
-const dir='/home/claude/eqapp';
+const dir=ROOT + '';
 const {parsePayload}=await import(dir+'/src/core/payload-schema.js');
 const {buildReport}=await import(dir+'/src/core/report.js');
 const scoring=await import(dir+'/src/core/scoring.js');

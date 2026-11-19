@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* Every PDF and Share button, on every page that has one, actually does its job.
  *
  * Three separate defects hid behind "the button does nothing":
@@ -14,7 +15,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 const BANK = read('da0c46c1-attachment.txt');

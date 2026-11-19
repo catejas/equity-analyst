@@ -9,5 +9,8 @@
   },
   "dependencies": {
     "playwright-core": "^1.63.0"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.1"
   }
 }

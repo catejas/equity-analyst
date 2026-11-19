@@ -1,6 +1,7 @@
+import { ROOT, REAL } from './_paths.mjs';
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[]; let clip=null;
+const dir=ROOT + ''; const errors=[]; let clip=null;
 const full=JSON.parse(fs.readFileSync('/tmp/psu.json','utf8'));
 const seg=JSON.parse(JSON.stringify(full));
 seg.run.top3=full.companies.map(c=>({symbol:c.symbol,name:c.name,why:'named'}));

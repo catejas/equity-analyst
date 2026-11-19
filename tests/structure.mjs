@@ -1,9 +1,10 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The markup must balance and the four pages must be siblings. An unclosed div
    in the import card made every section after it a child of that card, so
    hiding the card blanked the Score Card and Setup pages — and jsdom repairs
    that silently, which is why every other test passed. */
 import fs from 'node:fs';
-const s = fs.readFileSync('/home/claude/eqapp/index.html', 'utf8');
+const s = fs.readFileSync(ROOT + '/index.html', 'utf8');
 const body = s.slice(s.indexOf('<body'), s.indexOf('<script>', s.indexOf('<body')));
 let depth = 0, fail = 0;
 const opens = [];

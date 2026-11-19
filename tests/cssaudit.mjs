@@ -1,9 +1,10 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* CSS that never applies is invisible in every JS test we have: the declaration
    is dropped, the page still renders, and nothing throws. The gold chevron sat
    broken for two builds because linear-gradient(var(--grad-gold)) is invalid —
    --grad-gold is already a gradient. This checks for that class of mistake. */
 import fs from 'node:fs';
-const s = fs.readFileSync('/home/claude/eqapp/index.html', 'utf8');
+const s = fs.readFileSync(ROOT + '/index.html', 'utf8');
 const css = [...s.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
 let fail = 0;
 

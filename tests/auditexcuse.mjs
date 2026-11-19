@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The import audit must tell "nothing to report" from "did not report".
  *
  * On the PNB run it flagged three gaps that were not gaps: nothing had been
@@ -7,7 +8,7 @@
  * because it teaches them to ignore the audit. */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-const SRC='/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/944cc4df-attachment.txt';
+const SRC=REAL + '/944cc4df-attachment.txt';
 const raw=fs.readFileSync(SRC,'utf8');
 const json=raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1);
 let fail=0; const ok=(l,c)=>{ if(!c){fail=1;console.log('FAIL  '+l);} else console.log('ok    '+l); };
@@ -19,8 +20,18 @@ await p.goto('http://127.0.0.1:8848/index.html',{waitUntil:'domcontentloaded'});
 await p.waitForTimeout(1200);
 
 const r=await p.evaluate((j)=>{
-  const full=JSON.parse(j);
-  const co=full.companies[0];
+  const real=JSON.parse(j);
+  /* The excuses fire only on a run that screened nothing out and states no
+     material external exposure. The September PNB run was such a run; the
+     16-11-2026 Banking run in tests/fixtures/real is not (it set IDBI aside
+     and carries remittance data). So that situation is derived from it here,
+     in the open, and the two controls below are built from the same base. */
+  const full=JSON.parse(JSON.stringify(real));
+  full.universe={ identified: full.universe.identified, screened: full.universe.identified, exclusions: [] };
+  full.geopolitics=Object.assign({}, full.geopolitics, { importDependence:'Low — banking imports nothing physical',
+    exportExposure:'Low — a domestic lender', tariffRisk:'None directly', sanctionRisk:'Low for a domestic PSB' });
+  delete full.geopolitics.tradeData;
+  const co=real.companies[0];
   const companyRun={run:full.run, companies:[co]};
   const a=auditPayload(full), c=auditPayload(companyRun);
   const flat=(x)=>x.groups.reduce((m,g)=>{ m[g.key]={gaps:g.gaps,noted:g.noted||[]}; return m; },{});

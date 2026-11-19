@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The arithmetic audit.
  *
  * The tear sheet printed "Pre-provision operating profit 1,22,190" against
@@ -19,7 +20,7 @@ import fs from 'node:fs';
 import { auditCompany, lenderLines, printable } from '../src/core/audit.js';
 import { buildReport } from '../src/core/report.js';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const read = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 

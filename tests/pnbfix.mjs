@@ -1,10 +1,11 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The defects marked up on the PNB report, each asserted against a document
    built from the payload that produced it. A bank is the right test case:
    several of these are "a measure that does not apply printed as 0.0". */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const SRC = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/2f13d57b-PNB_gemini-code-1789969768806.json';
+const SRC = REAL + '/2f13d57b-PNB_gemini-code-1789969768806.json';
 const b = await chromium.launch({ executablePath: '/opt/google/chrome/chrome', args: ['--no-sandbox'] });
 const page = await b.newPage({ viewport: { width: 430, height: 930 } });
 const errs = [];

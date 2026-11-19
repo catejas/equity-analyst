@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* A second sector study, and every one after it.
  *
  * Tejas: "After Power segment, I tried Chemical segment and segment payload got
@@ -24,7 +25,7 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
-const U = '/root/.claude/uploads/a65cacee-cbb1-5a30-88b7-300036f589a9/';
+const U = REAL + '/';
 const rd = (f) => { const r = fs.readFileSync(U + f, 'utf8');
   return JSON.parse(r.slice(r.indexOf('{'), r.lastIndexOf('}') + 1)); };
 const SEC = rd('da0c46c1-attachment.txt'), CO = rd('107fec97-attachment.txt');

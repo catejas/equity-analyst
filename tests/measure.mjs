@@ -1,3 +1,4 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The text measure.
  *
  * Prose ran at a median of 125 characters per line and reached 149. Typography
@@ -20,7 +21,7 @@ const DOCS = ['co1', 'sector', 'exec'];
 for (const n of DOCS) {
   const f = `/tmp/doc-${n}.html`;
   if (!fs.existsSync(f)) { console.log('FAIL  no fixture ' + f + ' — run tests/gen-fixtures.mjs'); process.exit(1); }
-  if (fs.statSync(f).mtimeMs < fs.statSync('/home/claude/eqapp/render.js').mtimeMs) {
+  if (fs.statSync(f).mtimeMs < fs.statSync(ROOT + '/render.js').mtimeMs) {
     console.log('FAIL  fixture older than render.js — regenerate first'); process.exit(1);
   }
 }

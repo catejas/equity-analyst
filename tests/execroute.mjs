@@ -1,9 +1,10 @@
+import { ROOT, REAL } from './_paths.mjs';
 /* The right summary must reach the right button: a company row builds that
    company's summary, the sector page still builds the sector's. */
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
-const dir='/home/claude/eqapp'; const errors=[];
-const anlon=JSON.parse(fs.readFileSync('/mnt/user-data/uploads/Anlon.json','utf8').replace(/\uFFFD/g,'-'));
+const dir=ROOT + ''; const errors=[];
+const anlon=JSON.parse(fs.readFileSync(REAL + '/pnb-merged-16-11-2026.json','utf8').replace(/\uFFFD/g,'-'));
 const dom=new JSDOM(fs.readFileSync(dir+'/index.html','utf8'),{
   runScripts:'dangerously', url:'https://e.com/', pretendToBeVisual:true,
   beforeParse(w){ w.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
