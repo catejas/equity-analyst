@@ -32,7 +32,7 @@ const FIRST = ['gen-fixtures'];
  *
  * So exclusions are exact filenames, and anything skipped is printed. */
 const NOT_TESTS = new Set([
-  'run-all.mjs', 'gen-fixtures.mjs', 'gen-test.mjs', 'gen-write.mjs', 'gen-bank.mjs',
+  'run-all.mjs', 'gen-fixtures.mjs', 'gen-test.mjs', 'gen-write.mjs', 'gen-bank.mjs', 'gen-knownkeys.mjs',
   'measure.mjs', 'scmeasure.mjs', 'probe.mjs', 'readit.mjs', 'loadpage.mjs',
   'picker.mjs', 'audit.py', 'flow.py']);
 /* Anything starting with an underscore is a scratch probe, not a suite. */

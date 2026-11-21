@@ -19,6 +19,7 @@ import { buildModel, driverSensitivity, STANDARD_FLEXES } from './model.js';
 import { assessLitigation } from './litigation.js';
 import * as forensic from './forensic.js';
 import * as metrics from './metrics.js';
+import { completeness as depthOf } from './completeness.js';
 import { PILLARS } from './scoring.js';
 
 const r2 = (n) => (Number.isFinite(n) ? Math.round((n + Number.EPSILON) * 100) / 100 : null);
@@ -801,6 +802,21 @@ function scoreCompany(c, horizonKey, run) {
   };
 }
 
+/* Build 28. Items the research searched for and could not find are printed
+   in Gaps in this research, with what was tried — never hidden, and never
+   treated as closed: the follow-up keeps asking for them. */
+function searchedGaps(payload, asOf) {
+  try {
+    const dmy = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+    return depthOf(payload, { now: asOf }).missing.filter((c) => c.state === 'searched').map((c) =>
+      `Searched and not found: ${c.label} (${c.have} of ${c.want}). Searched ${c.tries === 1 ? 'once' : c.tries + ' times'}`
+      + (c.lastTried ? `, last on ${dmy(c.lastTried)}` : '')
+      + (c.sources.length ? `, in ${c.sources.join('; ')}` : '') + '.'
+      + (c.reasons.length ? ` Reason given: ${c.reasons[c.reasons.length - 1]}` : '')
+      + ' It is asked for again in every follow-up.');
+  } catch (e) { return []; }
+}
+
 export function buildReport(payload, { asOf = new Date() } = {}) {
   const check = validatePayload(payload);
   if (!check.valid) return { ok: false, errors: check.errors, warnings: check.warnings, report: null };
@@ -967,7 +983,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   if (check.partial) {
     return {
       ok: true, partial: true, errors: [],
-      warnings: [...check.warnings,
+      warnings: [...check.warnings, ...searchedGaps(payload, asOf),
         'This run has no companies yet. Paste the rest of the reply with Add To This Analysis.'],
       report: {
         run: { sector: payload.run.sector, subSector: payload.run.subSector ?? null,
@@ -1056,7 +1072,7 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
   return {
     ok: true,
     errors: [],
-    warnings: [...check.warnings, ...gaps, ...ranked.ties],
+    warnings: [...check.warnings, ...gaps, ...searchedGaps(payload, asOf), ...ranked.ties],
     report: {
       run: {
         sector: payload.run.sector,

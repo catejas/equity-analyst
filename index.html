@@ -522,6 +522,22 @@ body.previewing{overflow:hidden;}
   #preview{position:static;} #preview .pvbar{display:none!important;} }
 /* When the Search button has armed the prompt, the tool row is the
    next thing to tap — say so visually. */
+/* Build 28: the Sector Finder's ranking. */
+.ftbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;}
+.ftbl th{text-align:left;font-weight:700;color:var(--ink2,#9AA4B8);font-size:11px;padding:5px 4px;border-bottom:1px solid var(--line,#2A3550);}
+.ftbl td{padding:6px 4px;border-bottom:1px solid var(--line,#2A3550);vertical-align:top;}
+.ftbl td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.ftbl tr.top td{background:rgba(242,178,51,.08);}
+.ftbl .sub{display:block;color:var(--ink3,#8A94A8);font-size:11px;}
+.ftbl .pos{color:var(--green,#4CAF6A);} .ftbl .neg{color:var(--red,#E05A5A);}
+.fmore{margin-top:6px;font-size:12px;color:var(--ink2,#9AA4B8);}
+.fchk{font-size:11px;color:var(--ink3,#8A94A8);}
+.cosecbar{display:flex;align-items:center;gap:8px;margin:16px 2px 8px;flex-wrap:wrap;}
+.cosecbar h2{margin:0;}
+.cosecbar .selwrap{flex:1;min-width:180px;}
+/* Build 28: the state of a missing item in the depth lists. */
+.st-searched{color:var(--warn,#E0A030);font-size:.92em;font-weight:600;}
+.st-open{color:var(--ink3,#8A94A8);font-size:.92em;}
 #toolRow.armed,#toolRowCo.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
 #toolRow.armed .btn,#toolRowCo.armed .btn{background:var(--surf);border-color:var(--gold);}
 /* Build 27: the paste box is marked the same way while Import is open, on the
@@ -554,7 +570,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="22-11-2026.27";</script>
+<script>window.APP_BUILD="22-11-2026.28";</script>
 </head>
 <body>
 
@@ -583,9 +599,41 @@ body.previewing{overflow:hidden;}
 
 <!-- ============ SECTOR ============ -->
 <section id="tab-sector">
+  <!-- Build 28: the Sector Finder, then its Top 3 Sectors, then any sector on
+       its own, then the AI tool buttons — the Company page's shape. -->
+  <div class="card runbox" id="finderBox">
+    <h2><span>Sector Finder</span> <span class="tag" id="finderTag">empty</span></h2>
+    <p class="hint">Screens every sector in the app's list: how it has done against the Nifty 50
+    over 3 months, 6 months and 1 year, its sales and profit growth, its three-year outlook and its
+    valuation. The app scores and ranks them and names the Top 3.</p>
+    <label for="finderVer">Version</label>
+    <div class="selwrap"><select id="finderVer" disabled><option value="">— no saved screen —</option></select></div>
+    <div class="grid4" style="margin-top:11px;">
+      <button class="btn sm pri" id="btnFinderRun" style="margin:0;">Find Sectors</button>
+      <button class="btn sm" id="btnFinderUpdate" style="margin:0;" disabled>Update</button>
+      <button class="btn sm" id="btnFinderImport" style="margin:0;">Import Data</button>
+      <button class="btn sm dang" id="btnFinderDelete" style="margin:0;" disabled>Delete</button>
+    </div>
+    <div id="finderAge"></div>
+    <div id="finderTable"></div>
+    <div id="finderDocs" class="hidden" style="margin-top:12px;">
+      <div class="doc-row">
+        <span class="doc-name">Sector Screen<small>the ranking and the Top 3 &middot; A4 PDF</small></span>
+        <button class="ico ico-pdf" data-doc="finder" data-act="make" aria-label="Generate Sector Screen">PDF</button>
+        <button class="ico ico-sh" data-doc="finder" data-act="share" aria-label="Share Sector Screen">&#8682;</button>
+      </div>
+    </div>
+    <div id="finderMsg" class="note" style="margin-top:8px;"></div>
+    <div id="finderDepth"></div>
+  </div>
+
+  <div id="secBoxes"></div>
+
   <div class="card runbox" id="segBox">
-    <h2><span id="segBoxName">Sector / Sub-sector Research</span>
+    <h2><span id="segBoxName">Independent Sector Research</span>
         <span class="tag" id="segBoxTag">empty</span></h2>
+    <p class="hint">Any sector, whether or not the Finder ranks it. Choose it, research it, and its
+    Top 3 companies appear on the Company page.</p>
 
     <label for="segSel">Sector</label>
     <div class="selwrap"><select id="segSel"><option value="">— choose a sector —</option></select></div>
@@ -614,18 +662,7 @@ body.previewing{overflow:hidden;}
     </div>
     <div id="segAge"></div>
 
-    <label style="margin-top:16px;">Open AI tool</label>
-    <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
-    pick a tool. The prompt is already on the clipboard: the tool opens, you paste, send, and
-    bring the reply back with Import Data.</p>
-    <div class="grid2" id="toolRow">
-      <button class="btn sm" data-tool="claude">Claude</button>
-      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
-      <button class="btn sm" data-tool="gemini">Gemini</button>
-      <button class="btn sm" data-tool="perplexity">Perplexity</button>
-    </div>
-
-    <div id="docTools" class="hidden" style="margin-top:14px;"><div id="segDocs">
+ <div id="docTools" class="hidden" style="margin-top:14px;"><div id="segDocs">
       <div class="doc-row">
         <span class="doc-name">Sector Research Report<small>the sector &middot; A4 PDF</small></span>
         <button class="ico ico-pdf" data-doc="sector" data-act="make" aria-label="Generate Sector Research Report">PDF</button>
@@ -661,6 +698,19 @@ body.previewing{overflow:hidden;}
       <button id="btnAddMoreSave"></button><button id="btnAddMoreCancel"></button>
       <div id="addMoreMsg"></div></div>
   </div>
+
+  <div class="card runbox" id="toolBox">
+    <label style="margin-top:0;">Open AI tool</label>
+    <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
+    pick a tool. The prompt is already on the clipboard: the tool opens, you paste, send, and
+    bring the reply back with Import Data.</p>
+    <div class="grid2" id="toolRow">
+      <button class="btn sm" data-tool="claude">Claude</button>
+      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
+      <button class="btn sm" data-tool="gemini">Gemini</button>
+      <button class="btn sm" data-tool="perplexity">Perplexity</button>
+    </div>
+  </div>
 </section>
 
 <!-- ============ COMPANY ============ -->
@@ -692,13 +742,12 @@ body.previewing{overflow:hidden;}
 
   <div id="coBoxes"></div>
 
-  <div class="card runbox">
-    <h2>Saved company research</h2>
-    <label for="coPick">Every company imported into this app</label>
-    <div class="selwrap"><select id="coPick"><option value="">— none imported —</option></select></div>
-    <div id="coMsg" class="note" style="margin-top:8px;"></div>
-
-    <label style="margin-top:16px;">Open AI tool</label>
+  <!-- Build 28: the "Saved company research" picker was removed (Tejas: that
+       selection is useless). Each box has its own documents; the Score Card and
+       Scenario pages have their own pickers. -->
+  <div class="card runbox" id="toolBoxCo">
+    <div id="coMsg" class="note" style="margin-top:0;"></div>
+    <label style="margin-top:6px;">Open AI tool</label>
     <p class="hint" id="toolHintCo" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
     The prompt is already on the clipboard.</p>
     <div class="grid2" id="toolRowCo">
@@ -2314,6 +2363,13 @@ function parseImport(raw){
      validated, when it is saved. */
   var isTopUpBlock = !!(j && j.run && j.run.topUp === true);
   if(isTopUpBlock && !Array.isArray(j.companies)) j.companies = [];
+  /* Build 28: a Sector Finder screen carries sectors, not companies. */
+  var isFinderBlock = !!(j && window.EQ && EQ.finder && EQ.finder.isFinderPayload(j));
+  if(isFinderBlock){
+    if(!j.run) j.run = { kind:'sectorScreen' };
+    if(!Array.isArray(j.companies)) j.companies = [];
+    isTopUpBlock = true;   /* validated as a screen when it is saved, not as a study */
+  }
   if(j && j.run && Array.isArray(j.companies)){
     if(LAST_TRUNCATED) out.truncated = true;
     if(LAST_REPAIRS.length) out.warn.push('The reply needed repair before it could be read ('
@@ -3299,6 +3355,14 @@ function showReview(res, raw){
   pendingImport = { res:res, raw:raw, fixes:{} };
   var d = res.data;
   var html = '<div class="rv">';
+  /* Build 28: before anything reads the reply, check the app can read all of
+     it. Keys sent under a near-variant of the schema's name are moved to it;
+     keys nothing in the app reads are listed; and anything the tool's search
+     record calls "not found" but the reply actually carries is shown. */
+  var RC = null;
+  if(res.v3 && d && window.EQ && EQ.readcheck){
+    try{ RC = EQ.readcheck.readCheck(d); }catch(e){ RC = null; }
+  }
 
   /* Build 25: an update reply says which line it belongs to, so it goes there
      whichever Import button was pressed — a Top 3 company into its slot in the
@@ -3335,13 +3399,19 @@ function showReview(res, raw){
     }
     merged = { into: tgt, gained: mg.gained };
     d = mg.merged; res.data = d;
+    if(RC){ try{ RC.claimed = EQ.readcheck.readCheck(JSON.parse(JSON.stringify(d))).claimed; }catch(e){} }
     pendingImport.mergeInto = tgt.id;
     pendingImport.gained = mg.gained;
     IMPORT_TARGET = tgt.kind === 'company'
       ? { kind:'company', rank: tgt.standalone ? 0 : (tgt.rank || 0) }
       : { kind:'sector', rank:0 };
     if(tgt.kind === 'company' && !tgt.standalone && tgt.parentId) SEL.sector = tgt.parentId;
-    if(tgt.kind !== 'company') SEL.sector = tgt.id;
+    if(tgt.kind !== 'company' && tgt.kind !== 'finder') SEL.sector = tgt.id;
+  }
+  /* Build 28: a Sector Finder screen has its own review. */
+  if(res.v3 && window.EQ && EQ.finder && EQ.finder.isFinderPayload(d)){
+    showFinderReview(d, merged, RC, raw, res);
+    return;
   }
 
   /* ---- headline: what arrived, and how much of it ---- */
@@ -3409,6 +3479,12 @@ function showReview(res, raw){
                   : '. Nothing the reports need is missing.')
               : '<b>' + pct + '% of the payload carries data.</b> ')
           + '</div>';
+    if(depth && depth.searched){
+      html += '<div class="rvthin">' + depth.searched + ' of the missing item' + (depth.searched === 1 ? ' was' : 's were')
+        + ' searched for and not found. ' + (depth.searched === 1 ? 'It stays' : 'They stay')
+        + ' on the list and the follow-up asks again, naming the sources already tried and others to try.</div>';
+    }
+    html += readCheckHtml(RC);
 
     /* ---- section by section ---- */
     html += '<div class="rvsec">';
@@ -3452,8 +3528,11 @@ function showReview(res, raw){
         if(depth.sections.length > 1) html += '<div class="rvthin"><b>' + esc(sx.title) + '</b></div>';
         miss.forEach(function(c){
           html += '<div class="rvsrow"><i class="dot ' + (c.have ? 'part' : 'none') + '"></i><span>'
-            + esc(c.label) + '</span><b>' + c.have + '/' + c.want + '</b></div>';
+            + esc(c.label) + ' <span class="st-' + esc(c.state || 'open') + '">' + esc(stateWord(c)) + '</span>'
+            + '</span><b>' + c.have + '/' + c.want + '</b></div>';
           if(c.detail) html += '<div class="rvgap">' + esc(c.detail) + '</div>';
+          if(c.state === 'searched' && c.sources && c.sources.length)
+            html += '<div class="rvgap">tried: ' + esc(c.sources.join(' \u00b7 ')) + '</div>';
         });
       });
       html += '<div class="rvthin">Each of these leaves a blank or a gap note in the report. '
@@ -3858,6 +3937,7 @@ $('#btnSaveImport').addEventListener('click', function(){
   if(!window.EQ){ alert('The research engine has not finished loading. Try again in a moment.'); return; }
 
   var d = pendingImport.res.data;
+  if(window.EQ && EQ.finder && EQ.finder.isFinderPayload(d)){ saveFinder(d); return; }
   /* Fetch first, then save, so the record is stored with its history rather
      than being written twice. */
   if(thinPrices(d).length && !pendingImport.pricesTried){
@@ -4681,7 +4761,7 @@ if($('#btnSearch')) $('#btnSearch').addEventListener('click', function(){
 /* already declared near the top, where the first refresh needs it */
 
 function sectorRecords(){
-  return libRead().filter(function(r){ return r && r.kind !== 'company' && r.data && r.data.run; });
+  return libRead().filter(function(r){ return r && r.kind !== 'company' && r.kind !== 'finder' && r.data && r.data.run; });
 }
 function companyRecords(){ return libRead().filter(function(r){ return r && r.kind === 'company'; }); }
 function segRecord(){
@@ -4758,6 +4838,7 @@ function recById(id){ return libRead().filter(function(r){ return r.id === id; }
 function recLine(r){
   if(!r) return null;
   if(r.line) return r.line;
+  if(r.kind === 'finder') return 'F|screen';
   if(!window.EQ || !EQ.update) return 'id:' + r.id;
   var k;
   if(r.kind === 'company'){
@@ -5224,7 +5305,7 @@ function renderSectorPage(){
 
   if($('#segBoxName')) $('#segBoxName').textContent = seg
     ? ((seg.sector || 'Sector') + (seg.subSector ? ' \u2014 ' + seg.subSector : ''))
-    : 'Sector / Sub-sector Research';
+    : 'Independent Sector Research';
   var tag = $('#segBoxTag');
   if(tag){ tag.textContent = seg ? 'imported' : 'empty'; tag.className = 'tag' + (seg ? ' ok' : ''); }
   if($('#segBoxMeta')) $('#segBoxMeta').textContent = seg
@@ -5236,6 +5317,7 @@ function renderSectorPage(){
   if($('#docTools')) $('#docTools').classList.toggle('hidden', !seg);
   if($('#btnDelRep')) $('#btnDelRep').disabled = !seg;
   var box = $('#segBox'); if(box) box.classList.toggle('done', !!seg);
+  try{ renderFinder(); }catch(e){ console.warn('finder', e); }
 }
 
 function rankOfCompany(rec){
@@ -5295,9 +5377,8 @@ function renderCompanyPage(){
   if($('#soloDocs')) $('#soloDocs').innerHTML = docRows('solo', !!soloCur, null, !!(soloCur && prevVersion(soloCur)));
   if($('#soloDepth')) $('#soloDepth').innerHTML = depthBox(soloCur);
 
-  var recs = companyRecords(), cur = coRecord();
+  var cur = coRecord();
   if(cur) SEL.company = cur.id;
-  fillPicker('#coPick', recs, SEL.company, '\u2014 none imported \u2014');
 
   /* A #coDocs block used to be built here. There is no #coDocs in the markup —
      the guard meant it silently built HTML and threw it away on every render.
@@ -5306,13 +5387,21 @@ function renderCompanyPage(){
 
   var slots = $('#coBoxes'); if(!slots) return;
   var seg = segRecord();
-  if(!seg){ slots.innerHTML = ''; return; }
+  if(!seg){ slots.innerHTML = '<div class="note" style="margin:16px 2px;">Top 3 companies appear here once a sector study '
+    + 'is saved. Find or choose a sector on the Sector page and research it.</div>'; return; }
   var nVer = versionsOf(seg).length, vNo = versionNo(seg);
-  slots.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 from '
-      + esc(seg.sector || 'the sector study')
-      + (nVer > 1 ? ' <span class="mut" style="font-size:.78rem;font-weight:600;">\u00b7 ' + esc(verWord(seg)) + ' version'
-          + ' \u00b7 ' + esc(dmyTs(seg.ts)) + (vNo < nVer ? ' \u00b7 the Top 3 as it was then' : '') + '</span>' : '')
-      + '</h2>'
+  /* Build 28: which sector's Top 3 this is, and a way to switch, in place of
+     the "Saved company research" picker. Studies are listed by their latest
+     version; the version picker on the Sector page chooses within one. */
+  var studies = latestOnly(sectorRecords());
+  var curLine = recLine(seg);
+  slots.innerHTML = '<div id="coHead"><div class="cosecbar"><h2>Top 3 companies of</h2><div class="selwrap"><select id="coSectorPick">'
+      + studies.map(function(r){
+          return '<option value="' + esc(r.id) + '"' + (recLine(r) === curLine ? ' selected' : '') + '>'
+            + esc((r.sector || 'Sector') + (r.subSector ? ' \u2014 ' + r.subSector : '')) + '</option>'; }).join('')
+      + '</select></div></div>'
+      + (nVer > 1 ? '<div class="mut" style="margin:-4px 2px 8px;font-size:.8rem;font-weight:600;">' + esc(verWord(seg)) + ' version'
+          + ' \u00b7 ' + esc(dmyTs(seg.ts)) + (vNo < nVer ? ' \u00b7 the Top 3 as it was then' : '') + '</div>' : '') + '</div>'
     + runSlots().map(function(s){
       var named = !!s.name, done = s.state === 'imported', carried = s.state === 'carried';
       /* Research the company afresh, or bring earlier research up to date: the
@@ -5355,6 +5444,300 @@ function renderCompanyPage(){
         + '<div class="note co-msg" data-msg="' + s.rank + '"></div></div>';
     }).join('');
 }
+/* ============================== the Sector Finder (build 28) ==========
+ *
+ * Tejas, 22-11-2026: "Build Sector Finder at the Top of the Sector Page. We
+ * can use Company Page setup for Sector Page. Like Independent Company
+ * Research here we have Independent Sector Research and it Like Top3
+ * companies, we have Top3 sectors from Sector Finder."
+ *
+ * The screen is its own line ("F|screen") with Latest and Previous versions,
+ * like every other line. Its Top 3 sectors link to sector studies by name:
+ * one study per sector however it is reached, so a sector already researched
+ * on its own shows up in its Top 3 box with Update. */
+function finderRecords(){
+  return libRead().filter(function(r){ return r && r.kind === 'finder' && r.data; })
+    .sort(function(a, b){ return (a.ts || 0) - (b.ts || 0); });
+}
+function finderRecord(){
+  var l = finderRecords(); if(!l.length) return null;
+  return l.filter(function(r){ return r.id === SEL.finder; })[0] || l[l.length - 1];
+}
+function finderScore(rec){
+  if(!rec || !window.EQ || !EQ.finder) return null;
+  try{ return EQ.finder.scoreFinder(rec.data); }catch(e){ return null; }
+}
+/* The sector study a Finder row stands for: the same sector and sub-sector
+   first, the same sector second; the latest version of it. */
+function studyForSector(name, sub){
+  var k = function(v){ return String(v || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+  var all = latestOnly(sectorRecords()).filter(function(r){ return k(r.sector) === k(name); })
+    .sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+  return all.filter(function(r){ return sub && k(r.subSector) === k(sub); })[0] || all[0] || null;
+}
+function pctCell(v, checked){
+  if(typeof v !== 'number' || !isFinite(v)) return '<span class="mut">—</span>';
+  return '<span class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + v.toFixed(1) + '</span>';
+}
+function finderTableHtml(sc){
+  if(!sc || !sc.rows.length) return '';
+  var b = sc.benchmark || {};
+  var row = function(x){
+    var top = sc.top3.some(function(t){ return t.name === x.name; });
+    return '<tr class="' + (top ? 'top' : '') + '"><td class="n">' + x.rank + '</td>'
+      + '<td><b>' + esc(x.name) + '</b>' + (x.subSector ? '<span class="sub">' + esc(x.subSector) + '</span>' : '')
+      + (!x.complete ? '<span class="sub">missing: ' + esc(x.missingParts.join(', ')) + '</span>' : '') + '</td>'
+      + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b></td>'
+      + '<td class="n">' + pctCell(x.rel.m3) + '<br>' + pctCell(x.rel.m6) + '<br>' + pctCell(x.rel.y1) + '</td>'
+      + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked') + '</td></tr>';
+  };
+  var head = '<tr><th>#</th><th>Sector</th><th style="text-align:right">Score</th>'
+    + '<th style="text-align:right">vs Nifty<br>3m/6m/1y</th><th style="text-align:right">Returns</th></tr>';
+  var first = sc.rows.slice(0, 10), rest = sc.rows.slice(10);
+  return '<table class="ftbl">' + head + first.map(row).join('') + '</table>'
+    + (rest.length ? '<details class="fmore"><summary>Show all ' + sc.rows.length + ' sectors</summary>'
+        + '<table class="ftbl">' + head + rest.map(row).join('') + '</table></details>' : '')
+    + '<div class="fmore">Nifty 50: ' + pctCell(b.m3) + ' / ' + pctCell(b.m6) + ' / ' + pctCell(b.y1) + '% over 3m / 6m / 1y'
+    + (b.checked ? ' · checked by the app' : ' · as the research states it')
+    + '. Columns show points above or below the Nifty 50. ' + sc.counts.complete + ' of ' + sc.counts.screened
+    + ' sectors fully scored; returns checked for ' + sc.counts.checked + '.</div>';
+}
+function renderFinder(){
+  var box = $('#finderBox'); if(!box) return;
+  var rec = finderRecord(), sc = finderScore(rec);
+  if(rec) SEL.finder = rec.id;
+  var vers = finderRecords().slice().reverse();
+  var vsel = $('#finderVer');
+  if(vsel){
+    vsel.innerHTML = vers.length ? vers.map(function(r){
+        return '<option value="' + esc(r.id) + '"' + (rec && r.id === rec.id ? ' selected' : '') + '>' + esc(verLabel(r)) + '</option>'; }).join('')
+      : '<option value="">— no saved screen —</option>';
+    vsel.disabled = vers.length < 2;
+  }
+  var tag = $('#finderTag');
+  if(tag){ tag.textContent = rec ? 'screened' : 'empty'; tag.className = 'tag' + (rec ? ' ok' : ''); }
+  if($('#btnFinderUpdate')) $('#btnFinderUpdate').disabled = !rec;
+  if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
+  if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
+  if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc) : '';
+  if($('#finderDocs')) $('#finderDocs').classList.toggle('hidden', !rec);
+  if($('#finderDepth')) $('#finderDepth').innerHTML = depthBox(rec);
+  box.classList.toggle('done', !!rec);
+  renderSectorSlots(sc);
+}
+function renderSectorSlots(sc){
+  var host = $('#secBoxes'); if(!host) return;
+  if(!sc || !sc.top3.length){ host.innerHTML = ''; return; }
+  host.innerHTML = '<h2 style="margin:16px 2px 8px;">Top 3 Sectors</h2>' + sc.top3.map(function(x, i){
+    var rank = i + 1, st = studyForSector(x.name, x.subSector);
+    var mainBtn = st
+      ? '<button class="btn xs pri sec-update" data-rank="' + rank + '" style="margin:0;">Update</button>'
+      : '<button class="btn xs pri sec-search" data-rank="' + rank + '" style="margin:0;">Research</button>';
+    var docs = st ? '<div class="doc-row"><span class="doc-name">Sector Research Report<small>A4 PDF</small></span>'
+        + '<button class="ico ico-pdf fdoc" data-sid="' + esc(st.id) + '" data-fdoc="sector" data-act="make" data-rank="' + rank + '">PDF</button>'
+        + '<button class="ico ico-sh fdoc" data-sid="' + esc(st.id) + '" data-fdoc="sector" data-act="share" data-rank="' + rank + '">&#8682;</button></div>'
+      + '<div class="doc-row"><span class="doc-name">Executive Summary<small>sector and companies</small></span>'
+        + '<button class="ico ico-pdf fdoc" data-sid="' + esc(st.id) + '" data-fdoc="exec" data-act="make" data-rank="' + rank + '">PDF</button>'
+        + '<button class="ico ico-sh fdoc" data-sid="' + esc(st.id) + '" data-fdoc="exec" data-act="share" data-rank="' + rank + '">&#8682;</button></div>' : '';
+    return '<div class="card runbox ' + (st ? 'done' : 'waiting') + '" data-srank="' + rank + '">'
+      + '<h2><span class="rank-badge">' + rank + '</span><span>' + esc(x.name)
+        + (x.subSector ? ' — ' + esc(x.subSector) : '') + '</span>'
+        + '<span class="tag' + (st ? ' ok' : '') + '">' + (st ? 'researched' : 'to research') + '</span></h2>'
+      + '<div class="slotwhy"><b>Scored ' + x.score.toFixed(1) + ' of 100.</b> ' + esc(x.reason || '') + '</div>'
+      + (st && (String(st.subSector || '').toLowerCase() !== String(x.subSector || '').toLowerCase())
+          ? '<div class="slotver">The saved study is ' + esc((st.sector || '') + (st.subSector ? ' — ' + st.subSector : ' (the whole sector)'))
+            + '. Research copies the full prompt for ' + esc(x.subSector || x.name) + ' if you want that instead.</div>' : '')
+      + '<div class="grid3" style="margin-top:9px;">' + mainBtn
+        + '<button class="btn xs sec-import" data-rank="' + rank + '" style="margin:0;">Import</button>'
+        + '<button class="btn xs sec-cos" data-rank="' + rank + '" style="margin:0;"' + (st ? '' : ' disabled') + '>Top 3 companies →</button>'
+      + '</div>'
+      + (st ? ageBox(st) : '')
+      + docs
+      + depthBox(st)
+      + '<div class="note" id="fmsg' + rank + '"></div></div>';
+  }).join('');
+}
+function finderTop3(){ var sc = finderScore(finderRecord()); return sc ? sc.top3 : []; }
+
+/* The Finder's own review, in place of the study review. */
+function showFinderReview(d, merged, rc, raw, res){
+  var CMP = window.EQ && EQ.completeness;
+  var depth = CMP ? CMP.completeness(d) : null, pct = depth ? depth.pct : 0;
+  var sc = null; try{ sc = EQ.finder.scoreFinder(d); }catch(e){}
+  var html = '<div class="rv"><div class="rvh">Sector Finder — ' + (sc ? sc.counts.screened : 0) + ' of '
+    + EQ.finder.FINDER_SECTORS.length + ' sectors screened <span class="tagx">' + esc(envelopeOf(raw, res)) + '</span></div>';
+  if(merged){
+    html += '<div class="rvok"><b>Follow-up added to the saved screen.</b> '
+      + (merged.gained.length ? 'It filled in: ' + esc(merged.gained.slice(0, 14).join(' · ')) + '.' : 'It carried nothing new.')
+      + ' Press SAVE to keep it.</div>';
+  }
+  html += '<div class="rvbar"><i style="width:' + pct + '%"></i></div>'
+    + '<div class="' + (pct >= 85 ? 'rvok' : pct >= 60 ? 'rvwarn' : 'rvbad') + '"><b>' + pct + '% complete.</b> '
+    + (depth ? depth.met + ' of ' + depth.total + ' depth checks are met.' : '') + '</div>';
+  if(depth && depth.searched) html += '<div class="rvthin">' + depth.searched + ' missing item' + (depth.searched === 1 ? ' was' : 's were')
+    + ' searched for and not found. The follow-up asks again, naming the sources tried and others to try.</div>';
+  html += readCheckHtml(rc);
+  if(sc && sc.top3.length){
+    html += '<div class="rvdocs"><div class="rvdh">Top 3 Sectors from this screen</div>'
+      + sc.top3.map(function(x, i){ return '<div class="rvsrow"><i class="dot ok"></i><span>' + (i + 1) + '. ' + esc(x.name)
+        + (x.subSector ? ' — ' + esc(x.subSector) : '') + '</span><b>' + x.score.toFixed(1) + '</b></div>'; }).join('')
+      + '<div class="rvthin">After saving, the app fetches the index and stock prices itself and replaces the research’s '
+      + 'returns with its own where it can; the ranking may move a little.</div></div>';
+  }
+  if(depth && depth.missing.length){
+    html += '<div class="rvdocs"><div class="rvdh">Still thin or missing</div>';
+    depth.missing.forEach(function(c){
+      html += '<div class="rvsrow"><i class="dot ' + (c.have ? 'part' : 'none') + '"></i><span>' + esc(c.label)
+        + ' <span class="st-' + esc(c.state || 'open') + '">' + esc(stateWord(c)) + '</span></span><b>' + c.have + '/' + c.want + '</b></div>';
+      if(c.detail) html += '<div class="rvgap">' + esc(String(c.detail).slice(0, 260)) + '</div>';
+    });
+    html += '<button type="button" class="btn sm" id="btnTopUpPending">Copy follow-up prompt</button></div>';
+  }
+  html += '</div>';
+  pendingImport.finder = true;
+  $('#reviewBox').innerHTML = html;
+  $('#reviewBox').classList.remove('hidden');
+  $('#btnSaveImport').classList.remove('hidden');
+}
+function saveFinder(d){
+  if(!Array.isArray(d.sectors) || !d.sectors.some(function(x){ return x && x.name; })){
+    alert('This screen has no sectors in it, so it was not saved.'); return;
+  }
+  if(d.run) delete d.run.topUp;
+  var done = function(rec, word){
+    SEL.finder = rec.id;
+    IMPORT_TARGET = { kind:'sector', rank:0 };
+    $('#importCard').classList.add('hidden'); $('#importText').value = '';
+    $('#importText').classList.remove('armed');
+    $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
+    pendingImport = null;
+    renderReportPage();
+    var t3 = finderTop3();
+    alert(word + '\n\nTop 3 Sectors: ' + (t3.length ? t3.map(function(x){ return x.name; }).join(', ') : 'none fully scored yet')
+      + '.\n\nThe app is now checking the returns against index and stock prices; the ranking updates when it finishes.');
+    verifyFinder(rec.id);
+  };
+  if(pendingImport.mergeInto){
+    var lib = libRead(), hit = lib.filter(function(r){ return r.id === pendingImport.mergeInto; })[0];
+    if(!hit){ alert('The screen this follow-up belongs to is no longer saved.'); return; }
+    delete d.verified;
+    hit.data = d;
+    if(!libWrite(lib)) return;
+    done(hit, 'Follow-up saved into the Sector Finder screen.');
+    return;
+  }
+  var src = (detectTool(pendingImport.raw, d) || {}).name || 'unknown';
+  var last = finderRecords().slice(-1)[0];
+  if(last && JSON.stringify(last.data) === JSON.stringify(d)){ alert('This exact screen is already saved.'); return; }
+  var rec = { id:'r' + Date.now(), ts:Date.now(), source:src, kind:'finder', line:'F|screen', rank:0, parentId:null,
+    sector:'Sector Finder', subSector:'', company:'Sector Finder', data:d };
+  if(!saveToLibrary(rec)) return;
+  done(rec, versionsOf(rec).length > 1
+    ? 'Saved as the latest Sector Finder screen. The previous one is kept; the Sector Screen PDF shows what moved.'
+    : 'Sector Finder screen saved.');
+}
+/* The app's own check of the returns: the sector index from Upstox, or the
+   bellwether stocks where no index answers. Never blocks; a failure leaves
+   the research's figures in place, marked "not checked". */
+var FINDER_BUSY = false;
+function verifyFinder(id){
+  if(FINDER_BUSY || !window.EQ || !EQ.finder || !EQ.prices) return Promise.resolve(false);
+  var rec = recById(id); if(!rec) return Promise.resolve(false);
+  FINDER_BUSY = true;
+  if($('#finderMsg')) $('#finderMsg').textContent = 'Checking the returns against index and stock prices…';
+  return EQ.prices.loadInstrumentMap().then(function(map){
+    return EQ.finder.verifyReturns(rec.data, {
+      fetchBars: function(key){ return EQ.prices.fetchUpstox(key, { unit:'days', interval:1, years:2 }); },
+      keyFor: function(sym, isin){ return EQ.prices.instrumentKeyFor(sym, map, isin || null); }
+    });
+  }).then(function(v){
+    FINDER_BUSY = false;
+    var lib = libRead(), hit = lib.filter(function(r){ return r.id === id; })[0];
+    if(!hit) return false;
+    hit.data.verified = v;
+    libWrite(lib);
+    var n = Object.keys(v.sectors || {}).length;
+    if($('#finderMsg')) $('#finderMsg').textContent = n
+      ? 'Returns checked by the app for ' + n + ' sector' + (n === 1 ? '' : 's') + (v.benchmark ? ' and the Nifty 50' : '')
+        + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures.' : '.')
+      : 'The price source could not be reached, so the returns are the research’s own, marked "not checked".';
+    renderFinder();
+    return true;
+  }, function(){ FINDER_BUSY = false; return false; });
+}
+window.verifyFinder = verifyFinder;
+/* The Sector Screen PDF is built from the screen on show, with the one before
+   it for what moved. */
+window.finderPayload = function(){
+  var rec = finderRecord(); if(!rec) return null;
+  var sc = finderScore(rec); if(!sc) return null;
+  var v = versionsOf(rec), i = v.findIndex(function(x){ return x.id === rec.id; });
+  var prev = i > 0 ? v[i - 1] : null, psc = prev ? finderScore(prev) : null;
+  var depth = null; try{ depth = EQ.completeness.completeness(rec.data); }catch(e){}
+  return {
+    meta: { company: 'Sector Finder', sector: 'Sector Finder', analysis_datetime: new Date(recAsOf(rec)).toISOString() },
+    report: {}, finder: sc, previous: psc,
+    compare: psc ? EQ.finder.compareScreens(psc, sc) : null,
+    asOf: recAsOf(rec), prevAsOf: prev ? recAsOf(prev) : null,
+    notes: (rec.data.run && rec.data.run.researchNotes) || '',
+    warnings: depth ? depth.missing.map(function(c){
+      return (c.state === 'searched' ? 'Searched and not found: ' : 'Not yet established: ') + c.label + ' (' + c.have + ' of ' + c.want + ')'
+        + (c.detail ? ' — ' + String(c.detail).slice(0, 220) : '') + '.'; }) : []
+  };
+};
+
+document.addEventListener('click', function(ev){
+  if(!ev.target.closest) return;
+  if(ev.target.closest('#btnFinderRun') || ev.target.closest('#btnFinderUpdate')){
+    var isUpd = !!ev.target.closest('#btnFinderUpdate');
+    if(!window.EQ || !EQ.finder){ alert('The research engine has not finished loading. Wait a moment and try again.'); return; }
+    LAST_PROMPT = '';
+    var last = finderRecords().slice(-1)[0];
+    var text = EQ.finder.buildFinderPrompt({ taxonomy: (window.EQSectors && EQSectors.all) || null, now: new Date(),
+      previous: isUpd && last ? finderScore(last) : null, previousTs: isUpd && last ? recAsOf(last) : null });
+    deliverPrompt(text, (isUpd ? 'Sector Finder update' : 'Sector Finder') + ' prompt copied.\n\nPick a tool — the four buttons are '
+      + 'highlighted below. Paste, send, and bring the reply back with Import Data in the Sector Finder box.');
+    return;
+  }
+  if(ev.target.closest('#btnFinderImport')){ openImport({ kind:'finder', rank:0 }); return; }
+  if(ev.target.closest('#btnFinderDelete')){
+    var fr = finderRecord(); if(!fr) return;
+    if(!confirm('Delete ' + (versionsOf(fr).length > 1 ? 'the ' + verWord(fr) + ' version of ' : '') + 'the Sector Finder screen saved '
+      + dmyTs(fr.ts) + '?\n\nSector studies researched from it are kept.')) return;
+    libWrite(libRead().filter(function(r){ return r.id !== fr.id; }));
+    SEL.finder = null; renderReportPage();
+    return;
+  }
+  var sb = ev.target.closest('.sec-search, .sec-update, .sec-import, .sec-cos');
+  if(sb){
+    var x = finderTop3()[Number(sb.getAttribute('data-rank')) - 1]; if(!x) return;
+    var st = studyForSector(x.name, x.subSector);
+    var what = 'the ' + x.name + (x.subSector ? ' — ' + x.subSector : '') + ' sector study';
+    if(sb.classList.contains('sec-search')){ researchNow({ sector: x.name, subSector: x.subSector || '' }, what); return; }
+    if(sb.classList.contains('sec-update')){ if(st) updateNow(st, 'the ' + (st.sector || x.name) + (st.subSector ? ' — ' + st.subSector : '') + ' sector study'); return; }
+    if(sb.classList.contains('sec-import')){ openImport({ kind:'sector', rank:0 }); return; }
+    if(sb.classList.contains('sec-cos') && st){
+      selectSector(st.id); renderReportPage(); renderScoreTab();
+      var nb = document.querySelector('nav button[data-tab="company"]'); if(nb) nb.click();
+      try{ window.scrollTo(0, 0); }catch(e){}
+    }
+    return;
+  }
+  var fd = ev.target.closest('.fdoc');
+  if(fd && window.EQDocTools){
+    selectSector(fd.getAttribute('data-sid'));
+    renderSectorPage();
+    EQDocTools.doAction(fd.getAttribute('data-fdoc'), fd.getAttribute('data-act'), '#fmsg' + fd.getAttribute('data-rank'));
+  }
+});
+window.addEventListener('eq:ready', function(){
+  /* A screen saved while offline is checked once the engine is up. */
+  setTimeout(function(){
+    var last = finderRecords().slice(-1)[0];
+    if(last && !(last.data && last.data.verified)) verifyFinder(last.id);
+  }, 1500);
+});
+
 function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
 
 /* ---------- how deep saved research goes, and the follow-up ---------- */
@@ -5362,6 +5745,9 @@ function renderReportPage(){ renderSectorPage(); renderCompanyPage(); }
    the place it is being imported into first and anywhere else second; or, with
    no company in it, the sector study on screen. */
 function topUpTarget(d){
+  if(window.EQ && EQ.finder && EQ.finder.isFinderPayload(d)){
+    var fl = finderRecords(); return fl.length ? fl[fl.length - 1] : null;
+  }
   var cos = (d && Array.isArray(d.companies)) ? d.companies : [];
   var sym = cos[0] && String(cos[0].symbol || '').toUpperCase();
   var nm = cos[0] && String(cos[0].name || '').toLowerCase();
@@ -5382,16 +5768,49 @@ function topUpTarget(d){
   }
   return segRecord();
 }
+function stateWord(c){
+  if(!c || c.state !== 'searched') return c && c.state === 'found' ? 'found' : 'not yet searched';
+  var d = c.lastTried ? String(c.lastTried).replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$3-$2-$1') : '';
+  return 'searched, not found \u00d7' + c.tries + (d ? ', last ' + d : '');
+}
+function readCheckHtml(rc){
+  if(!rc) return '';
+  var h = '';
+  if(rc.renamed && rc.renamed.length){
+    h += '<div class="rvok"><b>Read under the schema\u2019s name:</b> '
+      + esc(rc.renamed.slice(0, 10).map(function(x){ return x.from + ' \u2192 ' + x.to.split('.').pop(); }).join(' \u00b7 '))
+      + (rc.renamed.length > 10 ? ' \u00b7 and ' + (rc.renamed.length - 10) + ' more' : '') + '.</div>';
+  }
+  if(rc.claimed && rc.claimed.length){
+    h += '<div class="rvwarn"><b>Marked "not found", but the reply carries it:</b> '
+      + esc(rc.claimed.map(function(x){ return x.path + ' (' + x.value + ')'; }).join(' \u00b7 '))
+      + '. The figure is used.</div>';
+  }
+  if(rc.unread && rc.unread.length){
+    h += '<div class="rvwarn"><b>Sent but not read by the app:</b> '
+      + esc(rc.unread.slice(0, 12).join(' \u00b7 '))
+      + (rc.unread.length > 12 ? ' \u00b7 and ' + (rc.unread.length - 12) + ' more' : '')
+      + '. They are kept in the saved reply, but no report uses them. If any of them matter, they need a change to the app.</div>';
+  }
+  return h;
+}
 function depthBox(rec){
   if(!rec || !rec.data || !window.EQ || !EQ.completeness) return '';
   var dp;
   try{ dp = EQ.completeness.completeness(rec.data); }catch(e){ return ''; }
-  var thin = dp.missing.map(function(c){ return c.label + ' ' + c.have + '/' + c.want; });
+  /* Build 28: three states. Found items are not listed; a missing item is
+     either not yet searched, or searched and not found (with how often). It
+     is asked for again either way. */
+  var thin = dp.missing.map(function(c){ return c.label + ' ' + c.have + '/' + c.want
+    + (c.state === 'searched' ? ' (' + stateWord(c) + ')' : ''); });
+  var split = dp.searched
+    ? ' <span class="mut">' + dp.open + ' not yet searched, ' + dp.searched + ' searched and not found \u2014 all asked for again.</span>'
+    : '';
   return '<div class="depth"><div class="dh"><span>Depth of this research</span><b>' + dp.pct + '%</b></div>'
     + '<div class="dbar"><i style="width:' + dp.pct + '%"></i></div>'
     + (thin.length
         ? '<div class="dl"><b>' + thin.length + ' thin or missing:</b> ' + esc(thin.slice(0, 8).join(' · '))
-          + (thin.length > 8 ? ' · and ' + (thin.length - 8) + ' more' : '') + '</div>'
+          + (thin.length > 8 ? ' · and ' + (thin.length - 8) + ' more' : '') + split + '</div>'
           + '<button type="button" class="btn xs topup-copy" data-rec="' + esc(rec.id) + '">'
           + 'Copy follow-up prompt</button>'
         : '<div class="dl">Everything the reports need is here.</div>')
@@ -5632,7 +6051,8 @@ document.addEventListener('change', function(ev){
   /* Build 25: a version of the study selected brings its own Top 3 with it. */
   if(id === 'segVer' && ev.target.value){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
   if(id === 'soloVer' && ev.target.value){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
-  if(id === 'coPick'){ selectCompany(ev.target.value); renderReportPage(); renderScoreTab(); renderScenarioPage(); }
+  if(id === 'coSectorPick' && ev.target.value){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); renderScenarioPage(); }
+  if(id === 'finderVer' && ev.target.value){ SEL.finder = ev.target.value; renderFinder(); }
   if(id === 'scnCompany'){
     /* A different company is a different base case, so the overrides do not
        travel with it: sliders set against one company's drivers mean nothing

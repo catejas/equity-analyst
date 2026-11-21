@@ -2,7 +2,7 @@
 /* One line to change per release, and the same line as APP_BUILD in
    index.html. The cache name carries the build, so a new build cannot be
    served out of an old cache. */
-var BUILD = '22-11-2026.27';
+var BUILD = '22-11-2026.28';
 var CACHE = 'equity-analyst-' + BUILD;
 var ASSETS = [
   './', './index.html', './manifest.webmanifest',
@@ -21,6 +21,9 @@ var ASSETS = [
   './src/core/completeness.js',
   './src/core/fx.js',
   './src/core/update.js',
+  './src/core/finder.js',
+  './src/core/readcheck.js',
+  './src/core/known-keys.js',
   './src/core/dimensions.js',
   './src/core/scenario.js',
   './src/core/compare.js',

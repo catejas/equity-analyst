@@ -699,7 +699,13 @@ including pledged shares.
     // are in the same unit, so a company with 1.1bn shares is 1148 in crore.
     "reporting": { "currency": "INR", "unit": "crore", "basis": "consolidated" },
 
-    "researchNotes": "what you could and could not establish, and why"
+    "researchNotes": "what you could and could not establish, and why",
+
+    // ONE ENTRY FOR EVERY ITEM YOU SEARCHED FOR AND COULD NOT ESTABLISH.
+    // Leave the item's own key out (never 0, "" or null) and record the
+    // search here. The application keeps asking for it in every follow-up,
+    // naming the sources you tried, so name every one.
+    "searchLog": [ { "path": "global.cagr.y3", "searched": ["source tried", "another"], "reason": "why it could not be established" } ]
   },
   "industryMap": {
     "structure": "", "valueChain": "second and third order beneficiaries too",

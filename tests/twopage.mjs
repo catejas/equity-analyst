@@ -80,7 +80,10 @@ console.log('  top3 boxes     :', d.querySelectorAll('#coBoxes .runbox').length)
 for(let i=0;i<3;i++) await imp({run:seg.run,companies:[full.companies[i]]},
   ()=>d.querySelector('.co-import[data-rank="'+(i+1)+'"]').click());
 console.log('  after imports  :', [...d.querySelectorAll('#coBoxes .runbox h2')].map(h=>h.textContent.replace(/\s+/g,' ').trim()).join(' | '));
-console.log('  saved companies:', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent.split('  ·')[0]).join(', '));
+/* Build 28: the Saved company research picker is gone; the Score Card's own
+   picker lists every company. */
+w.renderScoreTab(); await pause();
+console.log('  saved companies:', [...d.querySelectorAll('#scCompany option')].map(o=>o.textContent.split('  ·')[0]).join(', '));
 
 console.log('\n--- 5. Top 3 research button ---');
 /* Build 25: once a company is imported, its slot's main button is Update

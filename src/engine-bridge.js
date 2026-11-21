@@ -35,6 +35,8 @@ import * as scenario from './core/scenario.js';
 import * as completeness from './core/completeness.js';
 import * as fx from './core/fx.js';
 import * as update from './core/update.js';
+import * as readcheck from './core/readcheck.js';
+import * as finder from './core/finder.js';
 
 /* The price layer looks companies up in the library the app keeps on the
    device. Wiring it here keeps prices.js free of storage, so it still runs
@@ -49,7 +51,7 @@ const EQ = Object.freeze({
   scoring, rubrics, ranking, model, valuation, metrics, technicals,
   forensic, litigation, multibagger, integrity, schema, prompt, report,
   compare, store, repair, compose, screen, indicators, models, prices, instruments, commentary, scenario,
-  completeness, fx, update,
+  completeness, fx, update, readcheck, finder,
 
   // The three calls the shell actually makes.
   buildPrompt: prompt.buildResearchPrompt,

@@ -44,7 +44,10 @@ go('company');
 for(let i=0;i<3;i++) await imp({run:seg.run,companies:[full.companies[i]]},
   ()=>d.querySelector('.co-import[data-rank="'+(i+1)+'"]').click());
 console.log('\nCOMPANY page');
-console.log('  picker :', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent).join('\n            '));
+/* Build 28: the Saved company research picker is gone; the Score Card's own
+   picker is the list of every company. */
+w.renderScoreTab(); await new Promise(r=>setTimeout(r,150));
+console.log('  picker :', [...d.querySelectorAll('#scCompany option')].map(o=>o.textContent).join('\n            '));
 console.log('  slots  :', [...d.querySelectorAll('#coBoxes .runbox h2')].map(h=>h.textContent.replace(/\s+/g,' ').trim()).join(' | '));
 console.log('  doc btn:', [...d.querySelectorAll('#coDocs [data-doc]')].map(b=>b.dataset.doc).join(' '));
 
@@ -53,10 +56,10 @@ console.log('  doc btn:', [...d.querySelectorAll('#coDocs [data-doc]')].map(b=>b
    This indexed opts[1] unconditionally and crashed on any fixture carrying a
    single company — which is every fixture that imports one Top 3 slot. The
    switch is only meaningful with two to switch between. */
-const opts=[...d.querySelectorAll('#coPick option')];
+const opts=[...d.querySelectorAll('#scCompany option')];
 if(opts.length>1){
-  d.getElementById('coPick').value=opts[1].value;
-  d.getElementById('coPick').dispatchEvent(new w.Event('change',{bubbles:true}));
+  d.getElementById('scCompany').value=opts[1].value;
+  d.getElementById('scCompany').dispatchEvent(new w.Event('change',{bubbles:true}));
   await new Promise(r=>setTimeout(r,150));
   const btn=d.querySelector('#coBoxes [data-doc]');
   console.log('  after switching to', opts[1].textContent.split('  ·')[0],

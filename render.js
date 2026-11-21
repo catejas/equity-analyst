@@ -9328,7 +9328,149 @@ function buildUpdate(p, lang){
   });
 }
 
-global.EQDocs = { buildCompany:buildCompany, buildExec:buildExec, buildUpdate:buildUpdate,
+/* ---------- the Sector Screen (build 28) ----------
+   The Sector Finder's ranking as a document: the Top 3 sectors and why, every
+   sector's four parts, what moved since the previous screen, and how the score
+   is built. The research supplies figures; every score is the application's. */
+function finderPct(v){ return isNum_(v) ? (v > 0 ? '+' : '') + n(v, 1) + '%' : '—'; }
+function finderPts(v){ return isNum_(v) ? '<span class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + n(v, 1) + '</span>' : '—'; }
+function buildFinder(p, lang){
+  lang = lang || 'en';
+  var F = (p && p.finder) || { rows: [], top3: [], counts: {}, benchmark: {}, weights: {} };
+  var cmp = p && p.compare, out = '', no = 0;
+  var DOC = 'Sector Screen';
+  function S3(t){ no += 1; return sec(no < 10 ? '0' + no : String(no), t); }
+  var dOnly = function(t){ var d = new Date(t), z = function(v){ return (v < 10 ? '0' : '') + v; };
+    return z(d.getDate()) + '-' + z(d.getMonth() + 1) + '-' + d.getFullYear(); };
+  var asOf = dOnly((p && p.asOf) || Date.now());
+  var b = F.benchmark || {}, c = F.counts || {};
+  var top = arr(F.top3);
+
+  var leadIn = '<div style="height:3mm"></div>'
+    + '<div class="eyebrow en">' + e(DOC) + ' &nbsp;·&nbsp; India &nbsp;·&nbsp; listed equity</div>'
+    + '<h1 class="en" style="margin-top:1.5mm;font-size:17pt">Sector Finder</h1>'
+    + '<div class="mut" style="margin-top:1mm;font-size:7.9pt">Screened ' + e(asOf) + ' &nbsp;·&nbsp; '
+      + countOf(c.screened || 0, 'sector', 'sectors') + ' of ' + (c.listed || 0) + ' &nbsp;·&nbsp; returns checked by the application for '
+      + (c.checked || 0) + '</div>'
+    + '<div style="height:.9mm;background:var(--accent);width:22mm;margin:3mm 0 4mm"></div>'
+    + '<div class="vb"><div class="h">Top 3 Sectors</div><div class="c"><div class="v">'
+      + (top.length ? top.map(function(x){ return e(x.name); }).join(' · ') : 'No sector is fully scored yet') + '</div>'
+      + (top.length ? '<div class="lead" style="margin-top:2mm">' + top.map(function(x){ return e(x.name) + ' ' + n(x.score, 1); }).join(' &nbsp;|&nbsp; ')
+        + ' &nbsp;·&nbsp; out of 100, against the other sectors screened</div>' : '')
+      + '</div></div>';
+
+  if(window.EQCharts) window.EQCharts.resetFigures();
+
+  /* 01 — the bottom line */
+  var bl = [];
+  top.forEach(function(x, i){
+    bl.push('<b>' + (i + 1) + '. ' + e(x.name) + (x.subSector ? ' — ' + e(x.subSector) : '') + '</b> scored ' + n(x.score, 1)
+      + '. ' + e(x.reason || ''));
+  });
+  if(cmp){
+    if(arr(cmp.entered).length || arr(cmp.left).length){
+      bl.push('Since the previous screen' + (p.prevAsOf ? ' of ' + e(dOnly(p.prevAsOf)) : '') + ': '
+        + (arr(cmp.entered).length ? e(cmp.entered.join(', ')) + ' entered the Top 3' : '')
+        + (arr(cmp.entered).length && arr(cmp.left).length ? '; ' : '')
+        + (arr(cmp.left).length ? e(cmp.left.join(', ')) + ' left it' : '') + '.');
+    } else bl.push('The Top 3 is the same as in the previous screen.');
+  }
+  out += S3('The Bottom Line') + (bl.length ? updList(bl)
+    : '<div class="lead"><p>No sector has all four parts of the score yet. The gaps are listed at the end; the follow-up prompt asks for them.</p></div>');
+
+  /* 02 — the Top 3, one block each */
+  if(top.length){
+    out += S3('The Top 3 Sectors');
+    top.forEach(function(x, i){
+      var ret = x.returns || {}, bz = x.business || {}, ol = x.outlook || {}, va = x.valuation || {};
+      /* A figure is one block to the packer, so a sector's heading never
+         ends a page without its table. */
+      out += '<figure class="fblock" style="margin:0">'
+        + '<h4>' + (i + 1) + '. ' + e(x.name) + (x.subSector ? ' — ' + e(x.subSector) : '') + '</h4>'
+        + (x.why ? '<p>' + e(x.why) + '</p>' : '')
+        + tbl(['Measure', 'Reading'], [
+          { cells: ['Score', '<b>' + n(x.score, 1) + '</b> of 100 · momentum ' + n(x.parts.momentum, 0) + ', business ' + n(x.parts.business, 0)
+            + ', outlook ' + n(x.parts.outlook, 0) + ', valuation ' + n(x.parts.valuation, 0)] },
+          { cells: ['Return, 3m / 6m / 1y', finderPct(ret.m3) + ' / ' + finderPct(ret.m6) + ' / ' + finderPct(ret.y1)
+            + '<br><span class="mut">' + (ret.checked ? 'checked by the application from ' + (ret.basis === 'index' ? 'the ' + e(ret.of) + ' index' : 'the prices of ' + e(ret.of))
+              : 'as the research states it, not checked') + (ret.asOf ? ', to ' + e(dmy(ret.asOf)) : '') + '</span>'] },
+          { cells: ['Against the Nifty 50', finderPts(x.rel.m3) + ' / ' + finderPts(x.rel.m6) + ' / ' + finderPts(x.rel.y1) + ' points'] },
+          { cells: ['Sales and profit growth', finderPct(bz.revenueGrowth) + ' sales, ' + finderPct(bz.profitGrowth) + ' net profit'
+            + (bz.period ? '<br><span class="mut">' + e(bz.period) + '</span>' : '')] },
+          { cells: ['Forecast growth, a year', finderPct(ol.earningsGrowth3y) + ' earnings, ' + finderPct(ol.demandGrowth3y) + ' demand'
+            + (ol.years ? '<br><span class="mut">' + e(ol.years) + (ol.source ? ' · ' + e(ol.source) : '') + '</span>' : '')] },
+          { cells: ['P/E against its five-year average', isNum_(va.pe) ? n(va.pe, 1) + ' against ' + n(va.pe5yAvg, 1)
+            + ' (' + (va.ratio < 1 ? 'below' : 'above') + ' its average)' : '—'] }
+        ], { kv: true, widths: ['34%', '66%'] }) + '</figure>'
+        + (arr(ol.tailwinds).length ? '<p class="mut" style="margin-top:1.5mm"><b>Tailwinds.</b></p>' + eqList(ol.tailwinds.slice(0, 4)) : '')
+        + (arr(ol.risks).length ? '<p class="mut"><b>Risks.</b></p>' + eqList(ol.risks.slice(0, 4)) : '');
+    });
+  }
+
+  /* 03 — every sector */
+  var K = CH_();
+  var chartRows = arr(F.rows).filter(function(x){ return isNum_(x.rel && x.rel.y1); }).slice(0, 12);
+  var fig = (K && chartRows.length >= 2) ? K.columns({ title: 'One-year return against the Nifty 50, the twelve highest ranked',
+      source: 'Sector index or bellwether prices', unit: 'percentage points', xTitle: 'Sector',
+      yFmt: function(t){ return n(t, 0); }, vFmt: function(t){ return (t > 0 ? '+' : '') + n(t, 1); },
+      categories: chartRows.map(function(x){ return S(x.short) || x.name; }),
+      series: [{ name: 'Points above the Nifty 50', values: chartRows.map(function(x){ return x.rel.y1; }) }] }) : '';
+  out += S3('The Full Ranking')
+    + tbl(['#', 'Sector', 'Score', 'Momentum', 'Business', 'Outlook', 'Valuation', '1y vs Nifty'],
+        arr(F.rows).map(function(x){
+          return { cells: [String(x.rank), '<b>' + e(x.name) + '</b>' + (x.subSector ? '<br><span class="mut">' + e(x.subSector) + '</span>' : '')
+              + (!x.complete ? '<br><span class="mut">missing ' + e(arr(x.missingParts).join(', ')) + '</span>' : ''),
+            n(x.score, 1), n(x.parts.momentum, 0), n(x.parts.business, 0), n(x.parts.outlook, 0), n(x.parts.valuation, 0),
+            finderPts(x.rel.y1) + (x.returns.checked ? '' : '<span class="mut">*</span>')] };
+        }), { num: [0, 2, 3, 4, 5, 6, 7], headWrap: true, widths: ['5%', '31%', '9%', '11%', '11%', '11%', '11%', '11%'], chunk: 14 })
+    + '<p class="mut">Each part is a percentile among the sectors screened, 0 to 100. The Nifty 50 returned '
+    + finderPct(b.m3) + ', ' + finderPct(b.m6) + ' and ' + finderPct(b.y1) + ' over 3 months, 6 months and 1 year'
+    + (b.checked ? ', as the application measured it.' : ', as the research states it.')
+    + ' * Returns as the research states them; the application could not check them against prices.</p>'
+    + fig;
+
+  /* 04 — what moved */
+  if(cmp){
+    var moved = arr(cmp.rows).filter(function(r){ return r.rankThen == null || Math.abs(r.move || 0) >= 3 || r.rankNow <= 5; });
+    out += S3('What Moved Since the Previous Screen')
+      + tbl(['Sector', 'Rank then', 'Rank now', 'Score then', 'Score now', 'Move'], moved.map(function(r){
+          return { cells: [e(r.name), r.rankThen == null ? 'new' : String(r.rankThen), String(r.rankNow),
+            n(r.scoreThen, 1), n(r.scoreNow, 1), r.move == null ? '—' : (r.move > 0 ? '▲ ' + r.move : r.move < 0 ? '▼ ' + (-r.move) : '—')] };
+        }), { num: [1, 2, 3, 4, 5], widths: ['36%', '12%', '12%', '13%', '13%', '14%'] })
+      + '<p class="mut">Listed: the sectors that moved three places or more, and the five highest ranked now.</p>';
+  }
+
+  /* 05 — how the score is built */
+  var W = F.weights || {};
+  out += S3('How the Score Is Built')
+    + tbl(['Part', 'Weight', 'What it measures'], [
+      { cells: ['Past momentum', (W.momentum || 0) + '%', 'Return against the Nifty 50 over 3 months, 6 months and 1 year, weighted 25, 35 and 40'] },
+      { cells: ['Business momentum', (W.business || 0) + '%', 'Net profit and sales growth over the last four reported quarters, weighted 60 and 40'] },
+      { cells: ['Three-year outlook', (W.outlook || 0) + '%', 'Forecast earnings and demand growth over the next three years, weighted 60 and 40'] },
+      { cells: ['Valuation', (W.valuation || 0) + '%', 'The P/E against its own five-year average; the cheaper, the higher'] }
+    ], { num: [1], widths: ['24%', '12%', '64%'] })
+    + '<div class="lead"><p>' + e(S(F.basis)) + '</p><p>The research tool supplies the figures and does not rank. The application '
+    + 'fetches each sector index, or the sector’s largest stocks where no index answers, and uses its own returns in place of the '
+    + 'research’s wherever it can. Strong recent momentum often lasts for months, but it also reverses; that is why the outlook '
+    + 'and valuation carry as much weight as past returns. Nothing here is a recommendation or advice.</p></div>';
+
+  var warn = arr(p && p.warnings);
+  if(warn.length){
+    out += S3('Gaps in this research')
+      + '<div class="mut" style="margin-bottom:1.2mm">Printed rather than hidden. Each is asked for again in the follow-up.</div>'
+      + eqList(warn.slice(0, 20));
+  }
+
+  var built = blocksFromBody(out);
+  return packDoc(p, lang, {
+    B: built.B, TITLES: built.TITLES, leadIn: leadIn,
+    runHead: DOC, docName: DOC,
+    shellTitle: 'Sector Finder — ' + DOC,
+    noContents: true, seedPages: 8, maxPages: 12
+  });
+}
+
+global.EQDocs = { buildCompany:buildCompany, buildExec:buildExec, buildUpdate:buildUpdate, buildFinder:buildFinder,
                    buildCompanyExec:buildCompanyExec,
                    buildSector:buildSector,
                    charts:{ financials:chartFinancials, gauge:chartGauge,

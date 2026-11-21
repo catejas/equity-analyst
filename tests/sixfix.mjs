@@ -55,7 +55,10 @@ console.log('\n--- 3. standalone must not touch the Top 3 ---');
 const solo={run:{...seg.run, top3:undefined}, companies:[{...full.companies[0], symbol:'INDIANB', name:'Indian Bank'}]};
 await imp(solo, ()=>d.getElementById('btnSoloImport').click(), 'Claude');
 console.log('  top3 boxes:', [...d.querySelectorAll('#coBoxes .runbox h2')].map(h=>h.textContent.replace(/\s+/g,' ').trim()).join(' | '));
-console.log('  saved companies:', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent.split('  ·')[0]).join(', '));
+/* Build 28: the Saved company research picker is gone; the Score Card's own
+   picker lists every company. */
+w.renderScoreTab(); await pause();
+console.log('  saved companies:', [...d.querySelectorAll('#scCompany option')].map(o=>o.textContent.split('  ·')[0]).join(', '));
 
 console.log('\n--- 6. section count by scope ---');
 d.getElementById('importText').value=JSON.stringify(solo);
@@ -73,10 +76,11 @@ console.log('  top3 boxes after restart:', d.querySelectorAll('#coBoxes .runbox'
 console.log('  names:', [...d.querySelectorAll('#coBoxes .runbox h2 span:nth-child(2)')].map(s=>s.textContent).join(' | '));
 
 console.log('\n--- 4. standalone scores on its own ---');
-const opts=[...d.querySelectorAll('#coPick option')];
+w.renderScoreTab(); await pause();
+const opts=[...d.querySelectorAll('#scCompany option')];
 const solOpt=opts.find(o=>/Indian Bank/.test(o.textContent));
-d.getElementById('coPick').value=solOpt.value;
-d.getElementById('coPick').dispatchEvent(new w.Event('change',{bubbles:true}));
+d.getElementById('scCompany').value=solOpt.value;
+d.getElementById('scCompany').dispatchEvent(new w.Event('change',{bubbles:true}));
 await pause();
 w.renderScoreTab(); await pause();
 console.log('  score tiles:', [...d.querySelectorAll('#scTiles .t')].map(t=>t.querySelector('.k').textContent+' '+t.querySelector('.v').textContent.replace(/\s+/g,'')).join(' | '));

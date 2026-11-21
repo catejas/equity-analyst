@@ -41,6 +41,7 @@ import { PILLARS, OVERALL_WEIGHTS } from './scoring.js';
 import { industryPanel, industryFamily } from './industry.js';
 import { lenderLines } from './audit.js';
 import { REGISTERS } from './litigation.js';
+import { isFinderPayload, finderChecks } from './finder.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 /* A reading, as opposed to a placeholder: the schema's example rows are full
@@ -505,9 +506,119 @@ const BACKDROP_LABELS = ['Macro readings with period and source', 'Macro reading
   'TAM, SAM and SOM, each dated and sourced', 'Market size from a recent estimate',
   'Reporting unit stated'];
 
+/* ── The search record (build 28) ────────────────────────────────────────
+ * Tejas: an item that could not be found must still be asked for in every
+ * follow-up. A "not available" mark was rejected: it would trust the tool's
+ * word, and it would also hide the application's own misses — a figure that
+ * was in the reply but was not read. So nothing is ever closed here. The tool
+ * records each failed search in run.searchLog ({ path, searched, reason });
+ * the item stays missing, keeps its weight in the percentage, and the next
+ * follow-up asks again with what was already tried and where else to look.
+ *
+ * Each check is given a state: "found", "searched" (asked, searched and not
+ * found, with the number of tries, the sources and the date) or "open" (not
+ * yet searched). */
+const pathNorm = (p) => S(p).toLowerCase().replace(/["'\s]/g, '')
+  .replace(/companies\[(?:symbol=)?([^\]]*)\]/g, (m, x) => `companies[${symKey(x).toLowerCase()}]`)
+  /* Any other list is checked as a whole ("sectors.returns" is missing for
+     these sectors), so a search recorded against one row of it counts for the
+     check about that field. */
+  .replace(/\b(?!companies\[)([a-z_]\w*)\[[^\]]*\]/g, '$1');
+/* The path a check is about: its ask opens "path — what is wanted". */
+export function checkPath(c) {
+  const head = S(c && c.ask).split(' \u2014 ')[0];
+  /* A path has no spaces outside its [selector]: "Add the missing years" is
+     prose, "companies[symbol=BANK OF X].financials" is a path. */
+  const bare = head.trim().replace(/\[[^\]]*\]/g, '[]');
+  return /^[A-Za-z_][\w.\[\]-]*$/.test(bare) && head.length < 90 ? head.trim() : '';
+}
+const isoDay = (d) => d.toISOString().slice(0, 10);
+const dmy = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(S(iso)); return m ? `${m[3]}-${m[2]}-${m[1]}` : S(iso); };
+export function searchLogOf(payload) {
+  const run = (payload && payload.run) || {};
+  return arr(run.searchLog).map((e) => {
+    if (typeof e === 'string') {
+      const m = /^\s*([A-Za-z_][\w.\[\]=&-]*)\s*[:\u2014-]\s*(.*)$/.exec(e);
+      return m ? { path: m[1], searched: [], reason: m[2], at: S(run.generatedAt).slice(0, 10) } : null;
+    }
+    if (!e || typeof e !== 'object') return null;
+    const searched = [].concat(e.searched || e.sources || []).map(S).filter(Boolean);
+    return { path: S(e.path || e.item || e.key), label: S(e.label), searched,
+      reason: S(e.reason || e.why || e.result), at: S(e.at || e.date || run.generatedAt).slice(0, 10) };
+  }).filter((e) => e && (e.path || e.label));
+}
+function logMatches(e, c) {
+  const a = pathNorm(e.path), b = pathNorm(c.path);
+  if (a && b && (a === b || a.startsWith(b + '.') || a.startsWith(b + '[') || b.startsWith(a + '.'))) return true;
+  return !!(e.label && S(e.label).toLowerCase() === S(c.label).toLowerCase());
+}
+/* Where else to look, by the part of the payload the item belongs to. The
+   follow-up names the ones the tool has not yet tried. */
+export const SOURCE_HINTS = [
+  [/^global/, ['World Bank Open Data', 'IMF data', 'OECD statistics', 'BIS statistics',
+    'the global industry body for the sector (worldsteel, IATA, IEA, GSMA, OICA and the like)',
+    'annual reports of the largest listed global peers', 'public summaries of McKinsey, BCG, Deloitte or PwC sector reports']],
+  [/^macro/, ['MoSPI press releases', 'RBI Database on Indian Economy (DBIE)', 'RBI Bulletin', 'PIB releases']],
+  [/^budget/, ['indiabudget.gov.in: Budget at a Glance', 'the Expenditure Profile', 'the Demand for Grants of the ministry',
+    'PRS Legislative Research budget analysis']],
+  [/^(policy|regulation|policyevolution|programs)/, ['PIB releases', 'the ministry\u2019s own website', 'the Gazette of India',
+    'RBI / SEBI / sector regulator circulars', 'PRS Legislative Research']],
+  [/^geopolitics/, ['Ministry of Commerce export-import data bank (tradestat.commerce.gov.in)', 'UN Comtrade', 'DGCI&S releases']],
+  [/^(tam|competition|industry|valuechain|industrymap|sectorvaluation)/, ['the Indian industry association for the sector (SIAM, IBA, NASSCOM, CII, FICCI and the like)',
+    'IBEF sector reports', 'CRISIL, ICRA, CARE or India Ratings sector reports', 'investor presentations of the listed leaders']],
+  [/^companies\[[^\]]*\]\.(financials|forensic|model)/, ['the annual report', 'quarterly results filed on NSE/BSE',
+    'the results press release and investor presentation', 'the MCA filing of the financial statements']],
+  [/^companies\[[^\]]*\]\.(industrymetrics|peers)/, ['the investor presentation', 'the earnings-call transcript',
+    'regulatory disclosures (for a bank, the Basel III Pillar 3 disclosure)', 'the annual report\u2019s management discussion']],
+  [/^companies\[[^\]]*\]\.(litigation|governance|management)/, ['NSE/BSE corporate announcements', 'SEBI orders',
+    'e-Courts and NCLT cause lists', 'the annual report\u2019s contingent liabilities note']],
+  [/./, ['annual reports', 'NSE/BSE filings', 'investor presentations', 'official releases of the regulator or ministry']],
+];
+function untried(path, tried) {
+  const p = pathNorm(path);
+  const list = (SOURCE_HINTS.find(([re]) => re.test(p)) || SOURCE_HINTS[SOURCE_HINTS.length - 1])[1];
+  /* A hint counts as tried when a source named covers its first two telling
+     words as whole words: "World Bank" is not tried by "Global Commercial
+     Banking", and "BIS statistics" is tried by "BIS quarterly review". */
+  const STOP = /^(the|for|and|with|sector|reports?|data|own|largest|listed|public|its|like|open|statistics|summaries|of|or|on)$/;
+  const words = (t) => t.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.test(w));
+  const triedSets = tried.map((t) => new Set(words(t)));
+  return list.filter((h) => {
+    const key = words(h).slice(0, 2);
+    return !key.length || !triedSets.some((set) => key.every((w) => set.has(w)));
+  });
+}
+function annotate(checks, log) {
+  checks.forEach((c) => {
+    c.path = checkPath(c);
+    if (c.ok) { c.state = 'found'; return; }
+    const hits = log.filter((e) => logMatches(e, c));
+    const sources = [];
+    hits.forEach((h) => h.searched.forEach((x) => { if (!sources.some((y) => y.toLowerCase() === x.toLowerCase())) sources.push(x); }));
+    c.state = hits.length ? 'searched' : 'open';
+    c.tries = hits.length;
+    c.sources = sources;
+    c.reasons = hits.map((h) => h.reason).filter(Boolean);
+    c.lastTried = hits.map((h) => h.at).filter(Boolean).sort().pop() || '';
+    c.tryNext = hits.length ? untried(c.path || '', sources) : [];
+  });
+}
+
 /* ── The whole payload ────────────────────────────────────────────────── */
 export function completeness(payload, { now = new Date() } = {}) {
   const d = payload || {};
+  /* Build 28: the Sector Finder's screen is measured the same way. */
+  if (isFinderPayload(d)) {
+    const checks = [];
+    finderChecks(d).forEach((f) => check(checks, f.group, f.label, f.have, f.want, f.ask, f.detail));
+    const sc = checks.length
+      ? checks.reduce((a, c) => a + Math.max(0, Math.min(1, c.want ? c.have / c.want : 1)), 0) / checks.length : 0;
+    const miss = checks.filter((c) => !c.ok);
+    annotate(checks, searchLogOf(d));
+    return { kind: 'finder', sections: [{ title: 'Sector Finder \u2014 the screen', checks }],
+      pct: Math.min(miss.length ? 99 : 100, Math.round(sc * 100)), total: checks.length, met: checks.length - miss.length, missing: miss,
+      searched: miss.filter((c) => c.state === 'searched').length, open: miss.filter((c) => c.state === 'open').length };
+  }
   const cos = arr(d.companies);
   const hasSector = !!(d.macro || d.budget || d.policy || d.programs || d.competition || d.global);
   /* One company and no shortlist beyond it is a company run, whatever
@@ -537,8 +648,13 @@ export function completeness(payload, { now = new Date() } = {}) {
   const score = all.length
     ? all.reduce((a, c) => a + Math.max(0, Math.min(1, c.want ? c.have / c.want : 1)), 0) / all.length : 0;
   const missing = all.filter((c) => !c.ok);
-  return { kind, sections, pct: Math.round(score * 100), total: all.length,
-    met: all.length - missing.length, missing };
+  annotate(all, searchLogOf(d));
+  /* 100% means nothing is missing: a nearly complete check must not round
+     the whole up to it (build 28). */
+  return { kind, sections, pct: Math.min(missing.length ? 99 : 100, Math.round(score * 100)), total: all.length,
+    met: all.length - missing.length, missing,
+    searched: missing.filter((c) => c.state === 'searched').length,
+    open: missing.filter((c) => c.state === 'open').length };
 }
 
 /* ── The follow-up prompt ─────────────────────────────────────────────── */
@@ -548,15 +664,22 @@ export function topUpPrompt(payload, { now = new Date() } = {}) {
   const d = payload || {};
   const p2 = (v) => (v < 10 ? '0' : '') + v;
   const today = `${p2(now.getDate())}-${p2(now.getMonth() + 1)}-${now.getFullYear()}`;
-  const subject = comp.kind === 'sector'
+  const subject = comp.kind === 'finder' ? 'the Sector Finder screen' : comp.kind === 'sector'
     ? `the ${S(d.run && d.run.sector) || 'sector'}${S(d.run && d.run.subSector) ? ' — ' + S(d.run.subSector) : ''} sector study`
     : arr(d.companies).map((c) => `${S(c.name)} (${S(c.symbol)})`).join(', ');
   const body = comp.sections.map((s) => {
     const miss = s.checks.filter((c) => !c.ok);
     if (!miss.length) return '';
     return `── ${s.title} ──\n` + miss.map((c, i) =>
-      `${i + 1}. ${c.label} — ${c.have} of ${c.want}.\n   ${c.ask}`).join('\n\n');
+      `${i + 1}. ${c.label} — ${c.have} of ${c.want}.\n   ${c.ask}` + (c.state === 'searched'
+        ? `\n   SEARCHED BEFORE, NOT FOUND (${c.tries} time${c.tries === 1 ? '' : 's'}${c.lastTried ? ', last ' + dmy(c.lastTried) : ''})`
+          + (c.sources.length ? `: ${c.sources.join('; ')}.` : '.')
+          + (c.reasons.length ? `\n   Reason given: ${c.reasons[c.reasons.length - 1]}` : '')
+          + `\n   SEARCH AGAIN.` + (c.tryNext.length ? ` Sources not yet tried: ${c.tryNext.join('; ')}.` : ' Try sources other than those above.')
+          + ' Or derive it from a published series and say how in "source".'
+        : '')).join('\n\n');
   }).filter(Boolean).join('\n\n');
+  const again = comp.missing.filter((c) => c.state === 'searched').length;
   const unit = d.run && d.run.reporting && S(d.run.reporting.unit)
     ? `${S(d.run.reporting.currency) || 'INR'} ${S(d.run.reporting.unit)}` : 'the unit the earlier payload used';
 
@@ -565,7 +688,10 @@ export function topUpPrompt(payload, { now = new Date() } = {}) {
 Today is ${today}. The JSON payload you returned for ${subject} has been read by the
 application. It is usable, but the items below are missing or too thin, and each
 one leaves a blank in the finished report. This message asks for those items
-ONLY.
+ONLY.${again ? `
+
+${again} of them ${again === 1 ? 'was' : 'were'} searched for before and not found. ${again === 1 ? 'It is' : 'They are'} asked for
+again, with the sources already tried and places not yet searched.` : ''}
 
 HOW TO ANSWER
 
@@ -581,17 +707,24 @@ HOW TO ANSWER
 4. The block MUST start like this, so the application knows it is an addition
    and not a new run:
 
-   { "run": { "topUp": true, "schemaVersion": "${S(d.run && d.run.schemaVersion) || '5.0.0'}"${
+   { "run": { "topUp": true,${comp.kind === 'finder' ? ' "kind": "sectorScreen",' : ''} "searchLog": [], "schemaVersion": "${S(d.run && d.run.schemaVersion) || '5.0.0'}"${
      S(d.run && d.run.sector) ? `, "sector": ${JSON.stringify(d.run.sector)}` : ''}${
      S(d.run && d.run.subSector) ? `, "subSector": ${JSON.stringify(d.run.subSector)}` : ''} },${
-     comp.kind === 'sector' ? `
+     comp.kind === 'finder' ? `
+     "sectors": [ { "name": "Banking", ... } ] }
+
+   Sectors are matched by "name", exactly as written in the list.` : comp.kind === 'sector' ? `
      "companies": [], ... }` : `
      "companies": [ { "symbol": "${S(arr(d.companies)[0] && arr(d.companies)[0].symbol)}", ... } ] }`}
 
 5. Never write 0, "" or null for something you could not find. Leave the key
-   out, and add a line to "run.researchNotes" saying what you searched and why
-   it could not be established. A zero is a reading; a reading you did not take
-   is a false statement about the accounts.
+   out, and add an entry to "run.searchLog" for it:
+     "searchLog": [ { "path": "the path shown at the start of the item, e.g. global.cagr.y3",
+                      "searched": ["every source you tried, by name"],
+                      "reason": "why it could not be established" } ]
+   The item stays on the list and will be asked for again, with the sources
+   you name, so name every one. A zero is a reading; a reading you did not
+   take is a false statement about the accounts.
 6. If the block will not fit in one reply, send as much as fits, end it
    cleanly, and say CONTINUE — the rest can be sent the same way.
 
@@ -637,12 +770,21 @@ const isEntityList = (list) => list.length > 0 && list.every((o) => o && typeof 
 const sameEntity = (a, b) => (symKey(a.symbol) && symKey(a.symbol) === symKey(b.symbol))
   || (nameKey(a.name) && nameKey(a.name) === nameKey(b.name));
 /* One row per entity: a later duplicate is folded into the first. */
+/* The row being added keeps the saved row's own spelling of the name and
+   ticker when the two are the same entity (build 28: "aviation" must not
+   rename "Aviation"). */
+function samePatch(base, item) {
+  const p = { ...item };
+  if (S(base.name) && nameKey(base.name) === nameKey(p.name)) delete p.name;
+  if (S(base.symbol) && symKey(base.symbol) === symKey(p.symbol)) delete p.symbol;
+  return p;
+}
 function dedupeEntities(list) {
   const out = [];
   list.forEach((item) => {
     const ix = out.findIndex((b) => sameEntity(b, item));
     if (ix < 0) out.push(item);
-    else out[ix] = mergeValue(out[ix], item, '', []);
+    else out[ix] = mergeValue(out[ix], samePatch(out[ix], item), '', []);
   });
   return out;
 }
@@ -665,7 +807,7 @@ function mergeValue(base, add, path, gained) {
         const ix = out.findIndex((b) => sameEntity(b, item));
         if (ix < 0) { out.push(item); added++; return; }
         const before = JSON.stringify(out[ix]);
-        out[ix] = mergeValue(out[ix], item, `${path}[${S(item.name) || S(item.symbol)}]`, []);
+        out[ix] = mergeValue(out[ix], samePatch(out[ix], item), `${path}[${S(item.name) || S(item.symbol)}]`, []);
         if (JSON.stringify(out[ix]) !== before) touched++;
       });
       const clean = dedupeEntities(out);
@@ -718,7 +860,7 @@ export function isTopUp(payload) {
 /* Fold a follow-up reply into the saved payload. Returns the merged payload
    and a plain list of what changed; `ok: false` when the reply is about
    something else and must not be merged. */
-export function mergeTopUp(base, add) {
+export function mergeTopUp(base, add, { now = new Date() } = {}) {
   const gained = [];
   if (!base || !add || typeof add !== 'object') return { ok: false, reason: 'Nothing to merge.' };
   const bc = arr(base.companies), ac = arr(add.companies);
@@ -734,9 +876,18 @@ export function mergeTopUp(base, add) {
   Object.keys(add).forEach((k) => {
     if (k === 'run') {
       const r = add.run || {};
-      ['reporting', 'researchNotes', 'searchesRun'].forEach((rk) => {
+      ['reporting', 'researchNotes', 'searchesRun', 'searchLog'].forEach((rk) => {
         if (r[rk] == null) return;
-        if (rk === 'searchesRun') {
+        if (rk === 'searchLog') {
+          /* Every attempt is kept and dated: the next follow-up counts them. */
+          const day = isoDay(now);
+          const adds = arr(r.searchLog).map((e) => (e && typeof e === 'object' && !Array.isArray(e)
+            ? Object.assign({}, e, { at: S(e.at) || day }) : e)).filter(Boolean);
+          if (adds.length) {
+            out.run.searchLog = arr(out.run.searchLog).concat(adds);
+            gained.push(`run.searchLog (+${adds.length} searched, not found)`);
+          }
+        } else if (rk === 'searchesRun') {
           if (isNum(r[rk])) { out.run.searchesRun = (isNum(out.run.searchesRun) ? out.run.searchesRun : 0) + r[rk];
             gained.push(`run.searchesRun (+${r[rk]})`); }
         } else if (rk === 'researchNotes') {

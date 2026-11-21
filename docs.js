@@ -40,6 +40,8 @@ function soloPayload(){
 }
 
 function currentPayload(kind){
+  /* Build 28: the Sector Screen is built from the Finder's own record. */
+  if(kind === 'finder') return typeof window.finderPayload === 'function' ? window.finderPayload() : null;
   if(!window.composedReport) return null;
   /* Accept the row form too — "solo:exec" — so a caller that has not been
      through doAction still resolves to the right record. */
@@ -114,6 +116,10 @@ function companyIndexFor(p, kind){
   return (p && p.companyIndex) || 0;
 }
 function fileBase(p, kind, lang){
+  if(kind === 'finder'){
+    var dt = new Date((p && p.asOf) || Date.now()), z = function(v){ return (v < 10 ? '0' : '') + v; };
+    return 'Sector_Screen_' + z(dt.getDate()) + '-' + z(dt.getMonth() + 1) + '-' + dt.getFullYear();
+  }
   /* Per-company documents are named for the company; run-level ones for the
      sector, since naming three companies' report after one of them is how a
      file ends up filed in the wrong place. */
@@ -198,6 +204,7 @@ function buildHTML(p, kind, lang){
   }
   if(kind === 'sector') return EQDocs.buildSector(p, lang);
   if(kind === 'update') return EQDocs.buildUpdate(p, lang);
+  if(kind === 'finder') return EQDocs.buildFinder(p, lang);
   if(kind === 'exec'){
     /* A company's executive summary is a summary of that company, not of the
        sector. The sector summary is still what the Sector page produces. */
@@ -609,7 +616,9 @@ function share(files, title){
 function needPayload(kind){
   var p = currentPayload(kind);
   if(!p){
-    msg(kind === 'update'
+    msg(kind === 'finder'
+      ? 'Import a Sector Finder screen first: press Find Sectors, then Import Data.'
+      : kind === 'update'
       ? 'There is no previous version to compare with yet. Press Update, import the reply, and the Update Comparison Summary appears.'
       : kind === 'solo'
       ? 'Import an independent company first — its report is built from its own research.'
@@ -842,7 +851,8 @@ document.addEventListener('DOMContentLoaded', function(){
        they produced, including "import a company first", went to a hidden
        element, and the buttons read as dead. They were not dead; they were
        mute. The panel is now found from the button itself. */
-    var host = b.closest('#scnDocs') ? '#scnMsg'
+    var host = b.closest('#finderBox') ? '#finderMsg'
+             : b.closest('#scnDocs') ? '#scnMsg'
              : b.closest('#scDocs') ? '#scMsg'
              : b.closest('#tab-scenario') ? '#scnMsg'
              : b.closest('#tab-score') ? '#scDocMsg'

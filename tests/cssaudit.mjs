@@ -34,7 +34,7 @@ if (depth !== 0) { console.log('FAIL: stylesheet braces do not balance:', depth)
 
 /* every wrapper the chevron needs must exist and wrap a select */
 const wraps = (s.match(/<div class="selwrap">\s*<select/g) || []).length;
-const selects = (s.match(/<select id="(segSel|subSel|horizon|segPick|soloPick|coPick|scSector|scCompany)"/g) || []).length;
+const selects = (s.match(/<select id="(segSel|subSel|horizon|segPick|soloPick|finderVer|scSector|scCompany)"/g) || []).length;
 console.log(`selwrap wrappers: ${wraps}, visible selects: ${selects}`);
 if (wraps < selects) { console.log('FAIL: some visible selects have no chevron wrapper'); fail = 1; }
 if (!/\.selwrap::after\{[^}]*background:var\(--grad-gold\)/.test(css.replace(/\s+/g, ''))) {

@@ -43,16 +43,17 @@ await imp(solo, ()=>d.getElementById('btnSoloImport').click());
 
 console.log('library:', JSON.parse(w.localStorage.getItem('eq.library')||'[]')
   .map(r=>r.kind+(r.standalone?'/solo':'')+':'+(r.company||r.sector)).join('\n         '));
-console.log('\ncoPick options:', [...d.querySelectorAll('#coPick option')].map(o=>o.textContent.split('  ·')[0]).join(' | '));
 w.renderScoreTab(); await pause();
 console.log('scCompany options:', [...d.querySelectorAll('#scCompany option')].map(o=>o.textContent.split('  ·')[0]).join(' | '));
 
 // pick the independent one and see which company the PDF button addresses
-const opt=[...d.querySelectorAll('#coPick option')].find(o=>/Indian Bank/.test(o.textContent));
-console.log('\nIndian Bank in coPick:', !!opt);
+/* Build 28: the Saved company research picker is gone; the Score Card's
+   picker lists every company. */
+const opt=[...d.querySelectorAll('#scCompany option')].find(o=>/Indian Bank/.test(o.textContent));
+console.log('\nIndian Bank in scCompany:', !!opt);
 if(opt){
-  d.getElementById('coPick').value=opt.value;
-  d.getElementById('coPick').dispatchEvent(new w.Event('change',{bubbles:true}));
+  d.getElementById('scCompany').value=opt.value;
+  d.getElementById('scCompany').dispatchEvent(new w.Event('change',{bubbles:true}));
   await pause();
   const cp=w.EQDocTools.currentPayload();
   const html=w.EQDocTools.buildHTML(cp,'solo','en');

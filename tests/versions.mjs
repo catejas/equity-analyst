@@ -59,7 +59,9 @@ const slots = () => p.evaluate(() => [...document.querySelectorAll('#coBoxes .ru
   update: !!el.querySelector('.co-update'), research: !!el.querySelector('.co-search'),
   done: el.classList.contains('done'), note: (el.querySelector('.slotver') || {}).innerText || '',
   docs: [...el.querySelectorAll('.docrow .dn')].map((x) => x.textContent) })));
-const heading = () => p.evaluate(() => (document.querySelector('#coBoxes > h2') || {}).innerText || '');
+/* Build 28: the heading is "Top 3 companies of [sector picker]" with the
+   version line under it. */
+const heading = () => p.evaluate(() => (document.querySelector('#coHead') || {}).innerText || '');
 
 /* ---- version 1 of the study, with two of its Top 3 ---- */
 await tab('sector');
