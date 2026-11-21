@@ -522,8 +522,11 @@ body.previewing{overflow:hidden;}
   #preview{position:static;} #preview .pvbar{display:none!important;} }
 /* When the Search button has armed the prompt, the tool row is the
    next thing to tap — say so visually. */
-#toolRow.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
-#toolRow.armed .btn{background:var(--surf);border-color:var(--gold);}
+#toolRow.armed,#toolRowCo.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
+#toolRow.armed .btn,#toolRowCo.armed .btn{background:var(--surf);border-color:var(--gold);}
+/* Build 27: the paste box is marked the same way while Import is open, on the
+   Sector and the Company page alike, so it is the obvious next thing to tap. */
+#importText.armed{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,178,51,.22);}
 
 /* Setup toggles. The in-app API run is off unless the user turns it on, so the
    button never advertises a feature they cannot use. */
@@ -551,7 +554,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="21-11-2026.26";</script>
+<script>window.APP_BUILD="22-11-2026.27";</script>
 </head>
 <body>
 
@@ -696,7 +699,7 @@ body.previewing{overflow:hidden;}
     <div id="coMsg" class="note" style="margin-top:8px;"></div>
 
     <label style="margin-top:16px;">Open AI tool</label>
-    <p class="hint" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
+    <p class="hint" id="toolHintCo" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
     The prompt is already on the clipboard.</p>
     <div class="grid2" id="toolRowCo">
       <button class="btn sm" data-tool="claude">Claude</button>
@@ -1236,6 +1239,13 @@ function syncSearchButton(){
 
 function setPending(kind){
   PENDING = 'analysis';
+  /* Build 27: both pages carry the same hint and the same gold frame. */
+  var lblCo = $('#toolHintCo');
+  if(lblCo) lblCo.innerHTML = kind === 'armed'
+    ? '<b>The research prompt is copied.</b> Pick a tool below \u2014 the app opens if it is '
+      + 'installed, otherwise the website. Paste, send, then bring the reply back with '
+      + '<b>Import</b> on this page.'
+    : 'Research first, then pick a tool. The prompt is already on the clipboard.';
   var lbl = $('#toolHint');
   if(lbl) lbl.innerHTML = kind === 'armed'
     ? '<b>The research prompt is copied.</b> Pick a tool below \u2014 the app opens if it is '
@@ -1243,8 +1253,10 @@ function setPending(kind){
       + '<b>Import Data</b> on the Report tab.'
     : 'One tap copies the prompt and opens the tool \u2014 its app if you have it installed, '
       + 'otherwise the website. Paste, send, then bring the reply back under Import.';
-  var row = $('#toolRow');
-  if(row) row.classList.toggle('armed', kind === 'armed');
+  ['#toolRow', '#toolRowCo'].forEach(function(id){
+    var row = $(id);
+    if(row) row.classList.toggle('armed', kind === 'armed');
+  });
 }
 
 /* A tool button opens the tool with the prompt already copied. It must send the
@@ -3523,10 +3535,12 @@ $('#btnImport').addEventListener('click', function(){
   $('#reviewBox').classList.add('hidden');
   $('#btnSaveImport').classList.add('hidden');
   $('#importMsg').textContent = '';
+  $('#importText').classList.add('armed');
   $('#importText').focus();
 });
 $('#btnCancelImport').addEventListener('click', function(){
   $('#importCard').classList.add('hidden'); $('#importText').value='';
+  $('#importText').classList.remove('armed');
   $('#reviewBox').classList.add('hidden'); $('#btnSaveImport').classList.add('hidden');
   pendingImport = null;
 });
@@ -5599,7 +5613,14 @@ function coRecordFor(subj){
 function openImport(target){
   IMPORT_TARGET = target;
   if($('#importCard')) $('#importCard').classList.remove('hidden');
-  if($('#importText')) $('#importText').value = '';
+  var box = $('#importText');
+  if(box){
+    box.value = '';
+    /* Build 27: the Company page opened Import without marking or focusing the
+       paste box, so it looked inert next to the Sector page's gold one. */
+    box.classList.add('armed');
+    try{ box.focus({ preventScroll:true }); }catch(e){ try{ box.focus(); }catch(e2){} }
+  }
   try{ $('#importCard').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
 }
 

@@ -26,7 +26,23 @@ behave and it is not a fault.
 
 ## Current build
 
-`21-11-2026.26` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`22-11-2026.27` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 27, from Tejas's review of build 26 (22-11-2026):
+- **Global past growth is asked over 5, 3 and 1 year** (`global.cagr.y5`,
+  `y3`, `y1`). Ten- and fifteen-year rates are no longer asked for, scored
+  or printed: no consistent public series reaches that far for most sectors,
+  so the tool could only stitch reports together or leave them out, and the
+  follow-up asked for them again and again (Banking, 16-11-2026). The prompt
+  asks for one series for all three, with y3 and y1 derived from its annual
+  figures where it gives them. Older research carrying y15/y10 still reads;
+  those figures are simply not shown, and still count when the app checks
+  whether a block arrived as fractions.
+- **Company page matches the Sector page.** After Research, the four AI tool
+  buttons sit in a gold frame with the "prompt is copied" hint, and the
+  Import paste box opens framed in gold and focused, on both pages.
+
+Previous: `21-11-2026.26`.
 
 Build 26, from Tejas's review of build 25 (21-11-2026):
 - **Two versions per line.** Every sector study, Top 3 company and independent

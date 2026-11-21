@@ -4183,7 +4183,9 @@ function gapNoteRich(html, lead){
 /* ---------- the world ---------- */
 function figGlobalGrowth(rep){
   var K=CH_(); var g=rep.global; if(!K||!g||!g.cagr) return '';
-  var ks=['y15','y10','y5','y3'], labs=['15 years','10 years','5 years','3 years'];
+  /* Build 27: five, three and one year. Older research may still carry 10-
+     and 15-year rates; they are no longer printed. */
+  var ks=['y5','y3','y1'], labs=['5 years','3 years','Latest year'];
   var vals=ks.map(function(k){ return typeof g.cagr[k]==='number'?g.cagr[k]:null; });
   /* One lookback is not a comparison, and a chart of one bar has nothing to
      say (the 16-11-2026 Banking run established the five-year rate alone).
@@ -4219,9 +4221,9 @@ function eqWorld(p, lang){
       g.marketSizeYear ? agedPeriod(g.marketSizeYear, runAsOf(p)) : '<span class="mut">undated</span>',
       e(S(g.source)) || NS] },
     { cells:['Past growth, a year', (function(){
-        var c = g.cagr || {}, got = [['y15','15'],['y10','10'],['y5','5'],['y3','3']]
+        var c = g.cagr || {}, got = [['y5','over 5 years'],['y3','over 3 years'],['y1','in the latest year']]
           .filter(function(k){ return typeof c[k[0]]==='number'; })
-          .map(function(k){ return n(c[k[0]],1) + '% over ' + k[1] + ' years'; });
+          .map(function(k){ return n(c[k[0]],1) + '% ' + k[1]; });
         return got.length ? got.join(', ') : NS; })(),
       '', e(S(g.source))] },
     { cells:['Forecast growth, a year', typeof gf.cagr==='number' && gf.cagr ? n(gf.cagr,1)+'%' : NS,

@@ -851,7 +851,9 @@ export function buildReport(payload, { asOf = new Date() } = {}) {
 
     const run = bag('the sector research');
     const g = pl.global?.cagr;
-    if (g) for (const k of ['y15', 'y10', 'y5', 'y3']) take(run, g, k);
+    /* y15 and y10 stay here only so research saved before build 27 is still
+       judged on all its evidence; they are no longer asked for or printed. */
+    if (g) for (const k of ['y15', 'y10', 'y5', 'y3', 'y1']) take(run, g, k);
     const m = pl.macro;
     /* currency is a rate in rupees, not a percentage, and is never included. */
     if (m) {

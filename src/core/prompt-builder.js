@@ -538,7 +538,13 @@ order.
     who published it ("source" — an industry body, a multilateral, a
     consultancy report, with its date). India's own market is NOT the global
     market size; it goes in "indiaShare" below.
-  - its compound growth over fifteen, ten, five and three years ("cagr"), and
+  - its PAST growth ("cagr"): the compound annual growth over the last five
+    years ("y5"), the last three years ("y3") and the growth in the latest
+    full year ("y1"), in percent, all on the same basis and from the same
+    series where possible. Do NOT give ten- or fifteen-year rates: they are
+    not asked for, and figures stitched from different reports are not
+    comparable. If the published series gives annual figures, derive y3 and
+    y1 from it and say so in "source". And
     the published FORECAST growth for the next five years ("growthForecast").
   - the structural forces reshaping it ("forces", three or more).
   - WHERE INDIA SITS: India's share of the global market in percent, India's
@@ -722,7 +728,7 @@ including pledged shares.
     // EVERY rate in this payload is in PERCENTAGE POINTS, never a fraction:
     // eleven percent is 11, not 0.11. This was answered both ways by different
     // tools and the charts had no way to tell them apart.
-    "cagr": { "y15": 0, "y10": 0, "y5": 0, "y3": 0 },
+    "cagr": { "y5": 0, "y3": 0, "y1": 0 },
     "forces": ["what is reshaping the industry"],
     "indiaPosition": "",
     // At least five, from more than one country. marketCapCurrency and
@@ -1179,7 +1185,7 @@ become one — but returning it empty leaves every number in the report with no
 context to be read against.` : `Search until each block below has something in it. These are not optional
 extras; each one is a named section of the finished report:
 
-  the world        global market size, its growth over 15/10/5/3 years, and at
+  the world        global market size, its growth over 5/3/1 years, and at
                    least FIVE global peers, each with its market cap stated in
                    a named currency and scale, and what it makes
   macro            six readings, each with its period and its source

@@ -347,9 +347,17 @@ function sectorChecks(d, now, backdrop) {
   check(out, 'The world', 'Global peers: what each one makes', peers.length - noMakes.length, peers.length,
     'global.peers — add "makes", a sentence on what each actually makes or sells, for: ' + noMakes.join(', ') + '.',
     noMakes.join(', '));
-  const cagrKeys = ['y15', 'y10', 'y5', 'y3'].filter((k) => !isNum(g.cagr && g.cagr[k]));
-  check(out, 'The world', 'Global growth over 15, 10, 5 and 3 years', 4 - cagrKeys.length, 4,
-    `global.cagr — missing: ${cagrKeys.join(', ')}.`, cagrKeys.join(', '));
+  /* Build 27. Past growth is asked over five, three and one year. Ten- and
+     fifteen-year rates were dropped: no consistent public series reaches that
+     far for most sectors, so the AI tool could only stitch reports together
+     or leave them out, and the follow-up kept asking for them. */
+  const CAGR_WANT = { y5: 'the last five years (y5)', y3: 'the last three years (y3)', y1: 'the latest full year (y1)' };
+  const cagrKeys = Object.keys(CAGR_WANT).filter((k) => !isNum(g.cagr && g.cagr[k]));
+  check(out, 'The world', 'Global growth over 5, 3 and 1 year', 3 - cagrKeys.length, 3,
+    'global.cagr — the past growth of the GLOBAL market in percent a year, missing: '
+    + cagrKeys.map((k) => `"${k}", ${CAGR_WANT[k]}`).join('; ')
+    + '. Use one series for all three; where it gives annual figures, derive y3 and y1 from it '
+    + 'and say so in "source". Do not give 10- or 15-year rates.', cagrKeys.join(', '));
 
   const MAC = { gdpGrowth: 'GDP growth (latest quarterly release, MoSPI)',
     inflation: 'CPI inflation (latest monthly print, MoSPI)',
