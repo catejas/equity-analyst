@@ -102,7 +102,7 @@ const iso = (d) => (d ? d.toISOString().slice(0, 10) : null);
  * for an owner where there is one. Price, market value and ownership have no
  * better direction: they are reported, not judged. */
 const LOWER_BETTER = /npa|cost|slippage|churn|attrition|debt|leverage|cask|pledge|days|delinquen|stage ?3/i;
-const HIGHER_BETTER = /nim|margin|casa|coverage|pcr|crar|car\b|capital adequacy|cet1|roa|roe|roce|load factor|plf|arpu|arpob|revpar|occupancy|utili[sz]ation|order ?book|book.to.bill|yield|per tonne|growth/i;
+const HIGHER_BETTER = /nim|margin|casa|coverage|pcr|crar|car\b|capital adequacy|cet1|roa|roe|roce|load factor|loadfactor|plf|arpu|arpob|revpar|rask|revenue per|occupancy|utili[sz]ation|order ?book|book.to.bill|yield|per tonne|growth/i;
 function industryDir(key, name) {
   const t = S(key) + ' ' + S(name);
   if (LOWER_BETTER.test(t)) return 'down';
@@ -248,10 +248,20 @@ const ALIASES = {
   eps: ['eps', 'earnings per share'], roe: ['roe', 'return on equity'], roa: ['roa', 'return on assets'],
   promoter: ['promoter'], fii: ['fii', 'fpi', 'foreign institution'], dii: ['dii', 'domestic institution'],
 };
+/* A figure only when the text IS a figure: "141.79", "Rs 141.79 (12-11-2026)",
+   "2.55%". Not "Regulatory 15 to 8" or "Overall 16.4; risk 14.5", whose first
+   number is not the measure (build 26: both were "checked" and flagged). */
 function firstNumber(v) {
   if (isNum(v)) return v;
-  const m = /-?\d[\d,]*(?:\.\d+)?/.exec(S(v));
-  return m ? Number(m[0].replace(/,/g, '')) : null;
+  const m = /^\s*(?:rs\.?|inr|\u20b9|us\$|\$)?\s*(-?\d[\d,]*(?:\.\d+)?)\s*(%|x|crs?|crore|lakh|bn|mn)?(?![\d.]*\s*(?:to|-)\s*\d)(?=\s|$|\(|\u20b9|[a-z])/i.exec(S(v));
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+}
+/* "currentPrice" \u2192 "Current price"; names already in words are kept. */
+export function itemLabel(t) {
+  const s = S(t);
+  if (!s || /\s/.test(s) || !/[a-z][A-Z]/.test(s)) return s;
+  const w = s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return w.charAt(0).toUpperCase() + w.slice(1);
 }
 function aliasesOf(row) {
   if (ALIASES[row.key]) return ALIASES[row.key];
@@ -268,8 +278,13 @@ function aliasesOf(row) {
 }
 export function checkChanges(changes, rows) {
   return arr(changes).filter(isObj).map((ch) => {
-    const text = ' ' + norm([ch.item, ch.area].join(' ')) + ' ';
-    const row = rows.find((r) => aliasesOf(r).some((a) => text.includes(' ' + a + ' ')));
+    /* The ITEM names the measure. The area ("price", "ratios") is a heading
+       and must not be matched: "marketCap" in area "price" was checked
+       against the share price (build 26). An exact key match wins. */
+    const raw = S(ch.item), flat = raw.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const text = ' ' + norm(itemLabel(raw)) + ' ';
+    const row = rows.find((r) => r.key.replace(/^(ind|pillar)\./, '').replace(/[^a-z0-9]/gi, '').toLowerCase() === flat)
+      || rows.find((r) => aliasesOf(r).some((a) => text.includes(' ' + a + ' ')));
     const said = { prev: firstNumber(ch.previous), cur: firstNumber(ch.current) };
     let check = 'not checked', detail = null;
     if (row) {
@@ -277,12 +292,12 @@ export function checkChanges(changes, rows) {
       const curOff = off(said.cur, row.cur), prevOff = off(said.prev, row.prev);
       if (curOff || prevOff) {
         check = 'differs';
-        detail = (curOff ? `the research says ${said.cur} now; the app reads ${round(row.cur)}` : '')
+        detail = (curOff ? `${row.label}: the research says ${said.cur} now, the app reads ${round(row.cur)}` : '')
           + (curOff && prevOff ? '; ' : '')
-          + (prevOff ? `the research says it was ${said.prev}; the saved version had ${round(row.prev)}` : '');
+          + (prevOff ? `${curOff ? 'it' : row.label} was ${said.prev} by the research, ${round(row.prev)} in the saved version` : '');
       } else if (isNum(said.cur) || isNum(said.prev)) check = 'agrees';
     }
-    return { area: S(ch.area), item: S(ch.item), previous: S(ch.previous), current: S(ch.current),
+    return { area: S(ch.area), item: itemLabel(ch.item), previous: S(ch.previous), current: S(ch.current),
       why: S(ch.why), source: S(ch.source), date: S(ch.date), significance: S(ch.significance) || 'medium',
       direction: S(ch.direction), check, detail, figure: row ? row.key : null };
   });
@@ -315,7 +330,8 @@ function companyDiff(prevP, curP, opts) {
   const flags = listDiff(pc.redFlags, cc.redFlags, (x) => norm(x && x.category));
   const severityMoves = [];
   listDiff(pc.redFlags, cc.redFlags, (x) => norm(x && x.category)).kept.forEach(({ prev, cur }) => {
-    if (S(prev.severity) !== S(cur.severity)) severityMoves.push({ category: S(cur.category), from: S(prev.severity), to: S(cur.severity) });
+    if (S(prev.severity) !== S(cur.severity)) severityMoves.push({ category: S(cur.category), from: S(prev.severity),
+      to: S(cur.severity), detail: S(cur.detail) || S(prev.detail) });
   });
   const lit = listDiff(matters(prawCo), matters(crawCo), (x) => key60(x.summary).slice(0, 40));
   const curDate = asOf(curP, opts.curTs), prevDate = asOf(prevP, opts.prevTs);

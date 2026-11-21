@@ -227,7 +227,9 @@ function companyChecks(c, run, now) {
   const count = (label, group, v, want, path, what) =>
     check(out, group, label, arr(v).length, want,
       `${at}.${path} — ${want} or more ${what}; ${arr(v).length} came back.`);
-  count('Peers compared', 'The argument', c.peers, 4, 'peers',
+  /* Distinct peers, not rows: a peer sent twice is one peer (build 26). */
+  const distinctPeers = isEntityList(arr(c.peers)) ? dedupeEntities(arr(c.peers)) : arr(c.peers);
+  count('Peers compared', 'The argument', distinctPeers, 4, 'peers',
     'listed peers, each with marketCap, pe, roe, revGrowth and an asOf period');
   /* A peer named with nothing against it (build 23 — Bank of Baroda on the
      PNB run) is a row of dashes. Each peer needs the figures its industry is
@@ -236,7 +238,7 @@ function companyChecks(c, run, now) {
     const lender = /bank|nbfc|financ|lend|credit/i.test(S(c.sector) + ' ' + S(c.subSector) + ' ' + S(run && run.sector));
     const need = lender ? ['marketCap', 'pe', 'pb', 'roe', 'roa', 'nim', 'gnpa', 'advancesGrowth']
       : ['marketCap', 'pe', 'evEbitda', 'roe', 'revGrowth', 'ebitdaMargin'];
-    const ps = arr(c.peers).filter((p) => p && S(p.name));
+    const ps = distinctPeers.filter((p) => p && S(p.name));
     const thin = ps.filter((p) => need.filter((k) => real(p[k])).length < Math.ceil(need.length / 2));
     if (ps.length) check(out, 'The argument', 'Peers with their figures', ps.length - thin.length, ps.length,
       `${at}.peers — every peer needs ${need.join(', ')} (percentages in percentage points), with asOf and `
@@ -608,11 +610,60 @@ function identityOf(list) {
 }
 const idOf = (o, idk) => idk.split('+').map((k) => norm(o[k])).join('|');
 
+/* Rows that name a company — peers, players, a shortlist, programme
+   beneficiaries. Build 26: they were joined on whichever key each side
+   happened to carry in every row. The first CANBK reply had some peers
+   without a ticker (so its rows joined on "name") and the follow-up carried a
+   ticker on every row (so it joined on "symbol"): the two did not match, the
+   merge fell through to "add, never swap", and every follow-up appended five
+   more rows beside the thin ones it was meant to replace. The required count
+   then grew with the rows (5, 10, 15, 18) and the follow-up looped. Now such
+   rows match on ticker OR name, with the suffixes and punctuation that differ
+   between replies taken out, and the newer row overwrites the older. */
+const CO_WORDS = /\b(the|ltd|limited|plc|inc|incorporated|corp|corporation|company|co|holdings?|group|and)\b/g;
+const nameKey = (v) => S(v).toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ')
+  .replace(CO_WORDS, ' ').replace(/\s+/g, ' ').trim();
+const symKey = (v) => S(v).toUpperCase().replace(/^(NSE|BSE)\s*[:\-]\s*/, '').replace(/\.(NS|BO|NSE|BSE)$/, '').replace(/[^A-Z0-9&]/g, '');
+const isEntityList = (list) => list.length > 0 && list.every((o) => o && typeof o === 'object' && !Array.isArray(o)
+  && (S(o.name) || S(o.symbol)));
+const sameEntity = (a, b) => (symKey(a.symbol) && symKey(a.symbol) === symKey(b.symbol))
+  || (nameKey(a.name) && nameKey(a.name) === nameKey(b.name));
+/* One row per entity: a later duplicate is folded into the first. */
+function dedupeEntities(list) {
+  const out = [];
+  list.forEach((item) => {
+    const ix = out.findIndex((b) => sameEntity(b, item));
+    if (ix < 0) out.push(item);
+    else out[ix] = mergeValue(out[ix], item, '', []);
+  });
+  return out;
+}
+export { dedupeEntities, nameKey as entityNameKey };
+
 function mergeValue(base, add, path, gained) {
   if (add === undefined || add === null || add === '') return base;
   if (Array.isArray(add)) {
     if (!add.length) return base;
-    if (!Array.isArray(base) || !base.length) { gained.push(`${path} (+${add.length})`); return add; }
+    if (!Array.isArray(base) || !base.length) {
+      const first = isEntityList(add) ? dedupeEntities(add) : add;
+      gained.push(`${path} (+${first.length})`); return first;
+    }
+    /* A multi-field identity (register, Budget head, trade partner, era) is
+       exact and wins; otherwise rows that name a company match by entity. */
+    const combo = identityOf(add);
+    if (!(combo && combo.includes('+')) && isEntityList(base) && isEntityList(add)) {
+      const out = dedupeEntities(base); let added = 0, touched = 0;
+      add.forEach((item) => {
+        const ix = out.findIndex((b) => sameEntity(b, item));
+        if (ix < 0) { out.push(item); added++; return; }
+        const before = JSON.stringify(out[ix]);
+        out[ix] = mergeValue(out[ix], item, `${path}[${S(item.name) || S(item.symbol)}]`, []);
+        if (JSON.stringify(out[ix]) !== before) touched++;
+      });
+      const clean = dedupeEntities(out);
+      if (added || touched) gained.push(`${path} (${added ? '+' + added + ' new' : ''}${added && touched ? ', ' : ''}${touched ? touched + ' filled in' : ''})`);
+      return clean;
+    }
     const idk = identityOf(add);
     if (idk && identityOf(base) === idk) {
       const out = base.slice(); let added = 0, touched = 0;

@@ -87,6 +87,19 @@ const up = buildUpdatePrompt({ previous: NOV, version: 2, line: 'C|PNB', company
 ok('the update brief asks for a complete payload, the change log and the thesis check',
   /COMPLETE payload/.test(up) && /"changes": \[/.test(up) && /"thesisCheck"/.test(up) && /"line": "C\|PNB"/.test(up));
 ok('  and ends with the full research brief', up.indexOf('BEFORE ANYTHING ELSE') > up.indexOf('What the saved version said'));
+ok('  it tells the tool to return ONE fenced json block, so the reply has a copy button (build 26)',
+  /6\. HOW TO SEND IT/.test(up) && /ONE fenced code\s+block tagged json/.test(up));
+ok('  and repeats it as the very last thing in the prompt', /```json\n\{"schema":"equity-analyst\/5"[\s\S]*```\n\non ONE line, minified[\s\S]*Nothing after the closing fence\.$/.test(up),
+  JSON.stringify(up.slice(-120)));
+const ck2 = checkChanges([
+  { area: 'price', item: 'marketCap', previous: '1564 (19-11-2026)', current: '1486 (20-11-2026)' },
+  { area: 'ratings', item: 'overall score inputs', previous: 'Overall 16.4; risk 14.46', current: 'Regulatory 15 to 8' }],
+  [{ key: 'price', label: 'Share price', prev: 10.25, cur: 9.74 }, { key: 'marketCap', label: 'Market capitalisation', prev: 1564, cur: 1486 },
+   { key: 'score', label: 'Overall score', prev: 16.4, cur: 15.92 }]);
+ok('a market-cap claim is checked against the market cap, not the share price (SpiceJet, 21-11-2026)',
+  ck2[0].figure === 'marketCap' && ck2[0].check === 'agrees', ck2[0].figure + ' ' + ck2[0].check);
+ok('  prose that merely contains numbers is not checked as a figure', ck2[1].check === 'not checked', ck2[1].check);
+ok('  and raw keys are given readable names', ck2[0].item === 'Market cap', ck2[0].item);
 let threw = false; try { buildUpdatePrompt({ company: 'X' }); } catch (e) { threw = true; }
 ok('  it refuses to build without a saved version', threw);
 

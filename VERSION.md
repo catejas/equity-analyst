@@ -26,6 +26,39 @@ behave and it is not a fault.
 
 ## Current build
 
+`21-11-2026.26` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 26, from Tejas's review of build 25 (21-11-2026):
+- **Two versions per line.** Every sector study, Top 3 company and independent
+  company keeps its LATEST version (every full report is built from it) and
+  its PREVIOUS one. An update makes the latest the previous and removes the
+  old previous, so the comparison is always the last two: 05-10 against
+  10-11, then 10-11 against 20-11. A line is stamped on each record when it is
+  saved, so a company's research survives the removal of the study version
+  it was saved under and is still carried. A library holding more versions is
+  brought to two on first launch. Versions are called Latest and Previous.
+- **The update prompt asks for one fenced json block** (the copy button),
+  in its own instructions and again as the last lines of the prompt.
+- **The follow-up loop on peers is fixed.** Rows that name a company (peers,
+  players, shortlist) now merge on ticker OR a normalised name, newest
+  overwriting; duplicates collapse; the depth check counts distinct peers.
+  The first reply's peers had no ticker on some rows and the follow-up had
+  one on every row, so the two sides joined on different keys and every
+  follow-up appended rows (CANBK held 16 rows for 10 peers).
+- **The Update Comparison Summary** (renamed from Update Summary) has no
+  contents page and opens on a Bottom Line written from the computed
+  comparison. Key figures list only what moved; first-time measures get
+  their own table; unchanged ones are named in a line. Units sit with the
+  measure, and ₹ units go before the number. Score moves under a point read
+  "little changed". A re-graded red flag shows its finding. Legal matters
+  are "newly recorded". "1 day" is in words. The tool's claims are matched
+  on the item only, so "marketCap" is no longer checked against the share
+  price, and only figures that are plainly figures are checked. Raw keys are
+  given readable names.
+New suite `peermerge.mjs`; `versions.mjs` 62 checks; `update-engine.mjs` 45.
+
+Previous: `19-11-2026.25`.
+
 `19-11-2026.25` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 25 is saved research brought up to date. Every sector study, Top 3

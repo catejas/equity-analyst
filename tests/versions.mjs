@@ -106,16 +106,16 @@ ok('version 2 is saved beside version 1, not over it', secs.length === 2, secs.l
 ok('  both in one line', await p.evaluate(() => { const s = sectorRecords(); return s.length === 2 && recLine(s[0]) === recLine(s[1]); }));
 ok('  and version 1 keeps its two companies', L.filter((r) => r.kind === 'company' && r.parentId === secs.find((x) => x.data.run.generatedAt.startsWith('2026-09')).id).length === 2);
 ok('  the save says which slots carry research and which are new',
-  alerts.some((a) => /Saved as version 2/.test(a) && /press Update/.test(a) && /press Research for the full prompt/.test(a)), (alerts[0] || '').slice(0, 160));
+  alerts.some((a) => /Saved as the latest version/.test(a) && /press Update/.test(a) && /press Research for the full prompt/.test(a)), (alerts[0] || '').slice(0, 160));
 
 await tab('company'); await p.waitForTimeout(250);
 let s2 = await slots();
 ok('the Company page now shows version 2’s Top 3: SBI, Bank of India, Canara',
   /State Bank/.test(s2[0].text) && /Bank of India/.test(s2[1].text) && /Canara/.test(s2[2].text), s2.map((x) => x.text).join(' | '));
-ok('  its heading says which version', /version 2 of 2/.test(await heading()), await heading());
+ok('  its heading says it is the latest version', /latest version/.test(await heading()), await heading());
 const sbi2 = s2.find((x) => /State Bank/.test(x.text));
 ok('  SBI, researched under version 1, offers Update', sbi2.update && !sbi2.research && /update due/.test(sbi2.text), sbi2.text);
-ok('  and says when it was researched', /under version 1/.test(sbi2.note), sbi2.note);
+ok('  and says when it was researched', /Researched 21-09-2026 under the previous version/.test(sbi2.note), sbi2.note);
 const fresh = s2.filter((x) => !/State Bank/.test(x.text));
 ok('  the two new entrants get the full Research prompt instead', fresh.every((x) => x.research && !x.update && /new entrant/.test(x.text)),
   fresh.map((x) => x.text).join(' | '));
@@ -139,7 +139,7 @@ await tab('company'); await p.waitForTimeout(250);
 s2 = await slots();
 const sbiNow = s2.find((x) => /State Bank/.test(x.text));
 ok('an update reply goes to its own slot whichever Import was pressed', sbiNow.done && /imported/.test(sbiNow.text), sbiNow.text);
-ok('  as version 2 of SBI, with an Update Summary among its documents', sbiNow.docs.includes('Update Summary'), sbiNow.docs.join(', '));
+ok('  as the latest version of SBI, with an Update Comparison Summary among its documents', sbiNow.docs.includes('Update Comparison Summary'), sbiNow.docs.join(', '));
 L = await lib();
 ok('  and the sector study did not gain a stray version', L.filter((r) => r.kind !== 'company').length === 2);
 
@@ -153,7 +153,7 @@ ok('choosing version 1 shows version 1’s Top 3 on the Company page: SBI, PNB, 
   sOld.some((x) => /Punjab/.test(x.text)) && sOld.some((x) => /Baroda/.test(x.text)) && sOld.some((x) => /State Bank/.test(x.text)),
   sOld.map((x) => x.text).join(' | '));
 ok('  with the research imported under it', sOld.filter((x) => x.done).length === 2);
-ok('  and the heading says it is the older version', /version 1 of 2/.test(await heading()) && /older version/.test(await heading()), await heading());
+ok('  and the heading says it is the previous version, as it was then', /previous version/.test(await heading()) && /as it was then/.test(await heading()), await heading());
 const docsOld = await p.evaluate(() => { const pl = window.EQDocTools.currentPayload('sector');
   return pl ? pl.report.full.map((c) => c.symbol) : []; });
 ok('  and its sector documents are built from version 1 and its companies', docsOld.includes('PNB') && docsOld.includes('SBIN'), docsOld.join(', '));
@@ -215,7 +215,7 @@ const sv = await p.evaluate(() => ({ n: versionsOf(soloRecord()).length, opts: [
   dis: document.querySelector('#soloVer').disabled, docs: [...document.querySelectorAll('#soloDocs .dn')].map((x) => x.textContent),
   picks: document.querySelectorAll('#soloPick option').length }));
 ok('the independent company now has two versions, one entry in its picker', sv.n === 2 && sv.picks === 1 && !sv.dis, JSON.stringify(sv.opts));
-ok('  and an Update Summary among its documents', sv.docs.includes('Update Summary'));
+ok('  and an Update Comparison Summary among its documents', sv.docs.includes('Update Comparison Summary'));
 const cd = await readDoc('solo:update');
 ok('its Update Summary builds', cd.html.length > 5000);
 ok('  price then and now, from the two payloads', /117\.39/.test(cd.text) && /141\.79/.test(cd.text));
@@ -237,6 +237,68 @@ ok('the identical reply pasted again is refused, not saved as version 3',
 await tab('company'); await p.waitForTimeout(200);
 const age = await p.evaluate(() => ({ solo: (document.querySelector('#soloAge') || {}).innerText || '' }));
 ok('each saved version says how old it is and whether an update is due', /Researched \d\d-\d\d-\d{4}/.test(age.solo), age.solo.replace(/\s+/g, ' ').slice(0, 90));
+
+/* ---- build 26: two versions are kept, the latest and the previous ---- */
+ok('the summary opens on the bottom line, with no contents page in front of it',
+  /The Bottom Line/.test(cd.text) && !/^\s*Contents/m.test(cd.text.slice(0, 400)) && /What it means:/.test(cd.text), cd.text.slice(0, 80).replace(/\s+/g, ' '));
+ok('  it lists only the figures that moved, and names the unchanged ones in a line', /Unchanged:/.test(cd.text));
+ok('  and says "1 day", "N days" in words, latest against previous', /Latest research 16-11-2026 against the previous, 21-09-2026 · 56 days apart/.test(cd.text),
+  (cd.text.match(/Latest research[^\n]*/) || [''])[0]);
+
+/* a third version of the independent company: the 21-09 one goes */
+const third = JSON.parse(JSON.stringify(PNB_NOV));
+third.run.generatedAt = '2026-11-20T10:00:00Z';
+third.run.update = { line: soloLine, previousAsOf: '2026-11-16', previousVersion: 2 };
+third.companies[0].valuation.currentPrice = 150.5;
+third.changes = [{ area: 'price', item: 'currentPrice', previous: '141.79 (12-11-2026)', current: '150.5 (20-11-2026)', significance: 'high', why: 'test' },
+  { area: 'price', item: 'marketCap', previous: '162958', current: '172000', significance: 'low', why: 'test' }];
+await tab('sector');
+await imp(third, () => p.click('#btnImport'));
+await tab('company'); await p.waitForTimeout(250);
+const kept = await p.evaluate(() => versionsOf(soloRecord()).map((r) => r.data.run.generatedAt.slice(0, 10)));
+ok('a third version keeps two: the latest and the previous', kept.length === 2 && kept[0] === '2026-11-16' && kept[1] === '2026-11-20', JSON.stringify(kept));
+const td = await readDoc('solo:update');
+ok('  and the summary now compares 20-11 with 16-11', /Latest research 20-11-2026 against the previous, 16-11-2026 · 4 days apart/.test(td.text),
+  (td.text.match(/Latest research[^\n]*/) || [''])[0]);
+ok('  a market cap is checked against the market cap, not the share price',
+  !/Market cap[\s\S]{0,200}Differs[\s\S]{0,80}9\.74|the app reads 150\.5[\s\S]{0,40}172000/.test(td.text) && /Market cap/.test(td.text));
+ok('  the versions are called latest and previous', await p.evaluate(() =>
+  [...document.querySelectorAll('#soloVer option')].map((o) => o.textContent.split(' ')[0]).join(',')) === 'Latest,Previous');
+
+/* a third version of the study: version 1 goes, its research survives */
+const v3 = JSON.parse(JSON.stringify(NOV));
+v3.run.generatedAt = '2026-11-20T09:00:00Z';
+v3.run.update = { line: line1, previousAsOf: '2026-11-16', previousVersion: 2 };
+await tab('sector');
+await imp(v3, () => p.click('#btnImport'));
+const st = await p.evaluate(() => ({ secs: sectorRecords().map((r) => r.data.run.generatedAt.slice(0, 10)).sort(),
+  pnb: companyRecords().filter((r) => !r.standalone && /PNB/.test(recLine(r))).map((r) => ({ line: r.line, orphan: !recById(r.parentId) })),
+  sbi: companyRecords().filter((r) => !r.standalone && /SBIN/.test(recLine(r))).length }));
+ok('a third study version keeps two: 16-11 and 20-11', st.secs.join() === '2026-11-16,2026-11-20', st.secs.join());
+ok('  the research saved under the removed version survives, with its line', st.pnb.length === 1 && st.pnb[0].orphan && /^T\|/.test(st.pnb[0].line),
+  JSON.stringify(st.pnb));
+ok('  and SBI keeps its two versions', st.sbi === 2, String(st.sbi));
+await tab('company'); await p.waitForTimeout(250);
+const s3 = await slots();
+const sbi3 = s3.find((x) => /State Bank/.test(x.text));
+ok('  SBI, researched under the previous version, is carried into the latest with Update', sbi3 && sbi3.update && /under the previous version/.test(sbi3.note),
+  sbi3 && sbi3.note);
+
+/* a library saved before build 26 is brought down to two on first launch */
+await p.evaluate(() => {
+  const base = soloRecord();
+  const lib = libRead();
+  [1, 2].forEach((i) => { const c = JSON.parse(JSON.stringify(base)); c.id = base.id + '-old' + i; c.ts = base.ts - i * 86400000 * 30;
+    delete c.line; lib.push(c); });
+  lib.forEach((r) => { delete r.line; });
+  return EQLib.write ? EQLib.write(lib) : libWrite(lib);
+});
+const before = await p.evaluate(() => soloRecords().length);
+await p.reload(); await p.waitForTimeout(1500);
+await p.waitForFunction(() => window.EQ && window.EQ.update && window.EQLib); await p.evaluate(() => window.EQLib.ready); await p.waitForTimeout(800);
+const after = await p.evaluate(() => ({ n: soloRecords().length, lines: libRead().every((r) => !!r.line) }));
+ok('a library with four versions of a company is brought down to two on launch', before === 4 && after.n === 2, `${before} -> ${after.n}`);
+ok('  and every record carries its line', after.lines);
 
 ok('no page errors', !errs.length, errs.slice(0, 3).join(' | '));
 await b.close();

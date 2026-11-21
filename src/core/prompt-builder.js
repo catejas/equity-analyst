@@ -1369,6 +1369,14 @@ ${single ? `5. A top-level "thesisCheck" array, one row for each thesis line in 
    and why. Rate every company on the saved shortlist again, plus any company
    that now belongs on it.`}
 
+6. HOW TO SEND IT — exactly as the research brief below says: ONE fenced code
+   block tagged json, the payload minified onto ONE line, "schema" as the first
+   key, as the LAST thing in your reply, nothing after the closing fence. That
+   block is what gives the reader the copy button. Do not paste the JSON as
+   plain text, and do not spread it over many lines. If it will not fit in one
+   reply, send as much as fits in such a block, end it cleanly, and say
+   CONTINUE.
+
 What the saved version said:
 ──────────────────────────────
 ${dg}
@@ -1376,5 +1384,18 @@ ${dg}
 
 Everything below is the full research brief. Follow all of it.
 
-${base}`;
+${base}
+
+══════════════════════════════
+REMINDER — THIS IS AN UPDATE, AND HOW TO RETURN IT
+══════════════════════════════
+Keep "run.update", the "changes" log${single ? ' and the "thesisCheck"' : ''} in the payload.
+Return it in ONE fenced code block tagged json:
+
+\`\`\`json
+{"schema":"equity-analyst/5","run":{ ... "update":{ ... } }, ... ,"changes":[ ... ]}
+\`\`\`
+
+on ONE line, minified, as the last thing in the reply — so it renders as a
+single box with a copy button. Nothing after the closing fence.`;
 }

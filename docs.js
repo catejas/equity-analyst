@@ -153,7 +153,7 @@ function fileBase(p, kind, lang){
   var k = kind==='sector' ? 'Sector_Research'
         : (kind==='solo' || /^co[123]$/.test(kind)) ? 'Company_Research'
         : kind==='exec' ? 'Executive_Summary'
-        : kind==='update' ? 'Update_Summary'
+        : kind==='update' ? 'Update_Comparison_Summary'
         : 'Scorecard';
   return nm + '_' + k;
 }
@@ -610,7 +610,7 @@ function needPayload(kind){
   var p = currentPayload(kind);
   if(!p){
     msg(kind === 'update'
-      ? 'There is no earlier version to compare with yet. Press Update, import the reply, and the Update Summary appears.'
+      ? 'There is no previous version to compare with yet. Press Update, import the reply, and the Update Comparison Summary appears.'
       : kind === 'solo'
       ? 'Import an independent company first — its report is built from its own research.'
       : 'Import a research payload first.', true);
