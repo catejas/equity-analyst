@@ -24,7 +24,7 @@
  * prompt, so this check and the brief cannot drift apart. */
 import { buildResearchPrompt } from './prompt-builder.js';
 import { KNOWN_KEYS } from './known-keys.js';
-import { buildFinderPrompt, isFinderPayload } from './finder.js';
+import { buildFinderPrompt, isFinderPayload, normaliseFinder } from './finder.js';
 
 const S = (v) => (v == null ? '' : String(v).trim());
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -35,7 +35,7 @@ const flat = (k) => S(k).toLowerCase().replace(/[^a-z0-9]/g, '');
 /* Keys the application reads that the brief's example does not print. */
 const EXTRA = {
   '': ['schema', 'changes', 'thesisCheck', 'warnings', 'screen', 'report', 'meta', 'verified', 'companies'],
-  run: ['topUp', 'update', 'kind', 'searchLog', 'asOf', 'company', 'mode', 'line'],
+  run: ['topUp', 'update', 'kind', 'searchLog', 'searchLogSetAside', 'asOf', 'company', 'mode', 'line'],
 };
 
 /* The example JSON in section 9 of the brief, with its comments and its
@@ -122,6 +122,42 @@ function variantOf(k, keys) {
   return null;
 }
 
+/* A value in the shape the schema shows: a number where it shows 0, a list
+   where it shows one (from "a; b" text), a list of { symbol } where it shows
+   that (from plain tickers), a list of sentences where it shows that (from
+   { text } objects). */
+function reshape(obj, k, t, path, out) {
+  const at = (path ? path + '.' : '') + k;
+  const v = obj[k];
+  if (typeof t === 'number' && typeof v === 'string') {
+    /* A figure with a scale word carries its unit in the text; turning it
+       into a bare number would lose it. It is listed instead. */
+    if (/(crore|\bcrs?\b|lakh|\blacs?\b|\bbn\b|billion|\bmn\b|million|thousand|trillion)/i.test(v)) { out.unreadable.push({ path: at, value: v }); return; }
+    const n = parseNum(v);
+    if (n != null) { obj[k] = n; out.coerced.push({ path: at, from: v, to: n }); }
+    else if (S(v)) out.unreadable.push({ path: at, value: v });
+    return;
+  }
+  if (!Array.isArray(t)) return;
+  const row = t[0];
+  let list = v;
+  if (typeof v === 'string' && S(v)) {
+    list = isObj(row) && ('symbol' in row)
+      ? v.split(/[,;|\s]+/).filter(Boolean)
+      : v.split(/\s*(?:;|\n|\||\u2022|(?:^|\s)-\s)\s*/).map(S).filter(Boolean);
+    out.coerced.push({ path: at, from: v.length > 40 ? v.slice(0, 37) + '...' : v, to: list.length + ' items' });
+  } else if (isObj(v) && !isObj(row)) {
+    list = Object.values(v);
+  }
+  if (!Array.isArray(list)) return;
+  if (isObj(row) && ('symbol' in row)) {
+    list = list.map((x) => (typeof x === 'string' ? (/^[A-Z0-9&\-.]{2,20}$/.test(x.trim()) ? { symbol: x.trim() } : { name: x.trim() }) : x));
+  } else if (typeof row === 'string') {
+    list = list.map((x) => (isObj(x) ? S(x.text || x.point || x.description || x.detail || x.title || Object.values(x).find((y) => typeof y === 'string')) : x));
+  }
+  if (list !== v) obj[k] = list;
+}
+
 function walk(obj, tpl, path, out) {
   if (Array.isArray(obj)) {
     const row = Array.isArray(tpl) ? tpl[0] : null;
@@ -134,7 +170,10 @@ function walk(obj, tpl, path, out) {
      is free-form: anything under it is read as sent. */
   if (!Object.keys(tpl).length) return;
   Object.keys(obj).forEach((k) => {
-    if (keys.includes(k)) { if (k in tpl) walk(obj[k], tpl[k], path ? `${path}.${k}` : k, out); return; }
+    if (keys.includes(k)) {
+      if (k in tpl) { reshape(obj, k, tpl[k], path, out); walk(obj[k], tpl[k], path ? `${path}.${k}` : k, out); }
+      return;
+    }
     /* A variant of a key this spot of the schema has ("cagr_5y" for "y5",
        "net_profit" for "netProfit") is moved to it. A key some part of the
        application reads elsewhere is otherwise left alone and not reported. */
@@ -143,7 +182,7 @@ function walk(obj, tpl, path, out) {
     if (to && !(to in obj)) {
       obj[to] = obj[k]; delete obj[k];
       out.renamed.push({ from: (path ? path + '.' : '') + k, to: (path ? path + '.' : '') + to });
-      if (to in tpl) walk(obj[to], tpl[to], path ? `${path}.${to}` : to, out);
+      if (to in tpl) { reshape(obj, to, tpl[to], path, out); walk(obj[to], tpl[to], path ? `${path}.${to}` : to, out); }
       return;
     }
     if (!known && filled(obj[k])) {
@@ -151,6 +190,32 @@ function walk(obj, tpl, path, out) {
       if (!out.unread.includes(at)) out.unread.push(at);
     }
   });
+}
+
+/* Numbers sent as text (build 29). AI tools write "12.5%", "22.4x", "+3.1",
+   "(4.2)", "12-14%", "~18", "₹1,250 Cr", "-6.5 % YoY". Each is read as the
+   number it states; a range as its midpoint. Text that states no number
+   ("NA", "not available") is left alone and listed. */
+export function parseNum(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v !== 'string') return null;
+  let t = v.trim().replace(/[\u2212\u2012\u2013\u2014]/g, '-').replace(/\u00a0/g, ' ');
+  if (!t) return null;
+  let neg = false;
+  const par = /^\((.*)\)$/.exec(t);
+  if (par) { neg = true; t = par[1]; }
+  t = t.replace(/^(approx\.?|approximately|about|around|c\.|ca\.|~|≈)\s*/i, '')
+    .replace(/(₹|rs\.?|inr|us\$|\$)/gi, '').replace(/,(?=\d{2,3}\b)/g, '').trim();
+  const rng = /^([+-]?\d*\.?\d+)\s*%?\s*(?:-|to|–)\s*([+-]?\d*\.?\d+)\s*(%|x|×)?(\s*[a-z].*)?$/i.exec(t);
+  if (rng) { const a = Number(rng[1]), b = Number(rng[2]); if (Number.isFinite(a) && Number.isFinite(b)) return (neg ? -1 : 1) * +((a + b) / 2).toFixed(4); }
+  const one = /^([+-]?\d*\.?\d+)\s*(%|x|×|times|pct|per\s*cent|percent|bps)?(\s*[a-z(].*)?$/i.exec(t);
+  if (one) {
+    let n = Number(one[1]);
+    if (!Number.isFinite(n)) return null;
+    if (one[2] && /bps/i.test(one[2])) n = n / 100;
+    return (neg ? -1 : 1) * n;
+  }
+  return null;
 }
 
 /* A path as the depth check writes it — "companies[symbol=PNB].financials",
@@ -174,18 +239,31 @@ export function resolvePath(payload, path) {
 }
 
 export function readCheck(payload, { template } = {}) {
-  const out = { renamed: [], unread: [], claimed: [] };
+  const out = { renamed: [], unread: [], claimed: [], coerced: [], unreadable: [], tidied: [], resolved: 0 };
   if (!isObj(payload)) return out;
-  walk(payload, template || (isFinderPayload(payload) ? finderTemplate() : schemaTemplate()), '', out);
+  const finder = isFinderPayload(payload);
+  if (finder) out.tidied = normaliseFinder(payload);
+  walk(payload, template || (finder ? finderTemplate() : schemaTemplate()), '', out);
   const log = Array.isArray(payload.run && payload.run.searchLog) ? payload.run.searchLog : [];
   log.forEach((e) => {
     const path = isObj(e) ? S(e.path || e.item || e.key) : '';
     if (!path) return;
     const v = resolvePath(payload, path);
-    const scalar = (typeof v === 'number' && v !== 0 && Number.isFinite(v)) || (typeof v === 'string' && S(v));
-    if (scalar || (Array.isArray(v) && v.length)) {
-      if (!out.claimed.some((c) => c.path === path)) out.claimed.push({ path, value: Array.isArray(v) ? v.length + ' rows' : v });
-    }
+    /* Only a single figure can contradict "not found". A list with one item
+       where two were wanted is a partial answer, and the note stands. */
+    const scalar = (typeof v === 'number' && v !== 0 && Number.isFinite(v)) || (typeof v === 'string' && S(v) && parseNum(v) != null);
+    if (scalar && !out.claimed.some((c) => c.path === path)) out.claimed.push({ path, value: v });
   });
+  /* Build 29: the figure the reply carries wins, and the note that said it
+     could not be found is set aside, so it does not mark the item as
+     searched-and-not-found. The notes are kept under run.searchLogSetAside. */
+  if (out.claimed.length && payload.run) {
+    const gone = new Set(out.claimed.map((c) => c.path));
+    const keep = [], aside = [];
+    log.forEach((e) => ((isObj(e) && gone.has(S(e.path || e.item || e.key))) ? aside : keep).push(e));
+    payload.run.searchLog = keep;
+    payload.run.searchLogSetAside = (Array.isArray(payload.run.searchLogSetAside) ? payload.run.searchLogSetAside : []).concat(aside);
+    out.resolved = aside.length;
+  }
   return out;
 }

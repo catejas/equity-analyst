@@ -60,10 +60,49 @@ ok('Banking scores 64.2', by('Banking').score === 64.2, by('Banking').score);
 ok('IT, last on three parts, scores 5.0', by('Information technology').score === 5, by('Information technology').score);
 ok('Retail, missing two parts, ranks below every complete sector', by('Retail').rank === 4 && !by('Retail').complete
   && by('Retail').missingParts.join(',') === 'outlook,valuation', `rank ${by('Retail').rank}, missing ${by('Retail').missingParts}`);
-ok('only complete sectors make the Top 3', s4.top3.map((r) => r.name).join(', ') === 'Defence and aerospace, Banking, Information technology');
+ok('only sectors with momentum and outlook make the Top 3', s4.top3.map((r) => r.name).join(', ') === 'Defence and aerospace, Banking, Information technology');
+
+console.log('\nA gap no longer decides the ranking (build 29)');
+const gap = JSON.parse(JSON.stringify(four));
+delete gap.sectors.find((x) => x.name === 'Banking').valuation;           /* no P/E history */
+delete gap.sectors.find((x) => x.name === 'Banking').business.revenueGrowth; /* profit only */
+delete gap.sectors.find((x) => x.name === 'Banking').returns.m3;          /* 6m and 1y only */
+const sg = F.scoreFinder(gap);
+const bg = sg.rows.find((r) => r.name === 'Banking');
+ok('a missing valuation counts as average (50), not as disqualifying', bg.eligible && !bg.complete && bg.parts.valuation === 50
+  && bg.neutral.join() === 'valuation', JSON.stringify(bg.parts));
+ok('profit growth alone scores the business part', typeof bg.parts.business === 'number' && bg.parts.business !== 50);
+ok('6-month and 1-year returns alone score the momentum part', typeof bg.parts.momentum === 'number');
+ok('Banking still makes the Top 3', sg.top3.some((r) => r.name === 'Banking'), sg.top3.map((r) => r.name).join(', '));
+ok('its reason says what was counted as average', /valuation not established, counted as average/.test(bg.reason), bg.reason);
+const noYear = JSON.parse(JSON.stringify(four)); delete noYear.sectors.find((x) => x.name === 'Banking').returns.y1;
+ok('without the 1-year return there is no momentum part, and no Top 3 place', !F.scoreFinder(noYear).rows.find((r) => r.name === 'Banking').eligible);
+const noOut = JSON.parse(JSON.stringify(four)); delete noOut.sectors.find((x) => x.name === 'Defence and aerospace').outlook;
+const so = F.scoreFinder(noOut);
+ok('without an outlook a sector ranks below every sector that has one',
+  so.rows.find((r) => r.name === 'Defence and aerospace').rank > so.rows.filter((r) => r.eligible).length && !so.top3.some((r) => r.name === 'Defence and aerospace'));
 ok('returns are read against the Nifty 50', by('Banking').rel.y1 === 6 && by('Banking').rel.m3 === 2);
 ok('the reason is written from the figures', /Beat the Nifty 50 by 6\.0 points over a year/.test(by('Banking').reason) && /P\/E 14\.0 against a five-year average of 16\.0/.test(by('Banking').reason));
 ok('no return is marked checked until the app checks it', s4.rows.every((r) => !r.returns.checked) && !s4.benchmark.checked);
+
+console.log('\nReading the reply as the tool wrote it (build 29)');
+const names = { 'IT': 'Information technology', 'Banks': 'Banking', 'FMCG': 'Fast moving consumer goods', 'Oil & Gas': 'Oil and gas',
+  'Information Technology (IT)': 'Information technology', 'Auto Ancillaries': 'Auto components', 'Hotels & Tourism': 'Hospitality and tourism',
+  'Specialty Chemicals': 'Chemicals', 'Power': 'Power and utilities', 'Defence': 'Defence and aerospace', 'Real Estate': 'Real estate' };
+ok('sector names as tools write them are read as the list\'s', Object.keys(names).every((n) => F.canonicalSector(n) === names[n]),
+  Object.keys(names).filter((n) => F.canonicalSector(n) !== names[n]).map((n) => n + '→' + F.canonicalSector(n)).join(', '));
+ok('a name that is no sector is left alone', F.canonicalSector('Something else') === null);
+const messy = { benchmark: { '3M': 2, '6M': 4, '1Y': 9 }, sectors: [
+  { name: 'IT', pe: 28, avgPe5y: 25, return1y: -2, '3mReturn': -1, patGrowth: 5, salesGrowth: 6, epsCagr3y: 10, tailwinds: ['a'], risks: ['b'] }] };
+const fixes = F.normaliseFinder(messy);
+const it = messy.sectors[0];
+ok('figures beside their block are moved into it', it.valuation.pe === 28 && it.valuation.pe5yAvg === 25 && it.returns.y1 === -2 && it.returns.m3 === -1
+  && it.business.profitGrowth === 5 && it.business.revenueGrowth === 6 && it.outlook.earningsGrowth3y === 10 && it.outlook.tailwinds[0] === 'a');
+ok('a benchmark without its wrapper is read', JSON.stringify(messy.benchmark.returns) === '{"m3":2,"m6":4,"y1":9}');
+ok('every repair is listed', fixes.length === 13, fixes.length);
+const frac = finderFixture(); frac.sectors.forEach((x) => { x.business.profitGrowth = +(x.business.profitGrowth / 100).toFixed(4); });
+F.normaliseFinder(frac);
+ok('a column sent as fractions for every sector is read as percent', frac.sectors[0].business.profitGrowth > 1.5);
 
 console.log('\nThe application\'s own returns');
 const bars = [{ date: '2025-11-20', c: 100 }, { date: '2026-05-20', c: 110 }, { date: '2026-08-20', c: 120 }, { date: '2026-11-20', c: 132 }];
@@ -101,7 +140,8 @@ const fx = finderFixture({ thin: ['Retail', 'Aviation'] });
 const c = completeness(fx);
 ok('a screen is measured as a screen', c.kind === 'finder' && c.sections.length === 1);
 const pe = c.missing.find((x) => x.label === 'P/E against its five-year average');
-ok('the two sectors without a valuation are named', pe && pe.have === 39 && pe.want === 41 && /Retail, Aviation/.test(pe.detail || ''), pe && pe.detail);
+ok('the two sectors without a valuation are named, with the fields they lack', pe && pe.have === 39 && pe.want === 41
+  && /Retail \(pe, pe5yAvg\); Aviation \(pe, pe5yAvg\)/.test(pe.detail || ''), pe && pe.detail);
 ok('the percentage stays under 100 while anything is missing', c.pct < 100, c.pct);
 const tp = topUpPrompt(fx);
 ok('the follow-up is for the Sector Finder screen', /the Sector Finder screen/.test(tp) && /"kind": "sectorScreen"/.test(tp) && /Sectors are matched by\s+"name"/.test(tp));

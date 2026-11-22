@@ -26,7 +26,36 @@ behave and it is not a fault.
 
 ## Current build
 
-`22-11-2026.28` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`22-11-2026.29` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 29, from Tejas's first real Sector Finder run (22-11-2026: 77% depth,
+3 of 8 checks, 25 "not found" notes for figures the reply carried; "it
+directly affect the ranking of Top3 … Fix this any how"):
+- **A gap no longer decides the Top 3.** Past momentum and the outlook (70 of
+  100 points) must be there for a Top 3 place. Business momentum or
+  valuation that could not be established counts as average (50th
+  percentile), marked "counted as average". Momentum needs the 1-year
+  return (a missing 3- or 6-month one is left out); business needs profit
+  growth; outlook needs earnings growth.
+- **The app reads replies as tools write them.** Numbers as text ("12.5%",
+  "22.4x", "12-14%", "(4.2)", "25 bps") are read as numbers; one-string lists
+  ("SBIN, HDFCBANK"; "a; b") and { text } items become lists; sector names
+  ("IT", "Banks", "Oil & Gas", "Hotels & Tourism") are read as the list's;
+  figures beside their block, under other names ("avgPe5y", "patGrowth",
+  "return1y") or without a wrapper are moved; a column sent as fractions is
+  read as percent. A figure with a scale word (crore, bn) is listed, never
+  turned into a bare number. Every repair is shown in the review.
+- **A "not found" note for a figure the reply carries is set aside** (kept in
+  `run.searchLogSetAside`) and no longer counts as a gap.
+- **The prompt closes the gaps at source.** With no sector index, the tool
+  must use the bellwethers: median trailing P/E and median five-year average
+  P/E (Screener, Trendlyne, Tickertape), summed quarterly results for
+  business momentum, consensus forecasts for the outlook. Numbers must be
+  written as numbers.
+- **Follow-ups name the exact fields** each sector lacks ("Retail (pe,
+  pe5yAvg)") and Finder-specific places to look.
+
+Previous: `22-11-2026.28`.
 
 Build 28, from Tejas's decisions of 22-11-2026:
 - **The Sector Finder**, at the top of the Sector page. One prompt screens all

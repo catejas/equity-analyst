@@ -572,6 +572,17 @@ export const SOURCE_HINTS = [
     'regulatory disclosures (for a bank, the Basel III Pillar 3 disclosure)', 'the annual report\u2019s management discussion']],
   [/^companies\[[^\]]*\]\.(litigation|governance|management)/, ['NSE/BSE corporate announcements', 'SEBI orders',
     'e-Courts and NCLT cause lists', 'the annual report\u2019s contingent liabilities note']],
+  /* The Sector Finder (build 29). */
+  [/^sectors\.valuation/, ['the NSE index factsheet on niftyindices.com (P/E and its history)',
+    'Screener.in P/E history of the bellwether companies', 'Trendlyne sector P/E', 'Tickertape sector P/E',
+    'the median of the bellwethers\u2019 own five-year average P/E']],
+  [/^(sectors\.(returns|bellwethers)|benchmark)/, ['niftyindices.com historical index data', 'the NSE India index page',
+    'the bellwethers\u2019 NSE price history']],
+  [/^sectors\.business/, ['the bellwethers\u2019 quarterly results filed on NSE/BSE', 'brokerage quarterly results reviews (Motilal Oswal, ICICI Securities, Kotak)',
+    'CMIE or Capitaline aggregates']],
+  [/^sectors\.outlook/, ['CRISIL, ICRA, CARE or India Ratings sector outlooks', 'brokerage sector reports (Motilal Oswal, ICICI Securities, Kotak, Jefferies India)',
+    'the industry association\u2019s projections', 'the bellwethers\u2019 consensus earnings forecasts']],
+  [/^sectors/, ['the bellwethers\u2019 annual reports and investor presentations', 'NSE/BSE filings', 'brokerage sector reports']],
   [/./, ['annual reports', 'NSE/BSE filings', 'investor presentations', 'official releases of the regulator or ministry']],
 ];
 function untried(path, tried) {

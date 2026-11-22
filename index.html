@@ -570,7 +570,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="22-11-2026.28";</script>
+<script>window.APP_BUILD="22-11-2026.29";</script>
 </head>
 <body>
 
@@ -5486,7 +5486,8 @@ function finderTableHtml(sc){
     var top = sc.top3.some(function(t){ return t.name === x.name; });
     return '<tr class="' + (top ? 'top' : '') + '"><td class="n">' + x.rank + '</td>'
       + '<td><b>' + esc(x.name) + '</b>' + (x.subSector ? '<span class="sub">' + esc(x.subSector) + '</span>' : '')
-      + (!x.complete ? '<span class="sub">missing: ' + esc(x.missingParts.join(', ')) + '</span>' : '') + '</td>'
+      + (!x.eligible ? '<span class="sub">not ranked among the leaders: no ' + esc(x.missingParts.filter(function(k){ return k === 'momentum' || k === 'outlook'; }).join(' or ')) + '</span>'
+          : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.join(' and ')) + ' counted as average</span>' : '')) + '</td>'
       + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b></td>'
       + '<td class="n">' + pctCell(x.rel.m3) + '<br>' + pctCell(x.rel.m6) + '<br>' + pctCell(x.rel.y1) + '</td>'
       + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked') + '</td></tr>';
@@ -5500,7 +5501,8 @@ function finderTableHtml(sc){
     + '<div class="fmore">Nifty 50: ' + pctCell(b.m3) + ' / ' + pctCell(b.m6) + ' / ' + pctCell(b.y1) + '% over 3m / 6m / 1y'
     + (b.checked ? ' · checked by the app' : ' · as the research states it')
     + '. Columns show points above or below the Nifty 50. ' + sc.counts.complete + ' of ' + sc.counts.screened
-    + ' sectors fully scored; returns checked for ' + sc.counts.checked + '.</div>';
+    + ' sectors fully scored' + (sc.counts.neutral ? ', ' + sc.counts.neutral + ' with a part counted as average' : '')
+    + '; returns checked for ' + sc.counts.checked + '.</div>';
 }
 function renderFinder(){
   var box = $('#finderBox'); if(!box) return;
@@ -5781,10 +5783,23 @@ function readCheckHtml(rc){
       + esc(rc.renamed.slice(0, 10).map(function(x){ return x.from + ' \u2192 ' + x.to.split('.').pop(); }).join(' \u00b7 '))
       + (rc.renamed.length > 10 ? ' \u00b7 and ' + (rc.renamed.length - 10) + ' more' : '') + '.</div>';
   }
+  /* Build 29: what the app repaired so that it could read the reply. */
+  var fixedN = (rc.tidied ? rc.tidied.length : 0) + (rc.coerced ? rc.coerced.length : 0);
+  if(fixedN){
+    var ex = (rc.tidied || []).slice(0, 4).concat((rc.coerced || []).slice(0, 4).map(function(c){
+      return '"' + c.from + '" \u2192 ' + c.to; }));
+    h += '<div class="rvok"><b>Read after tidying (' + fixedN + '):</b> the reply wrote some figures as text, under other names or '
+      + 'in other places; they are read as the schema means them. e.g. ' + esc(ex.join(' \u00b7 ')) + '.</div>';
+  }
   if(rc.claimed && rc.claimed.length){
-    h += '<div class="rvwarn"><b>Marked "not found", but the reply carries it:</b> '
-      + esc(rc.claimed.map(function(x){ return x.path + ' (' + x.value + ')'; }).join(' \u00b7 '))
-      + '. The figure is used.</div>';
+    h += '<div class="rvok"><b>' + rc.claimed.length + ' search note' + (rc.claimed.length === 1 ? ' was' : 's were')
+      + ' about figures the reply does carry</b> (e.g. ' + esc(rc.claimed.slice(0, 3).map(function(x){ return x.path.replace(/^sectors\[([^\]]+)\]\./, '$1 ') + ' ' + x.value; }).join(' \u00b7 '))
+      + '). The figures are used, and those notes are set aside so they do not count as gaps.</div>';
+  }
+  if(rc.unreadable && rc.unreadable.length){
+    h += '<div class="rvwarn"><b>Text the app could not read as a number (' + rc.unreadable.length + '):</b> '
+      + esc(rc.unreadable.slice(0, 8).map(function(x){ return x.path + ' "' + x.value + '"'; }).join(' \u00b7 '))
+      + '. These count as missing and the follow-up asks for them as numbers.</div>';
   }
   if(rc.unread && rc.unread.length){
     h += '<div class="rvwarn"><b>Sent but not read by the app:</b> '

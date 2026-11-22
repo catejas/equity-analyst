@@ -9419,7 +9419,8 @@ function buildFinder(p, lang){
     + tbl(['#', 'Sector', 'Score', 'Momentum', 'Business', 'Outlook', 'Valuation', '1y vs Nifty'],
         arr(F.rows).map(function(x){
           return { cells: [String(x.rank), '<b>' + e(x.name) + '</b>' + (x.subSector ? '<br><span class="mut">' + e(x.subSector) + '</span>' : '')
-              + (!x.complete ? '<br><span class="mut">missing ' + e(arr(x.missingParts).join(', ')) + '</span>' : ''),
+              + (!x.eligible ? '<br><span class="mut">not ranked among the leaders: no ' + e(arr(x.missingParts).filter(function(k){ return k === 'momentum' || k === 'outlook'; }).join(' or ')) + '</span>'
+                  : arr(x.neutral).length ? '<br><span class="mut">' + e(x.neutral.join(' and ')) + ' counted as average</span>' : ''),
             n(x.score, 1), n(x.parts.momentum, 0), n(x.parts.business, 0), n(x.parts.outlook, 0), n(x.parts.valuation, 0),
             finderPts(x.rel.y1) + (x.returns.checked ? '' : '<span class="mut">*</span>')] };
         }), { num: [0, 2, 3, 4, 5, 6, 7], headWrap: true, widths: ['5%', '31%', '9%', '11%', '11%', '11%', '11%', '11%'], chunk: 14 })
@@ -9449,6 +9450,9 @@ function buildFinder(p, lang){
       { cells: ['Three-year outlook', (W.outlook || 0) + '%', 'Forecast earnings and demand growth over the next three years, weighted 60 and 40'] },
       { cells: ['Valuation', (W.valuation || 0) + '%', 'The P/E against its own five-year average; the cheaper, the higher'] }
     ], { num: [1], widths: ['24%', '12%', '64%'] })
+    + '<p class="mut">A sector needs its past momentum and its outlook to be ranked among the leaders. Business momentum '
+    + 'or valuation that the research could not establish counts as average, the 50th percentile, and is marked so; the '
+    + 'follow-up keeps asking for it.</p>'
     + '<div class="lead"><p>' + e(S(F.basis)) + '</p><p>The research tool supplies the figures and does not rank. The application '
     + 'fetches each sector index, or the sector’s largest stocks where no index answers, and uses its own returns in place of the '
     + 'research’s wherever it can. Strong recent momentum often lasts for months, but it also reverses; that is why the outlook '

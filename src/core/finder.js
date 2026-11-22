@@ -20,9 +20,15 @@
  *   valuation          10   P/E against its own five-year average
  *
  * Each part is a percentile among the sectors screened, so the score says how
- * a sector stands against the others today, not against a fixed bar. A sector
- * missing a part ranks below every sector that has all four, however high it
- * scores, because it cannot be compared (the same rule as the company screen).
+ * a sector stands against the others today, not against a fixed bar.
+ *
+ * Build 29 (Tejas: missing data "directly affect the ranking of Top3"). A gap
+ * no longer decides the ranking. Past momentum and the three-year outlook —
+ * 70 of the 100 points — must be there for a sector to make the Top 3.
+ * Business momentum and valuation, when they could not be established, count
+ * as average (the 50th percentile): neither reward nor penalty. Every such
+ * part is shown as "counted as average", and the follow-up keeps asking for
+ * it.
  *
  * The returns are not taken on trust. The application fetches the sector
  * index (or, failing that, the sector's bellwether stocks) itself and replaces
@@ -114,6 +120,171 @@ export function isFinderPayload(d) {
   return Array.isArray(d.sectors) && !arr(d.companies).length && !d.macro && !d.shortlist;
 }
 
+/* ── Reading a reply as the tool actually wrote it (build 29) ───────────
+ * Tejas: missing data "directly affect the ranking of Top3. … Fix this any
+ * how." A figure the tool sent but the app did not read is the app's fault.
+ * normaliseFinder runs on every Finder reply before anything else reads it
+ * and repairs the shapes AI tools actually send:
+ *   - sector names that are not the list's ("IT", "Banks", "FMCG", "Oil & Gas");
+ *   - figures put beside their block instead of in it (a row's own "pe",
+ *     "return1y", "tailwinds");
+ *   - other names for a field ("avgPe5y", "epsCagr3y", "patGrowth");
+ *   - a block sent without its wrapper (benchmark { m3, m6, y1 });
+ *   - a whole column sent as fractions (0.124 for 12.4%).
+ * Numbers sent as text are read by readcheck.js. Every repair is listed. */
+const NAME_ALIASES = {
+  'banks': 'Banking', 'bank': 'Banking', 'psu banks': 'Banking', 'public sector banks': 'Banking', 'private banks': 'Banking',
+  'private sector banks': 'Banking', 'nbfc': 'Non-banking finance', 'nbfcs': 'Non-banking finance',
+  'non banking financial companies': 'Non-banking finance', 'financial services': 'Non-banking finance',
+  'capital market': 'Capital markets', 'fintech': 'Fintech and payments', 'payments': 'Fintech and payments',
+  'it': 'Information technology', 'it services': 'Information technology', 'technology': 'Information technology',
+  'software': 'Information technology', 'pharma': 'Pharmaceuticals', 'healthcare': 'Healthcare services',
+  'hospitals': 'Healthcare services', 'specialty chemicals': 'Chemicals', 'speciality chemicals': 'Chemicals',
+  'fertilizers': 'Fertilisers', 'fertiliser': 'Fertilisers', 'auto': 'Automobiles', 'autos': 'Automobiles', 'automobile': 'Automobiles',
+  'auto ancillaries': 'Auto components', 'auto ancillary': 'Auto components', 'auto parts': 'Auto components',
+  'industrials': 'Capital goods', 'defence': 'Defence and aerospace', 'defense': 'Defence and aerospace',
+  'railway': 'Railways', 'infra': 'Infrastructure and construction', 'infrastructure': 'Infrastructure and construction',
+  'construction': 'Infrastructure and construction', 'realty': 'Real estate', 'cement': 'Cement and building materials',
+  'building materials': 'Cement and building materials', 'metals': 'Metals and mining', 'mining': 'Metals and mining',
+  'metal': 'Metals and mining', 'oil gas': 'Oil and gas', 'energy': 'Oil and gas', 'power': 'Power and utilities',
+  'utilities': 'Power and utilities', 'renewables': 'Renewable energy', 'fmcg': 'Fast moving consumer goods',
+  'consumer staples': 'Fast moving consumer goods', 'durables': 'Consumer durables', 'electronics': 'Electronics manufacturing',
+  'ems': 'Electronics manufacturing', 'textiles': 'Textiles and apparel', 'apparel': 'Textiles and apparel',
+  'agriculture': 'Agriculture and agri inputs', 'agri': 'Agriculture and agri inputs', 'agrochemicals': 'Agriculture and agri inputs',
+  'logistics': 'Logistics and transport', 'transport': 'Logistics and transport', 'airlines': 'Aviation',
+  'hotels': 'Hospitality and tourism', 'hospitality': 'Hospitality and tourism', 'tourism': 'Hospitality and tourism',
+  'media': 'Media and entertainment', 'entertainment': 'Media and entertainment', 'telecom': 'Telecommunications',
+  'paper': 'Paper and packaging', 'packaging': 'Paper and packaging', 'engineering': 'Engineering and industrial services',
+  'trading': 'Trading and distribution', 'distribution': 'Trading and distribution', 'holding companies': 'Diversified holdings',
+  'conglomerates': 'Diversified holdings', 'diversified': 'Diversified holdings', 'shipping': 'Shipping and marine',
+  'marine': 'Shipping and marine', 'water': 'Water and environment', 'environment': 'Water and environment',
+  'new age': 'Emerging themes', 'themes': 'Emerging themes', 'emerging': 'Emerging themes',
+};
+export function canonicalSector(name) {
+  const k = nameKey(name);
+  if (!k) return null;
+  const exact = FINDER_SECTORS.find((s) => nameKey(s) === k);
+  if (exact) return exact;
+  if (NAME_ALIASES[k]) return NAME_ALIASES[k];
+  const short = Object.keys(SHORT_NAMES).find((s) => nameKey(SHORT_NAMES[s]) === k);
+  if (short) return short;
+  /* "Information Technology (IT)", "Pharmaceuticals & Healthcare": the one
+     listed sector whose words are all in the name, or whose name starts it. */
+  const words = new Set(k.split(' '));
+  const hits = FINDER_SECTORS.filter((s) => {
+    const w = nameKey(s).split(' ').filter((x) => x !== 'and');
+    return w.every((x) => words.has(x)) || k.startsWith(nameKey(s));
+  });
+  if (hits.length === 1) return hits[0];
+  /* "Hotels & Tourism", "Media, Entertainment": every alias found among its
+     words points to the same sector. */
+  const via = new Set(Object.keys(NAME_ALIASES).filter((a) => a.split(' ').every((x) => words.has(x))).map((a) => NAME_ALIASES[a]));
+  return via.size === 1 ? [...via][0] : null;
+}
+const flatK = (k) => S(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+/* Field aliases by block: the field, then the flat names that mean it. */
+const FIELD_ALIASES = {
+  returns: { m3: [/^(r|ret|return|returns|perf|change)?_?3_?(m|mo|mth|months?)(return|ret|perf)?$/],
+             m6: [/^(r|ret|return|returns|perf|change)?_?6_?(m|mo|mth|months?)(return|ret|perf)?$/],
+             y1: [/^(r|ret|return|returns|perf|change)?_?(1_?(y|yr|year)|12_?(m|mo|months?)|oneyear)(return|ret|perf)?$/] },
+  business: { revenueGrowth: [/^(revenue|sales|topline|income)(growth|yoy|growthyoy|change)$/, /^(yoy)?(revenue|sales)$/],
+              profitGrowth: [/^(net)?(profit|pat|earnings|netincome)(growth|yoy|growthyoy|change)$/] },
+  outlook: { earningsGrowth3y: [/^(earnings|eps|profit|pat)(growth|cagr)(3y|3yr|threeyear|fy\d+)?(cagr)?$/, /^(earnings|eps|profit|pat)cagr3?y?$/],
+             demandGrowth3y: [/^(demand|revenue|industry|market|sales|volume)(growth|cagr)(3y|3yr|threeyear)?(cagr)?$/] },
+  valuation: { pe: [/^(ttm|trailing|current)?pe(ratio)?(ttm)?$/],
+               pe5yAvg: [/^(avg|average|mean|hist|historical)?(5y|5yr|fiveyear|5year)?(avg|average|mean)?pe(ratio)?(5y|5yr|fiveyear|5year)?(avg|average|mean)?$/] },
+};
+function aliasField(block, key) {
+  const f = flatK(key);
+  const table = FIELD_ALIASES[block] || {};
+  for (const field of Object.keys(table)) {
+    if (flatK(field) === f) return field;
+    if (table[field].some((re) => re.test(f))) {
+      /* pe5yAvg needs both a five-year and an average marker; plain "pe" stays pe. */
+      if (field === 'pe5yAvg' && !(/(5y|5yr|fiveyear|5year)/.test(f) && /(avg|average|mean|hist)/.test(f))) continue;
+      if (field === 'pe' && /(avg|average|mean|5y|fiveyear)/.test(f)) continue;
+      return field;
+    }
+  }
+  return null;
+}
+export function normaliseFinder(d) {
+  const fixes = [];
+  if (!d || typeof d !== 'object') return fixes;
+  const isO = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  /* The benchmark, wherever it was put and however it was wrapped. */
+  for (const k of ['nifty50', 'nifty', 'benchmarkReturns', 'nifty50Returns']) {
+    if (d[k] && !d.benchmark) { d.benchmark = isO(d[k]) ? d[k] : { returns: d[k] }; delete d[k]; fixes.push(`${k} read as the benchmark`); }
+  }
+  if (isO(d.benchmark)) {
+    const b = d.benchmark;
+    if (!isO(b.returns)) b.returns = {};
+    Object.keys(b).forEach((k) => {
+      if (k === 'returns') return;
+      const f = aliasField('returns', k);
+      if (f && b.returns[f] == null) { b.returns[f] = b[k]; delete b[k]; fixes.push(`benchmark.${k} read as benchmark.returns.${f}`); }
+    });
+    Object.keys(b.returns).forEach((k) => {
+      const f = aliasField('returns', k);
+      if (f && f !== k && b.returns[f] == null) { b.returns[f] = b.returns[k]; delete b.returns[k]; fixes.push(`benchmark.returns.${k} read as ${f}`); }
+    });
+  }
+  if (!Array.isArray(d.sectors) && isO(d.sectors)) {
+    /* { "Banking": {...}, "IT": {...} } */
+    d.sectors = Object.keys(d.sectors).map((n) => Object.assign({ name: n }, d.sectors[n]));
+    fixes.push('sectors sent as an object, read as a list');
+  }
+  const seen = new Set();
+  arr(d.sectors).forEach((r) => {
+    if (!isO(r)) return;
+    if (!S(r.name) && S(r.sector)) { r.name = r.sector; delete r.sector; }
+    const canon = canonicalSector(r.name);
+    if (canon && canon !== r.name && !arr(d.sectors).some((x) => x !== r && x && x.name === canon) && !seen.has(canon)) {
+      fixes.push(`"${r.name}" read as ${canon}`);
+      r.name = canon;
+    }
+    seen.add(r.name);
+    ['returns', 'business', 'outlook', 'valuation'].forEach((blk) => { if (r[blk] != null && !isO(r[blk])) return; r[blk] = r[blk] || {}; });
+    /* Figures beside their block, and other names inside it. */
+    Object.keys(r).forEach((k) => {
+      if (['name', 'subSector', 'index', 'bellwethers', 'why', 'returns', 'business', 'outlook', 'valuation'].includes(k)) return;
+      if (/^(tailwinds?|drivers|positives|catalysts)$/i.test(k) && r.outlook.tailwinds == null) {
+        r.outlook.tailwinds = r[k]; delete r[k]; fixes.push(`${r.name}: ${k} read as outlook.tailwinds`); return;
+      }
+      if (/^(risks?|headwinds|negatives|concerns)$/i.test(k) && r.outlook.risks == null) {
+        r.outlook.risks = r[k]; delete r[k]; fixes.push(`${r.name}: ${k} read as outlook.risks`); return;
+      }
+      if (/^(stocks|companies|leaders|topstocks|constituents|bellwether)$/i.test(k) && r.bellwethers == null) {
+        r.bellwethers = r[k]; delete r[k]; fixes.push(`${r.name}: ${k} read as bellwethers`); return;
+      }
+      for (const blk of ['returns', 'business', 'outlook', 'valuation']) {
+        const f = aliasField(blk, k);
+        if (f && r[blk][f] == null) { r[blk][f] = r[k]; delete r[k]; fixes.push(`${r.name}: ${k} read as ${blk}.${f}`); return; }
+      }
+    });
+    ['returns', 'business', 'outlook', 'valuation'].forEach((blk) => {
+      const o = r[blk];
+      Object.keys(o).forEach((k) => {
+        if (FIELD_ALIASES[blk] && FIELD_ALIASES[blk][k]) return;
+        const f = aliasField(blk, k);
+        if (f && o[f] == null) { o[f] = o[k]; delete o[k]; fixes.push(`${r.name}: ${blk}.${k} read as ${blk}.${f}`); }
+      });
+    });
+  });
+  /* A whole column in fractions: every value under 1.5 in size while the
+     same figure is a percentage everywhere else in India's market data. */
+  const cols = [['returns', 'm3'], ['returns', 'm6'], ['returns', 'y1'], ['business', 'revenueGrowth'], ['business', 'profitGrowth'],
+    ['outlook', 'earningsGrowth3y'], ['outlook', 'demandGrowth3y']];
+  cols.forEach(([blk, f]) => {
+    const vals = arr(d.sectors).map((r) => r && r[blk] && r[blk][f]).filter((v) => typeof v === 'number' && v !== 0);
+    if (vals.length >= 5 && vals.every((v) => Math.abs(v) <= 1.5)) {
+      arr(d.sectors).forEach((r) => { if (r && r[blk] && typeof r[blk][f] === 'number') r[blk][f] = +(r[blk][f] * 100).toFixed(4); });
+      fixes.push(`${blk}.${f} sent as fractions for every sector, read as percent`);
+    }
+  });
+  return fixes;
+}
+
 /* ── The prompt ───────────────────────────────────────────────────────── */
 const p2 = (v) => (v < 10 ? '0' : '') + v;
 const dmyOf = (t) => { const d = new Date(t); return `${p2(d.getDate())}-${p2(d.getMonth() + 1)}-${d.getFullYear()}`; };
@@ -149,13 +320,17 @@ how the sector has done over the last 3 months, 6 months and 1 year, what is
 behind that in the businesses themselves, and how it is expected to grow over
 the next three years.
 ${upd}
+NUMBERS ARE NUMBERS. Write 12.5, not "12.5%", "12.5 percent" or "12-13". A
+range is its midpoint. A P/E is 22.4, not "22.4x".
+
 YOU DO NOT RANK THE SECTORS AND YOU DO NOT PICK THE BEST ONES.
 The application scores and ranks every sector from the figures you return:
 past momentum against the Nifty 50 (35%), business momentum over the last four
 quarters (20%), the three-year outlook (35%) and valuation against the
 sector's own history (10%). Your job is to get each figure right, dated and
-sourced. A sector missing a figure ranks below every complete one, so a
-missing figure costs that sector its place.
+sourced. A sector without its returns or its outlook cannot be ranked among
+the leaders, and a missing business or valuation figure is counted as merely
+average, so every missing figure can cost a sector its place.
 
 HOW TO RESEARCH IT
 
@@ -179,7 +354,7 @@ FOR EVERY SECTOR IN THE LIST
                 percent, with "asOf" (the close used, DD-MM-YYYY) and
                 "source" (NSE index data, or the factsheet). With no index,
                 the market-cap-weighted return of the sector's listed
-                companies, and say so in "basis".
+                companies (or of the bellwethers below), and say so in "basis".
   bellwethers   the 3 to 5 largest NSE-listed companies in the sector, each
                 with its NSE symbol. The application fetches their prices
                 itself to check the returns.
@@ -187,17 +362,28 @@ FOR EVERY SECTOR IN THE LIST
                 aggregate: "revenueGrowth" and "profitGrowth" (net profit),
                 over the last four reported quarters, with "period" (e.g.
                 "four quarters to Q2 FY27 against the year before"), "basis"
-                (which companies are included) and "source".
+                (which companies are included) and "source". Where no
+                aggregate is published, add up the bellwethers' own reported
+                results and say so in "basis" — every listed company files
+                them, so this can always be established.
   outlook       "earningsGrowth3y" — forecast annual earnings growth over the
                 next three years; "demandGrowth3y" — forecast annual growth of
                 the industry's demand or revenue over the same years; "years"
                 (e.g. "FY26 to FY29"); at least TWO "tailwinds" and TWO
                 "risks", each a sentence with a figure where there is one;
                 and "source" (a brokerage or rating-agency sector outlook, an
-                industry body, a government projection), with its date.
+                industry body, a government projection), with its date. For a
+                niche sector, use the closest published industry forecast,
+                or the bellwethers' consensus earnings forecasts, and say
+                which in "basis".
   valuation     the sector index's trailing P/E ("pe") and its five-year
                 average ("pe5yAvg"), with "asOf" and "source" (the NSE index
-                factsheet gives both).
+                factsheet gives both). WITH NO SECTOR INDEX, use the median of
+                the bellwethers' trailing P/E and the median of their own
+                five-year average P/Es (Screener, Trendlyne, Tickertape and
+                the companies' annual reports publish both), and set "basis"
+                to "bellwethers". Do not leave valuation out for want of an
+                index.
   why           one sentence: the single most important reason the sector is,
                 or is not, attractive now.
 
@@ -250,9 +436,9 @@ THE JSON (shown laid out here; send it minified)
       "returns": { "m3": 0, "m6": 0, "y1": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
       "bellwethers": [ { "symbol": "SBIN", "name": "State Bank of India" } ],
       "business": { "revenueGrowth": 0, "profitGrowth": 0, "period": "", "basis": "", "source": "" },
-      "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29",
+      "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29", "basis": "",
                    "tailwinds": [""], "risks": [""], "source": "" },
-      "valuation": { "pe": 0, "pe5yAvg": 0, "asOf": "DD-MM-YYYY", "source": "" },
+      "valuation": { "pe": 0, "pe5yAvg": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
       "why": ""
     }
   ]
@@ -278,30 +464,37 @@ export function finderChecks(d) {
   add('The screen', 'Nifty 50 returns over 3 months, 6 months and 1 year', 3 - bMiss.length, 3,
     `benchmark.returns — the Nifty 50's price return over ${bMiss.join(', ')} to the latest close, with "asOf" and "source".`,
     bMiss.join(', '));
-  const need = (label, path, test, what) => {
-    const miss = rows.filter((r) => !test(r)).map((r) => S(r.name));
+  /* `gaps(r)` names the fields a sector lacks, so the follow-up asks for
+     exactly them: "Retail (pe5yAvg), Aviation (pe, pe5yAvg)". */
+  const need = (label, path, gaps, what) => {
+    const miss = rows.map((r) => ({ name: S(r.name), g: gaps(r) })).filter((x) => x.g.length);
+    const list = miss.map((x) => `${x.name} (${x.g.join(', ')})`).join('; ');
     add('Every sector', label, rows.length - miss.length, rows.length,
-      `${path} — ${what} Missing for: ${miss.join(', ')}.`, miss.join(', '));
+      `${path} — ${what} Missing: ${list}.`, list);
   };
+  const lacks = (obj, keys) => keys.filter((k) => !real(obj && obj[k]));
   need('Returns over 3 months, 6 months and 1 year', 'sectors.returns',
-    (r) => r.returns && ['m3', 'm6', 'y1'].every((k) => real(r.returns[k])),
+    (r) => lacks(r.returns, ['m3', 'm6', 'y1']),
     'the sector index\'s return over 3 months ("m3"), 6 months ("m6") and 1 year ("y1"), with "asOf" and "source".');
   need('Bellwether stocks for the price check', 'sectors.bellwethers',
-    (r) => arr(r.bellwethers).filter((x) => x && S(x.symbol)).length >= 3,
+    (r) => { const n = arr(r.bellwethers).filter((x) => x && S(x.symbol)).length; return n >= 3 ? [] : [`${n} of 3 symbols`]; },
     'the 3 to 5 largest NSE-listed companies, each with its NSE "symbol".');
   need('Business momentum: sales and profit growth', 'sectors.business',
-    (r) => r.business && real(r.business.revenueGrowth) && real(r.business.profitGrowth) && S(r.business.period),
-    'aggregate "revenueGrowth" and "profitGrowth" over the last four reported quarters, year on year, with "period", "basis" and "source".');
+    (r) => lacks(r.business, ['revenueGrowth', 'profitGrowth']).concat(r.business && S(r.business.period) ? [] : ['period']),
+    'aggregate "revenueGrowth" and "profitGrowth" over the last four reported quarters, year on year, with "period", "basis" and "source". Where no aggregate is published, add up the bellwethers\' reported results and say so in "basis".');
   need('Three-year outlook: earnings and demand growth', 'sectors.outlook',
-    (r) => r.outlook && real(r.outlook.earningsGrowth3y) && real(r.outlook.demandGrowth3y) && S(r.outlook.source),
-    'forecast annual "earningsGrowth3y" and "demandGrowth3y" over the next three years, with "years" and a dated "source".');
+    (r) => lacks(r.outlook, ['earningsGrowth3y', 'demandGrowth3y']).concat(r.outlook && S(r.outlook.source) ? [] : ['source']),
+    'forecast annual "earningsGrowth3y" and "demandGrowth3y" over the next three years, with "years" and a dated "source". For a niche sector use the closest published industry forecast or the bellwethers\' consensus forecasts, and say which in "basis".');
   need('Tailwinds and risks, two of each', 'sectors.outlook.tailwinds',
-    (r) => r.outlook && arr(r.outlook.tailwinds).filter((x) => S(x).length > 8).length >= 2
-      && arr(r.outlook.risks).filter((x) => S(x).length > 8).length >= 2,
+    (r) => {
+      const t = arr(r.outlook && r.outlook.tailwinds).filter((x) => S(x).length > 8).length;
+      const k = arr(r.outlook && r.outlook.risks).filter((x) => S(x).length > 8).length;
+      return [].concat(t >= 2 ? [] : [`${t} of 2 tailwinds`], k >= 2 ? [] : [`${k} of 2 risks`]);
+    },
     'at least two "tailwinds" and two "risks", each a sentence with a figure where there is one.');
   need('P/E against its five-year average', 'sectors.valuation',
-    (r) => r.valuation && real(r.valuation.pe) && real(r.valuation.pe5yAvg),
-    'the sector index\'s trailing "pe" and its five-year average "pe5yAvg", with "asOf" and "source".');
+    (r) => lacks(r.valuation, ['pe', 'pe5yAvg']),
+    'the sector index\'s trailing "pe" and its five-year average "pe5yAvg", with "asOf" and "source". With no sector index, the median of the bellwethers\' trailing P/E and of their own five-year average P/Es (Screener, Trendlyne, Tickertape publish both), with "basis": "bellwethers".');
   return out;
 }
 
@@ -375,11 +568,18 @@ function percentiles(values) {
     return +(((below + (equal - 1) / 2) / (xs.length - 1)) * 100).toFixed(1);
   });
 }
+/* parts: [value, weight, required?]. Missing optional sub-parts are left out
+   and the rest re-weighted; a missing required one leaves the part empty. */
 const mix = (parts) => {
+  if (parts.some(([v, , req]) => req && !isNum(v))) return null;
   const ok = parts.filter(([v]) => isNum(v));
-  if (ok.length !== parts.length) return null;
+  if (!ok.length) return null;
   return ok.reduce((a, [v, w]) => a + v * w, 0) / ok.reduce((a, [, w]) => a + w, 0);
 };
+/* The parts a sector cannot do without, and those counted as average when
+   absent. */
+export const CORE_PARTS = Object.freeze(['momentum', 'outlook']);
+export const NEUTRAL_PARTS = Object.freeze(['business', 'valuation']);
 
 export function scoreFinder(d) {
   const ver = (d && d.verified) || {};
@@ -413,9 +613,10 @@ export function scoreFinder(d) {
         ratio: real(va.pe) && real(va.pe5yAvg) && va.pe5yAvg > 0 ? +(va.pe / va.pe5yAvg).toFixed(3) : null,
         asOf: S(va.asOf), source: S(va.source) },
       raw: {
-        momentum: mix([[base.m3, MOMENTUM_MIX.m3], [base.m6, MOMENTUM_MIX.m6], [base.y1, MOMENTUM_MIX.y1]]),
-        business: mix([[real(bz.profitGrowth) ? bz.profitGrowth : null, 0.6], [real(bz.revenueGrowth) ? bz.revenueGrowth : null, 0.4]]),
-        outlook: mix([[real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null, 0.6], [real(ol.demandGrowth3y) ? ol.demandGrowth3y : null, 0.4]]),
+        /* The year must be there; a missing 3- or 6-month figure is left out. */
+        momentum: mix([[base.m3, MOMENTUM_MIX.m3], [base.m6, MOMENTUM_MIX.m6], [base.y1, MOMENTUM_MIX.y1, true]]),
+        business: mix([[real(bz.profitGrowth) ? bz.profitGrowth : null, 0.6, true], [real(bz.revenueGrowth) ? bz.revenueGrowth : null, 0.4]]),
+        outlook: mix([[real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null, 0.6, true], [real(ol.demandGrowth3y) ? ol.demandGrowth3y : null, 0.4]]),
         valuation: null,
       },
     };
@@ -426,26 +627,33 @@ export function scoreFinder(d) {
     rows.forEach((r, i) => { (r.parts = r.parts || {})[k] = p[i]; });
   });
   rows.forEach((r) => {
+    r.missingParts = Object.keys(FINDER_WEIGHTS).filter((k) => !isNum(r.parts[k]));
+    /* Business and valuation, when absent, count as average. */
+    r.neutral = r.missingParts.filter((k) => NEUTRAL_PARTS.includes(k));
+    r.neutral.forEach((k) => { r.parts[k] = 50; });
     const have = Object.keys(FINDER_WEIGHTS).filter((k) => isNum(r.parts[k]));
     const w = have.reduce((a, k) => a + FINDER_WEIGHTS[k], 0);
     r.score = w ? +(have.reduce((a, k) => a + r.parts[k] * FINDER_WEIGHTS[k], 0) / w).toFixed(1) : null;
-    r.complete = have.length === Object.keys(FINDER_WEIGHTS).length;
-    r.missingParts = Object.keys(FINDER_WEIGHTS).filter((k) => !isNum(r.parts[k]));
+    r.complete = !r.missingParts.length;
+    r.eligible = CORE_PARTS.every((k) => !r.missingParts.includes(k));
   });
-  rows.sort((a, b) => (Number(b.complete) - Number(a.complete))
+  rows.sort((a, b) => (Number(b.eligible) - Number(a.eligible))
     || ((isNum(b.score) ? b.score : -1) - (isNum(a.score) ? a.score : -1)) || a.name.localeCompare(b.name));
   rows.forEach((r, i) => { r.rank = i + 1; r.reason = reasonOf(r, bench); });
-  const top3 = rows.filter((r) => r.complete).slice(0, 3);
+  const top3 = rows.filter((r) => r.eligible).slice(0, 3);
   return {
     benchmark: bench, rows, top3,
     counts: { screened: rows.length, complete: rows.filter((r) => r.complete).length,
+      eligible: rows.filter((r) => r.eligible).length, neutral: rows.filter((r) => r.neutral.length).length,
       checked: rows.filter((r) => r.returns.checked).length, listed: FINDER_SECTORS.length },
     weights: FINDER_WEIGHTS, mix: MOMENTUM_MIX,
     basis: 'Each part is a percentile among the sectors screened: past momentum from the 3-month, '
       + '6-month and 1-year returns against the Nifty 50 (weighted 25, 35 and 40); business momentum from '
       + 'profit and sales growth over the last four quarters (60 and 40); the three-year outlook from forecast '
       + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average, '
-      + 'cheaper scoring higher. A sector missing a part ranks below every complete sector.',
+      + 'cheaper scoring higher. Past momentum and the outlook must be established for a sector to be ranked '
+      + 'among the leaders; business momentum or valuation that could not be established counts as average '
+      + '(the 50th percentile), neither reward nor penalty.',
   };
 }
 
@@ -458,6 +666,7 @@ function reasonOf(r, bench) {
   if (isNum(r.outlook.earningsGrowth3y)) bits.push(`earnings forecast to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year`);
   if (isNum(r.valuation.pe) && isNum(r.valuation.pe5yAvg)) bits.push(`P/E ${r.valuation.pe.toFixed(1)} against a five-year average of ${r.valuation.pe5yAvg.toFixed(1)}`);
   void bench;
+  if (r.neutral && r.neutral.length) bits.push(`${r.neutral.join(' and ')} not established, counted as average`);
   const s = bits.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : '';
 }
