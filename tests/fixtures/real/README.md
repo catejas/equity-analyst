@@ -16,6 +16,16 @@ fresh checkout failed 68 of 89 suites before testing anything.
 | `pnb-company-16-11-2026.json` | PNB company run, **cut off at 67,215 bytes** as pasted (part 2 never arrived) |
 | `pnb-topup-sources-litigation-16-11-2026.json` | PNB top-up carrying `sources` and `litigation.searched` |
 
+## Sector Finder, real, exactly as received (22-11-2026)
+
+Tejas's first real Sector Finder run and its four follow-ups, read by
+`finderreal.mjs` (build 30).
+
+| File | What it is |
+|---|---|
+| `finder-22-11-2026-base.json` | The 41-sector screen (77% depth on build 29) |
+| `finder-22-11-2026-topup1.json` to `-topup4.json` | The four follow-ups, in the order they were sent |
+
 ## Built from those by the app itself
 
 | File | How it was made |

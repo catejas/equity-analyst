@@ -26,7 +26,31 @@ behave and it is not a fault.
 
 ## Current build
 
-`22-11-2026.29` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`22-11-2026.30` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 30, from the five real Finder payloads of 22-11-2026 (base plus four
+follow-ups). Nothing in them went unread; the gaps were structural:
+- **The P/E's own history, however it is published.** A five-year median
+  ("pe5yMedian") or a long-run median ("peMedian", "peMedianSince") stands in
+  for the five-year average, including one the tool wrote only in its source
+  note ("Long-run median P/E 16.4 since 2003"). A median of a series under
+  three years old is not used, and is still asked for.
+- **Each part from the measures it has.** Momentum is 3m 25 / 6m 35 / 1y 40
+  (1y required); business is profit 60 / revenue 40; outlook is earnings 60 /
+  demand 40, so a niche sector with only a demand forecast still scores. A
+  part built from fewer measures is marked partial.
+- **Like with like.** A return the app measured is set against the Nifty 50
+  the app measured on the same date, not the tool's month-end figure.
+- **The app's job is left to the app.** A sector with no index and with
+  bellwethers is no longer asked for its returns: the follow-up tells the
+  tool not to search, and the app's price check measures it. The check runs
+  six sectors at a time, its stocks in parallel; a stock listed under a year
+  ago counts for 3 and 6 months, and each period is averaged over the stocks
+  that have it.
+- **A follow-up's "not found" notes** for figures it carries are now set
+  aside on the saved, merged screen (they were set aside on a copy).
+- Real run: 23 → 27 sectors eligible before the price check, 32 after it.
+  New suite `finderreal.mjs` replays the five payloads.
 
 Build 29, from Tejas's first real Sector Finder run (22-11-2026: 77% depth,
 3 of 8 checks, 25 "not found" notes for figures the reply carried; "it

@@ -191,7 +191,9 @@ const FIELD_ALIASES = {
               profitGrowth: [/^(net)?(profit|pat|earnings|netincome)(growth|yoy|growthyoy|change)$/] },
   outlook: { earningsGrowth3y: [/^(earnings|eps|profit|pat)(growth|cagr)(3y|3yr|threeyear|fy\d+)?(cagr)?$/, /^(earnings|eps|profit|pat)cagr3?y?$/],
              demandGrowth3y: [/^(demand|revenue|industry|market|sales|volume)(growth|cagr)(3y|3yr|threeyear)?(cagr)?$/] },
-  valuation: { pe: [/^(ttm|trailing|current)?pe(ratio)?(ttm)?$/],
+  valuation: { peMedian: [/^(longrun|lr|hist|historical)?medianpe(ratio)?$/, /^pe(ratio)?(longrun)?median$/],
+               pe5yMedian: [/^(5y|5yr|fiveyear|5year)medianpe$/, /^pe(5y|5yr|fiveyear|5year)median$/],
+               pe: [/^(ttm|trailing|current)?pe(ratio)?(ttm)?$/],
                pe5yAvg: [/^(avg|average|mean|hist|historical)?(5y|5yr|fiveyear|5year)?(avg|average|mean)?pe(ratio)?(5y|5yr|fiveyear|5year)?(avg|average|mean)?$/] },
 };
 function aliasField(block, key) {
@@ -202,7 +204,8 @@ function aliasField(block, key) {
     if (table[field].some((re) => re.test(f))) {
       /* pe5yAvg needs both a five-year and an average marker; plain "pe" stays pe. */
       if (field === 'pe5yAvg' && !(/(5y|5yr|fiveyear|5year)/.test(f) && /(avg|average|mean|hist)/.test(f))) continue;
-      if (field === 'pe' && /(avg|average|mean|5y|fiveyear)/.test(f)) continue;
+      if (field === 'pe' && /(avg|average|mean|5y|fiveyear|median)/.test(f)) continue;
+      if (field === 'pe5yAvg' && /median/.test(f)) continue;
       return field;
     }
   }
@@ -270,6 +273,32 @@ export function normaliseFinder(d) {
         if (f && o[f] == null) { o[f] = o[k]; delete o[k]; fixes.push(`${r.name}: ${blk}.${k} read as ${blk}.${f}`); }
       });
     });
+  });
+  /* Build 30. The 22-11-2026 run could not find five-year average P/Es for
+     most indices (many are younger than five years) but wrote each index's
+     long-run median into valuation.source: "Long-run median P/E 16.4 since
+     2003". That is the P/E's own history, and it is read: as peMedian, when
+     the series is at least three years long, and as pe5yMedian when the
+     source gives a five-year median. A median of a series under three years
+     says nothing about history and is left out. */
+  const thisYear = new Date().getFullYear();
+  arr(d.sectors).forEach((r) => {
+    if (!isO(r) || !isO(r.valuation)) return;
+    const v = r.valuation, src = S(v.source);
+    if (!real(v.pe5yMedian)) {
+      const m5 = /(?:5|five)[- ]?(?:year|yr|y)\s+median(?:\s+P\/E)?\s*(?:of|is|:)?\s*([\d.]+)/i.exec(src);
+      if (m5 && Number(m5[1]) > 0) { v.pe5yMedian = Number(m5[1]); fixes.push(`${r.name}: five-year median P/E ${m5[1]} read from the source note`); }
+    }
+    if (!real(v.peMedian)) {
+      const m = /long[- ]run\s+median(?:\s+P\/E)?\s*(?:of|is|:)?\s*([\d.]+)(?:\s*(?:since|from)\s*(\d{4}))?/i.exec(src);
+      if (m && Number(m[1]) > 0) {
+        const since = m[2] ? Number(m[2]) : null;
+        if (since == null || thisYear - since >= 3) {
+          v.peMedian = Number(m[1]); if (since) v.peMedianSince = since;
+          fixes.push(`${r.name}: long-run median P/E ${m[1]}${since ? ' (since ' + since + ')' : ''} read from the source note`);
+        }
+      }
+    }
   });
   /* A whole column in fractions: every value under 1.5 in size while the
      same figure is a percentage everywhere else in India's market data. */
@@ -355,6 +384,9 @@ FOR EVERY SECTOR IN THE LIST
                 "source" (NSE index data, or the factsheet). With no index,
                 the market-cap-weighted return of the sector's listed
                 companies (or of the bellwethers below), and say so in "basis".
+                If you cannot find one, leave returns out for that sector and
+                do not log a search: the application measures it itself from
+                the bellwethers' prices.
   bellwethers   the 3 to 5 largest NSE-listed companies in the sector, each
                 with its NSE symbol. The application fetches their prices
                 itself to check the returns.
@@ -378,7 +410,11 @@ FOR EVERY SECTOR IN THE LIST
                 which in "basis".
   valuation     the sector index's trailing P/E ("pe") and its five-year
                 average ("pe5yAvg"), with "asOf" and "source" (the NSE index
-                factsheet gives both). WITH NO SECTOR INDEX, use the median of
+                factsheet gives both). If only a five-year MEDIAN is
+                published, send it as "pe5yMedian" — do not leave it out
+                because it is not a mean. If the index is younger than five
+                years, send its long-run median as "peMedian" with
+                "peMedianSince", the year its P/E series starts. WITH NO SECTOR INDEX, use the median of
                 the bellwethers' trailing P/E and the median of their own
                 five-year average P/Es (Screener, Trendlyne, Tickertape and
                 the companies' annual reports publish both), and set "basis"
@@ -438,7 +474,7 @@ THE JSON (shown laid out here; send it minified)
       "business": { "revenueGrowth": 0, "profitGrowth": 0, "period": "", "basis": "", "source": "" },
       "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29", "basis": "",
                    "tailwinds": [""], "risks": [""], "source": "" },
-      "valuation": { "pe": 0, "pe5yAvg": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
+      "valuation": { "pe": 0, "pe5yAvg": 0, "pe5yMedian": 0, "peMedian": 0, "peMedianSince": 2011, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
       "why": ""
     }
   ]
@@ -450,7 +486,10 @@ THE JSON (shown laid out here; send it minified)
 /* Returned as plain findings; completeness.js turns them into checks, so the
    depth box, the search record and the follow-up work for the screen exactly
    as they do for a sector study. */
-export function finderChecks(d) {
+export function finderChecks(d0) {
+  const d = d0 && typeof d0 === 'object' ? JSON.parse(JSON.stringify(d0)) : d0;
+  if (d) normaliseFinder(d);
+  const ver = (d && d.verified && d.verified.sectors) || {};
   const out = [];
   const add = (group, label, have, want, ask, detail) => out.push({ group, label, have, want, ask, detail });
   const rows = arr(d && d.sectors).filter((x) => x && S(x.name));
@@ -473,9 +512,27 @@ export function finderChecks(d) {
       `${path} — ${what} Missing: ${list}.`, list);
   };
   const lacks = (obj, keys) => keys.filter((k) => !real(obj && obj[k]));
-  need('Returns over 3 months, 6 months and 1 year', 'sectors.returns',
-    (r) => lacks(r.returns, ['m3', 'm6', 'y1']),
-    'the sector index\'s return over 3 months ("m3"), 6 months ("m6") and 1 year ("y1"), with "asOf" and "source".');
+  /* Build 30. Returns the app measured from prices count as found. A sector
+     with no index but with bellwethers is the app's to measure, not the
+     tool's to search for again: it is listed as such and left out of the ask. */
+  {
+    const appsJob = [];
+    const miss = [];
+    rows.forEach((r) => {
+      const v = ver[nameKey(r.name)];
+      if (v && isNum(v.y1)) return;
+      const g = lacks(r.returns, ['m3', 'm6', 'y1']);
+      if (!g.length) return;
+      const noIndex = !S(r.index) && arr(r.bellwethers).filter((x) => x && S(x.symbol)).length >= 2 && g.length === 3;
+      (noIndex ? appsJob : miss).push(`${S(r.name)} (${g.join(', ')})`);
+    });
+    const gaps = miss.length + appsJob.length;
+    add('Every sector', 'Returns over 3 months, 6 months and 1 year', rows.length - gaps, rows.length,
+      'sectors.returns — the sector index\'s return over 3 months ("m3"), 6 months ("m6") and 1 year ("y1"), with "asOf" and "source".'
+      + (miss.length ? ` Missing: ${miss.join('; ')}.` : '')
+      + (appsJob.length ? ` Do NOT search for these, which have no index: the application measures them from their bellwethers' prices: ${appsJob.map((x) => x.replace(/ \(.*$/, '')).join(', ')}.` : ''),
+      miss.concat(appsJob.map((x) => x.replace(/\(.*\)/, '(the app measures it from prices)'))).join('; '));
+  }
   need('Bellwether stocks for the price check', 'sectors.bellwethers',
     (r) => { const n = arr(r.bellwethers).filter((x) => x && S(x.symbol)).length; return n >= 3 ? [] : [`${n} of 3 symbols`]; },
     'the 3 to 5 largest NSE-listed companies, each with its NSE "symbol".');
@@ -493,8 +550,8 @@ export function finderChecks(d) {
     },
     'at least two "tailwinds" and two "risks", each a sentence with a figure where there is one.');
   need('P/E against its five-year average', 'sectors.valuation',
-    (r) => lacks(r.valuation, ['pe', 'pe5yAvg']),
-    'the sector index\'s trailing "pe" and its five-year average "pe5yAvg", with "asOf" and "source". With no sector index, the median of the bellwethers\' trailing P/E and of their own five-year average P/Es (Screener, Trendlyne, Tickertape publish both), with "basis": "bellwethers".');
+    (r) => lacks(r.valuation, ['pe']).concat(r.valuation && (real(r.valuation.pe5yAvg) || real(r.valuation.pe5yMedian) || (real(r.valuation.peMedian) && !(isNum(r.valuation.peMedianSince) && new Date().getFullYear() - r.valuation.peMedianSince < 3))) ? [] : ['pe5yAvg']),
+    'the sector index\'s trailing "pe" and its five-year average "pe5yAvg", with "asOf" and "source". Where only a median is published, send it: "pe5yMedian" for a five-year median, or "peMedian" with "peMedianSince" (the year the series starts) for a long-run median. With no sector index, the median of the bellwethers\' trailing P/E and of their own five-year average P/Es (Screener, Trendlyne, Tickertape publish both), with "basis": "bellwethers".');
   return out;
 }
 
@@ -532,28 +589,41 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } =
     }
     return null;
   };
+  /* A stock counts with 3- and 6-month returns even if it has no year yet. */
+  const tryStock = async (k) => {
+    try { const rr = returnsFromBars(await fetchBars(k)); return rr && isNum(rr.m6) ? { ...rr, key: k } : null; } catch (e) { return null; }
+  };
   const bench = await tryKeys(indexKeys(S(d.benchmark && d.benchmark.name) || BENCHMARK).concat(indexKeys(BENCHMARK)));
   if (bench) result.benchmark = { ...bench, basis: 'index', of: BENCHMARK };
-  for (const r of arr(d.sectors)) {
-    if (!r || !S(r.name)) continue;
+  /* Six sectors at a time (build 30): 41 sectors, some with five stocks each,
+     one request after another took over a minute on a phone. */
+  const one = async (r) => {
+    if (!r || !S(r.name)) return;
     const names = [S(r.index), SECTOR_INDEX[FINDER_SECTORS.find((s) => nameKey(s) === nameKey(r.name))]].filter(Boolean);
     let got = await tryKeys([...new Set(names.flatMap(indexKeys))]);
-    if (got) { result.sectors[nameKey(r.name)] = { ...got, basis: 'index', of: got.key.split('|')[1] }; continue; }
+    if (got) { result.sectors[nameKey(r.name)] = { ...got, basis: 'index', of: got.key.split('|')[1] }; return; }
     /* The bellwethers, equally weighted. Two at least, or it is one company. */
     const picks = arr(r.bellwethers).filter((x) => x && S(x.symbol)).slice(0, 5);
     const each = [];
-    for (const p of picks) {
+    await Promise.all(picks.map(async (p) => {
       const key = typeof keyFor === 'function' ? keyFor(S(p.symbol), S(p.isin)) : null;
-      if (!key) continue;
-      const one = await tryKeys([key]);
-      if (one && isNum(one.m3) && isNum(one.m6)) each.push({ sym: S(p.symbol), ...one });
-    }
+      if (!key) return;
+      const got1 = await tryStock(key);
+      if (got1 && isNum(got1.m3) && isNum(got1.m6)) each.push({ sym: S(p.symbol), ...got1 });
+    }));
+    each.sort((a, b) => picks.findIndex((p) => S(p.symbol) === a.sym) - picks.findIndex((p) => S(p.symbol) === b.sym));
     if (each.length >= 2) {
-      const avg = (k) => +(each.reduce((a, x) => a + x[k], 0) / each.length).toFixed(2);
+      /* Each period over the stocks that have it: a stock listed under a year
+         ago (Pine Labs, LG Electronics India in the 22-11 run) has no 1-year
+         return and must not turn the average into "not a number". */
+      const avg = (k) => { const xs = each.filter((x) => isNum(x[k])); return xs.length >= 2 ? +(xs.reduce((a, x) => a + x[k], 0) / xs.length).toFixed(2) : null; };
       result.sectors[nameKey(r.name)] = { m3: avg('m3'), m6: avg('m6'), y1: avg('y1'),
         asOf: each.map((x) => x.asOf).sort().pop(), basis: 'basket', of: each.map((x) => x.sym).join(', ') };
     } else result.failed.push(S(r.name));
-  }
+  };
+  const list = arr(d.sectors).slice();
+  for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(one));
+  result.failed.sort((a, b) => FINDER_SECTORS.indexOf(a) - FINDER_SECTORS.indexOf(b));
   return result;
 }
 
@@ -570,7 +640,8 @@ function percentiles(values) {
 }
 /* parts: [value, weight, required?]. Missing optional sub-parts are left out
    and the rest re-weighted; a missing required one leaves the part empty. */
-const mix = (parts) => {
+/* (kept for reference: the build-29 composite) */
+export const mix = (parts) => {
   if (parts.some(([v, , req]) => req && !isNum(v))) return null;
   const ok = parts.filter(([v]) => isNum(v));
   if (!ok.length) return null;
@@ -581,13 +652,19 @@ const mix = (parts) => {
 export const CORE_PARTS = Object.freeze(['momentum', 'outlook']);
 export const NEUTRAL_PARTS = Object.freeze(['business', 'valuation']);
 
-export function scoreFinder(d) {
+export function scoreFinder(d0) {
+  /* Saved screens that predate a reading rule are read with today's rules,
+     on a copy, so the saved reply itself is never changed by scoring. */
+  const d = d0 && typeof d0 === 'object' ? JSON.parse(JSON.stringify(d0)) : d0;
+  if (d) normaliseFinder(d);
   const ver = (d && d.verified) || {};
   const bTool = (d && d.benchmark && d.benchmark.returns) || {};
-  const bench = ver.benchmark && isNum(ver.benchmark.y1)
+  const benchTool = { m3: real(bTool.m3) ? bTool.m3 : null, m6: real(bTool.m6) ? bTool.m6 : null, y1: real(bTool.y1) ? bTool.y1 : null,
+    checked: false, asOf: S(d && d.benchmark && d.benchmark.asOf) };
+  const benchApp = ver.benchmark && isNum(ver.benchmark.y1)
     ? { m3: ver.benchmark.m3, m6: ver.benchmark.m6, y1: ver.benchmark.y1, checked: true, asOf: ver.benchmark.asOf }
-    : { m3: real(bTool.m3) ? bTool.m3 : null, m6: real(bTool.m6) ? bTool.m6 : null, y1: real(bTool.y1) ? bTool.y1 : null,
-        checked: false, asOf: S(d && d.benchmark && d.benchmark.asOf) };
+    : benchTool;
+  const bench = benchApp;
   const rows = arr(d && d.sectors).filter((r) => r && S(r.name)).map((r) => {
     const v = (ver.sectors || {})[nameKey(r.name)];
     const t = r.returns || {};
@@ -596,9 +673,15 @@ export function scoreFinder(d) {
           tool: { m3: t.m3, m6: t.m6, y1: t.y1 } }
       : { m3: real(t.m3) ? t.m3 : null, m6: real(t.m6) ? t.m6 : null, y1: real(t.y1) ? t.y1 : null,
           checked: false, basis: S(t.basis) || 'stated by the research', of: S(r.index), asOf: S(t.asOf) };
+    /* Build 30: a return the app measured is set against the Nifty 50 as the
+       app measured it, to the same close; a return the research stated is set
+       against the Nifty 50 as the research stated it. Mixing the two compared
+       an October close with a November one (the 22-11-2026 run used month-end
+       dashboards to 31-10-2026). */
+    const bm = ret.checked ? benchApp : benchTool;
     const rel = {};
-    ['m3', 'm6', 'y1'].forEach((k) => { rel[k] = isNum(ret[k]) && isNum(bench[k]) ? +(ret[k] - bench[k]).toFixed(2) : null; });
-    const base = isNum(bench.y1) ? rel : ret;
+    ['m3', 'm6', 'y1'].forEach((k) => { rel[k] = isNum(ret[k]) && isNum(bm[k]) ? +(ret[k] - bm[k]).toFixed(2) : null; });
+    const base = isNum(bm.y1) ? rel : ret;
     const bz = r.business || {}, ol = r.outlook || {}, va = r.valuation || {};
     return {
       name: S(r.name), short: SHORT_NAMES[FINDER_SECTORS.find((x) => nameKey(x) === nameKey(r.name))] || S(r.name),
@@ -609,22 +692,50 @@ export function scoreFinder(d) {
       outlook: { earningsGrowth3y: real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null,
         demandGrowth3y: real(ol.demandGrowth3y) ? ol.demandGrowth3y : null, years: S(ol.years),
         tailwinds: arr(ol.tailwinds).map(S).filter(Boolean), risks: arr(ol.risks).map(S).filter(Boolean), source: S(ol.source) },
-      valuation: { pe: real(va.pe) ? va.pe : null, pe5yAvg: real(va.pe5yAvg) ? va.pe5yAvg : null,
-        ratio: real(va.pe) && real(va.pe5yAvg) && va.pe5yAvg > 0 ? +(va.pe / va.pe5yAvg).toFixed(3) : null,
-        asOf: S(va.asOf), source: S(va.source) },
-      raw: {
-        /* The year must be there; a missing 3- or 6-month figure is left out. */
-        momentum: mix([[base.m3, MOMENTUM_MIX.m3], [base.m6, MOMENTUM_MIX.m6], [base.y1, MOMENTUM_MIX.y1, true]]),
-        business: mix([[real(bz.profitGrowth) ? bz.profitGrowth : null, 0.6, true], [real(bz.revenueGrowth) ? bz.revenueGrowth : null, 0.4]]),
-        outlook: mix([[real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null, 0.6, true], [real(ol.demandGrowth3y) ? ol.demandGrowth3y : null, 0.4]]),
-        valuation: null,
+      valuation: (() => {
+        /* The P/E's own history: the five-year average where it exists, else a
+           five-year median, else the long-run median of a series at least
+           three years long (build 30). */
+        const hist = real(va.pe5yAvg) ? ['pe5yAvg', va.pe5yAvg, 'five-year average']
+          : real(va.pe5yMedian) ? ['pe5yMedian', va.pe5yMedian, 'five-year median']
+          : real(va.peMedian) && !(isNum(va.peMedianSince) && new Date().getFullYear() - va.peMedianSince < 3) ? ['peMedian', va.peMedian, 'long-run median' + (va.peMedianSince ? ' since ' + va.peMedianSince : '')] : null;
+        return { pe: real(va.pe) ? va.pe : null, pe5yAvg: real(va.pe5yAvg) ? va.pe5yAvg : null,
+          history: hist ? hist[1] : null, historyBasis: hist ? hist[2] : '',
+          ratio: real(va.pe) && hist && hist[1] > 0 ? +(va.pe / hist[1]).toFixed(3) : null,
+          asOf: S(va.asOf), source: S(va.source) };
+      })(),
+      sub: {
+        m3: base.m3, m6: base.m6, y1: base.y1,
+        profit: real(bz.profitGrowth) ? bz.profitGrowth : null, revenue: real(bz.revenueGrowth) ? bz.revenueGrowth : null,
+        earnings: real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null, demand: real(ol.demandGrowth3y) ? ol.demandGrowth3y : null,
       },
     };
   });
-  rows.forEach((r) => { r.raw.valuation = isNum(r.valuation.ratio) ? -r.valuation.ratio : null; });
-  Object.keys(FINDER_WEIGHTS).forEach((k) => {
-    const p = percentiles(rows.map((r) => r.raw[k]));
-    rows.forEach((r, i) => { (r.parts = r.parts || {})[k] = p[i]; });
+  rows.forEach((r) => { r.sub.cheap = isNum(r.valuation.ratio) ? -r.valuation.ratio : null; });
+  /* Build 30. Each measure is ranked among the sectors on its own, and a
+     part is the weighted mean of its measures' percentiles. Ranking the
+     measures separately keeps unlike scales apart: a 9% demand forecast is
+     not set against a 30% earnings forecast. A part needs its required
+     measure (the 1-year return) or, where none is required, any one. */
+  const SUB = {
+    momentum: [['m3', MOMENTUM_MIX.m3], ['m6', MOMENTUM_MIX.m6], ['y1', MOMENTUM_MIX.y1, true]],
+    business: [['profit', 0.6], ['revenue', 0.4]],
+    outlook: [['earnings', 0.6], ['demand', 0.4]],
+    valuation: [['cheap', 1, true]],
+  };
+  const pct = {};
+  Object.values(SUB).flat().forEach(([m]) => { if (!pct[m]) pct[m] = percentiles(rows.map((r) => r.sub[m])); });
+  rows.forEach((r, i) => {
+    r.parts = {};
+    r.partial = [];
+    Object.keys(SUB).forEach((part) => {
+      const ms = SUB[part];
+      if (ms.some(([m, , req]) => req && !isNum(pct[m][i]))) { r.parts[part] = null; return; }
+      const got = ms.filter(([m]) => isNum(pct[m][i]));
+      if (!got.length) { r.parts[part] = null; return; }
+      if (got.length < ms.length) r.partial.push(part);
+      r.parts[part] = +(got.reduce((a, [m, w]) => a + pct[m][i] * w, 0) / got.reduce((a, [, w]) => a + w, 0)).toFixed(1);
+    });
   });
   rows.forEach((r) => {
     r.missingParts = Object.keys(FINDER_WEIGHTS).filter((k) => !isNum(r.parts[k]));
@@ -650,8 +761,9 @@ export function scoreFinder(d) {
     basis: 'Each part is a percentile among the sectors screened: past momentum from the 3-month, '
       + '6-month and 1-year returns against the Nifty 50 (weighted 25, 35 and 40); business momentum from '
       + 'profit and sales growth over the last four quarters (60 and 40); the three-year outlook from forecast '
-      + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average, '
-      + 'cheaper scoring higher. Past momentum and the outlook must be established for a sector to be ranked '
+      + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average (or, where '
+      + 'the index is younger, its five-year or long-run median), cheaper scoring higher. Each measure is ranked on '
+      + 'its own and a part is the weighted mean of its measures\' ranks; a part with one measure missing uses the other. Past momentum and the outlook must be established for a sector to be ranked '
       + 'among the leaders; business momentum or valuation that could not be established counts as average '
       + '(the 50th percentile), neither reward nor penalty.',
   };
@@ -664,9 +776,12 @@ function reasonOf(r, bench) {
   else if (isNum(r.returns.y1)) bits.push(`${sgn(r.returns.y1)}% over a year`);
   if (isNum(r.business.profitGrowth)) bits.push(`profits ${sgn(r.business.profitGrowth)}% over four quarters`);
   if (isNum(r.outlook.earningsGrowth3y)) bits.push(`earnings forecast to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year`);
+  else if (isNum(r.outlook.demandGrowth3y)) bits.push(`demand forecast to grow ${r.outlook.demandGrowth3y.toFixed(1)}% a year`);
   if (isNum(r.valuation.pe) && isNum(r.valuation.pe5yAvg)) bits.push(`P/E ${r.valuation.pe.toFixed(1)} against a five-year average of ${r.valuation.pe5yAvg.toFixed(1)}`);
   void bench;
   if (r.neutral && r.neutral.length) bits.push(`${r.neutral.join(' and ')} not established, counted as average`);
+  if (r.valuation && r.valuation.historyBasis && r.valuation.historyBasis !== 'five-year average' && isNum(r.valuation.history))
+    bits.push(`P/E set against its ${r.valuation.historyBasis} of ${r.valuation.history.toFixed(1)}`);
   const s = bits.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : '';
 }

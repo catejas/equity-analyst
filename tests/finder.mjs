@@ -14,6 +14,7 @@ import { completeness, topUpPrompt, mergeTopUp } from '../src/core/completeness.
 import { finderFixture } from './_finderfix.mjs';
 
 let fail = 0, ran = 0;
+const finderChecksMiss = (d) => F.finderChecks(d).filter((c) => c.have < c.want);
 const ok = (l, p, d) => { ran++; if (!p) fail++; console.log(`  ${p ? 'ok  ' : 'FAIL'}  ${l}${d != null && d !== '' ? '  — ' + d : ''}`); };
 
 console.log('\nThe sector list');
@@ -54,9 +55,12 @@ const by = (n) => s4.rows.find((r) => r.name === n);
 /* Defence: best momentum, business and outlook (100 each), dearest valuation (0):
    (35*100 + 20*100 + 35*100 + 10*0) / 100 = 90. */
 ok('Defence scores 90.0 (100, 100, 100 and 0)', by('Defence and aerospace').score === 90, by('Defence and aerospace').score);
-/* Banking: momentum and business 2nd of 4 (66.7), outlook 2nd of 3 (50), cheapest (100):
-   (35*66.7 + 20*66.7 + 35*50 + 10*100)/100 = 64.2. */
-ok('Banking scores 64.2', by('Banking').score === 64.2, by('Banking').score);
+/* Banking (build 30, parts built from sub-measures): momentum 2nd of 4 on all three
+   periods (66.7); business = 0.6 x profit (2nd of 4, 66.7) + 0.4 x revenue (3rd of 4,
+   33.3) = 53.3; outlook 2nd of 3 (50); cheapest (100):
+   (35*66.7 + 20*53.3 + 35*50 + 10*100)/100 = 61.5. */
+ok('Banking scores 61.5', by('Banking').score === 61.5, by('Banking').score);
+ok('its business part is 53.3 (profit 0.6, revenue 0.4)', by('Banking').parts.business === 53.3, by('Banking').parts.business);
 ok('IT, last on three parts, scores 5.0', by('Information technology').score === 5, by('Information technology').score);
 ok('Retail, missing two parts, ranks below every complete sector', by('Retail').rank === 4 && !by('Retail').complete
   && by('Retail').missingParts.join(',') === 'outlook,valuation', `rank ${by('Retail').rank}, missing ${by('Retail').missingParts}`);
@@ -166,6 +170,76 @@ const cmp = F.compareScreens(a, bsc);
 ok('a sector that rises into the Top 3 is named as entered', cmp.entered.includes('Banking'), JSON.stringify(cmp.entered));
 ok('the one it displaced is named as left', cmp.left.length === 1);
 ok('every sector carries its rank then and now', cmp.rows.length === 41 && cmp.rows.every((r) => r.rankThen != null));
+
+console.log('\nBuild 30: what the 22-11 real run lacked');
+{
+  const base = () => JSON.parse(JSON.stringify(four));
+  /* A median P/E written in the source text is read as the history. */
+  const md = base(); const bk = md.sectors.find((x) => x.name === 'Banking');
+  bk.valuation = { pe: 14, source: 'NSE factsheet; 5-year median P/E 16.0x' };
+  const sm = F.scoreFinder(md).rows.find((r) => r.name === 'Banking');
+  ok('a five-year median P/E in the source text stands in for the average', sm.parts.valuation === 100 && !sm.neutral.includes('valuation'), JSON.stringify(sm.parts));
+  ok('and the scorer does not change the payload it was given', md.sectors.find((x) => x.name === 'Banking').valuation.pe5yMedian === undefined);
+  const lr = base(); lr.sectors.find((x) => x.name === 'Banking').valuation = { pe: 14, peMedian: 17, peMedianSince: 2025 };
+  const yr = new Date().getUTCFullYear();
+  const short = yr - 2025 < 3;
+  ok('a long-run median is used only on three years of history', F.scoreFinder(lr).rows.find((r) => r.name === 'Banking').neutral.includes('valuation') === short);
+  const lr2 = base(); lr2.sectors.find((x) => x.name === 'Banking').valuation = { pe: 14, peMedian: 17, peMedianSince: 2012 };
+  ok('a median since 2012 is used', !F.scoreFinder(lr2).rows.find((r) => r.name === 'Banking').neutral.includes('valuation'));
+  ok('the follow-up accepts any history, not only pe5yAvg',
+    !finderChecksMiss(lr2).some((m) => /Banking/.test(m.detail) && m.label.startsWith('P/E')));
+
+  /* A demand forecast alone scores the outlook (niche sectors). */
+  const dm = base(); dm.sectors.find((x) => x.name === 'Retail').outlook = { demandGrowth3y: 30, source: 'x' };
+  const rr = F.scoreFinder(dm).rows.find((r) => r.name === 'Retail');
+  ok('a demand forecast alone scores the outlook', typeof rr.parts.outlook === 'number' && rr.partial.includes('outlook'), JSON.stringify(rr.parts));
+  ok('so the sector can rank in the Top 3', rr.eligible);
+  ok('its reason gives the demand forecast', /demand/i.test(rr.reason), rr.reason);
+
+  /* The benchmark the app measured on the same date as the sector. */
+  const bm = base(); bm.verified = { benchmark: { m3: 10, m6: 10, y1: 10 }, sectors: { banking: { m3: 4, m6: 8, y1: 15 } } };
+  const rb = F.scoreFinder(bm).rows.find((r) => r.name === 'Banking');
+  ok('an app-checked return is set against the app-checked benchmark', rb.returns && rb.returns.checked && rb.rel && rb.rel.y1 === 5, JSON.stringify(rb.rel));
+}
+
+console.log('\nBuild 30: the price check');
+{
+  const bars = (startC, endC, days = 400) => {
+    const out = []; const t0 = Date.parse('2025-10-15T00:00:00Z');
+    for (let i = 0; i <= days; i++) out.push({ date: new Date(t0 + i * 864e5).toISOString().slice(0, 10), c: startC + (endC - startC) * i / days });
+    return out;
+  };
+  const young = (c0, c1) => bars(c0, c1, 400).slice(250); /* about 150 days: 3m only */
+  const yearOld = (c0, c1) => bars(c0, c1, 400).slice(170); /* about 230 days: 3m and 6m */
+  const stockBars = { 'NSE_EQ|AAA': bars(100, 120), 'NSE_EQ|BBB': bars(100, 140), 'NSE_EQ|CCC': yearOld(100, 150), 'NSE_EQ|DDD': young(100, 101) };
+  const pay = { benchmark: { name: 'Nifty 50' }, sectors: [{ name: 'Fintech and payments', bellwethers: [{ symbol: 'AAA' }, { symbol: 'BBB' }, { symbol: 'CCC' }, { symbol: 'DDD' }] }] };
+  let calls = 0;
+  const v = await F.verifyReturns(pay, {
+    fetchBars: async (k) => { calls++; if (stockBars[k]) return stockBars[k]; throw new Error('no ' + k); },
+    keyFor: (s) => 'NSE_EQ|' + s, now: new Date('2026-11-22T00:00:00Z') });
+  const fp = v.sectors[F.nameKey('Fintech and payments')];
+  ok('a stock listed under a year ago still counts for 3 and 6 months', fp && fp.of === 'AAA, BBB, CCC', fp && fp.of);
+  const yA = F.returnsFromBars(stockBars['NSE_EQ|AAA']).y1, yB = F.returnsFromBars(stockBars['NSE_EQ|BBB']).y1;
+  ok('CCC has no 1-year return of its own', F.returnsFromBars(stockBars['NSE_EQ|CCC']).y1 === null);
+  ok('the 1-year average is over the stocks that have a year', fp && fp.y1 === +((yA + yB) / 2).toFixed(2), `${fp && fp.y1} vs ${((yA + yB) / 2).toFixed(2)}`);
+  ok('no period is "not a number"', fp && [fp.m3, fp.m6, fp.y1].every((x) => x === null || Number.isFinite(x)), JSON.stringify(fp));
+  ok('a stock with under 6 months of prices is left out', !/DDD/.test(fp && fp.of));
+  const one = await F.verifyReturns({ sectors: [{ name: 'Education', bellwethers: [{ symbol: 'AAA' }, { symbol: 'ZZZ' }] }] },
+    { fetchBars: async (k) => { if (stockBars[k]) return stockBars[k]; throw new Error('x'); }, keyFor: (s) => 'NSE_EQ|' + s });
+  ok('one stock is not a basket: the sector is listed as failed', one.failed.join() === 'Education' && !one.sectors.education);
+}
+
+console.log('\nBuild 30: the follow-up leaves the app\'s job to the app');
+{
+  const ni = JSON.parse(JSON.stringify(four));
+  ni.sectors.push({ name: 'Fintech and payments', bellwethers: [{ symbol: 'PAYTM' }, { symbol: 'PINELABS' }, { symbol: 'POLICYBZR' }] });
+  const ask = F.finderChecks(ni).find((c) => c.label.startsWith('Returns'));
+  ok('a sector with no index and its bellwethers is not asked for its returns', /Do NOT search for these/.test(ask.ask) && !/Missing: [^.]*Fintech/.test(ask.ask), ask.ask);
+  ok('but it still shows as a gap until the app measures it', ask.have < ask.want && /app measures it from prices/.test(ask.detail));
+  ni.verified = { sectors: { [F.nameKey('Fintech and payments')]: { m3: 1, m6: 2, y1: 3 } } };
+  const ask2 = F.finderChecks(ni).find((c) => c.label.startsWith('Returns'));
+  ok('once the app has measured it, it counts as found', !/Fintech/.test(ask2.detail), ask2.detail);
+}
 
 console.log('\nOffline');
 /* Build 28 added three engine modules; a module missing from the service
