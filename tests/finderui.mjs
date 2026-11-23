@@ -84,7 +84,7 @@ ok('and frames the tool buttons in gold', fp.armed);
 console.log('\nImporting a screen');
 const rv = await imp(fx, 'btnFinderImport');
 ok('the review is the Finder\'s own', /Sector Finder — 41 of 41 sectors screened/.test(rv), rv.slice(0, 80));
-ok('it lists what is thin with its state', /P\/E against its five-year average not yet searched/.test(rv));
+ok('it lists what is thin with its state', /P\/E against its own history not yet searched/.test(rv));
 const after = await ev(() => ({
   recs: libRead().filter((r) => r.kind === 'finder').length,
   asStudy: sectorRecords().length,
@@ -151,13 +151,15 @@ ok('the gaps are printed', /Gaps in This Research|Gaps in this research/i.test(d
 
 console.log('\nA follow-up keeps asking, and says what was tried');
 const fu = { schema: 'equity-analyst/5', run: { topUp: true, kind: 'sectorScreen',
-  searchLog: [{ path: 'sectors[Retail].valuation.pe5yAvg', searched: ['NSE index factsheet', 'Trendlyne sector page'], reason: 'no Retail index' }] },
+  /* Build 31: valuation is asked of the companies (their EPS), so the search
+     the tool logs is against that path. */
+  searchLog: [{ path: 'sectors[Retail].bellwethers[AAA25].eps', searched: ['NSE index factsheet', 'Trendlyne sector page'], reason: 'no Retail index' }] },
   sectors: [{ name: 'Aviation', valuation: { pe: 30, pe5yAvg: 28, asOf: '21-11-2026', source: 'test data' } }] };
 const rv2 = await imp(fu, 'btnFinderImport');
 const fs2 = await ev(() => ({ recs: libRead().filter((r) => r.kind === 'finder').length,
   depth: document.getElementById('finderDepth').innerText, prompt: EQ.completeness.topUpPrompt(libRead().filter((r) => r.kind === 'finder')[0].data) }));
 ok('the follow-up is added to the saved screen', /Follow-up added to the saved screen/.test(rv2) && fs2.recs === 1);
-ok('Aviation\'s valuation is filled; Retail\'s is still asked for', /P\/E against its five-year average 40\/41/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
+ok('Aviation\'s valuation is filled; Retail\'s is still asked for', /P\/E against its own history 40\/41/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
 ok('the depth box shows it was searched and not found', /searched, not found ×1/.test(fs2.depth) && /0 not yet searched, 1 searched and not found/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
 ok('the next follow-up names the sources tried and others', /NSE index factsheet; Trendlyne sector page/.test(fs2.prompt) && /SEARCH AGAIN/.test(fs2.prompt));
 

@@ -21,7 +21,7 @@ console.log('\nReading the replies');
 let d = ld('finder-22-11-2026-base.json');
 const r0 = readCheck(d);
 ok('the base screen has no unread or unreadable field', !r0.unread.length && !r0.unreadable.length, JSON.stringify({ unread: r0.unread, unreadable: r0.unreadable }));
-for (const n of [1, 2, 3, 4]) {
+for (const n of [1, 2, 3, 4, 5, 6, 7]) {
   const add = ld(`finder-22-11-2026-topup${n}.json`);
   if (!Array.isArray(add.companies)) add.companies = [];
   const r = readCheck(add);
@@ -39,7 +39,12 @@ console.log('\nThe P/E history the tool wrote in its notes');
 const withMedian = d.sectors.filter((s) => s.valuation && (s.valuation.peMedian > 0 || s.valuation.pe5yMedian > 0));
 ok('long-run and five-year medians are read from the source notes', withMedian.length >= 5, `${withMedian.length} sectors`);
 const s = F.scoreFinder(d);
-const want = withMedian.filter((x) => x.valuation.pe > 0 && !(x.valuation.pe5yAvg > 0)).map((x) => x.name);
+/* Follow-up 5 sent ten medians whose series start in 2024 to 2026: under
+   three years, so they are rightly not used (build 30's rule). */
+const young = (x) => typeof x.valuation.peMedianSince === 'number' && new Date().getFullYear() - x.valuation.peMedianSince < 3 && !(x.valuation.pe5yMedian > 0);
+const want = withMedian.filter((x) => x.valuation.pe > 0 && !(x.valuation.pe5yAvg > 0) && !young(x)).map((x) => x.name);
+ok('a median of a series under three years is not used as history', withMedian.filter(young).every((x) => s.rows.find((r) => r.name === x.name).valuation.from !== 'research'),
+  withMedian.filter(young).map((x) => x.name + ' ' + x.valuation.peMedianSince).join(', '));
 const used = want.filter((n) => { const r = s.rows.find((y) => y.name === n); return r.valuation.history != null && r.valuation.historyBasis !== 'five-year average'; });
 ok('where there is no five-year average, the median is the valuation history', want.length >= 3 && used.length === want.length, `${used.length} of ${want.length}: ${used.join(', ')}`);
 

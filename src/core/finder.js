@@ -265,6 +265,32 @@ export function normaliseFinder(d) {
         if (f && r[blk][f] == null) { r[blk][f] = r[k]; delete r[k]; fixes.push(`${r.name}: ${k} read as ${blk}.${f}`); return; }
       }
     });
+    /* Build 31: each company's own figures, under the names tools use. */
+    const QA = { revenue: /^(revenue|sales|turnover|totalincome|revenuefromoperations|income)$/i,
+      revenuePrev: /^(revenueprev|revenueprevious|revenueyearago|revenuely|prevrevenue|salesprev|revenueprioryear|revenueyoyprev)$/i,
+      profit: /^(profit|pat|netprofit|netincome|earnings)$/i,
+      profitPrev: /^(profitprev|patprev|netprofitprev|profityearago|profitly|prevprofit|profitprioryear)$/i };
+    arr(r.bellwethers).forEach((b) => {
+      if (!isO(b)) return;
+      for (const k of ['quarterly', 'results', 'latestQuarter', 'q']) if (isO(b[k]) && !isO(b.quarter)) { b.quarter = b[k]; delete b[k]; fixes.push(`${r.name}: ${b.symbol}.${k} read as quarter`); }
+      if (isO(b.quarter)) Object.keys(b.quarter).forEach((k) => {
+        const f = Object.keys(QA).find((t) => QA[t].test(k.replace(/[^a-z]/gi, '')));
+        if (f && f !== k && b.quarter[f] == null) { b.quarter[f] = b.quarter[k]; delete b.quarter[k]; fixes.push(`${r.name}: ${b.symbol}.quarter.${k} read as ${f}`); }
+      });
+      if (isO(b.eps) && !Array.isArray(b.eps)) {
+        /* { "FY26": 54.1, "FY25": 48.0, "ttm": 56 } */
+        const o = b.eps; b.eps = [];
+        Object.keys(o).forEach((k) => { if (/^ttm$/i.test(k)) { if (b.epsTtm == null) b.epsTtm = o[k]; } else b.eps.push({ fy: k, eps: o[k] }); });
+        fixes.push(`${r.name}: ${b.symbol}.eps read as a list by year`);
+      }
+      if (b.ttmEps != null && b.epsTtm == null) { b.epsTtm = b.ttmEps; delete b.ttmEps; }
+      if (isO(b.consensus) && !isO(b.forecast)) { b.forecast = b.consensus; delete b.consensus; fixes.push(`${r.name}: ${b.symbol}.consensus read as forecast`); }
+      if (isO(b.forecast)) {
+        const fo = b.forecast;
+        for (const k of ['epsCagr3y', 'earningsGrowth3y', 'patGrowth3y', 'epsGrowth']) if (fo[k] != null && fo.epsGrowth3y == null) { fo.epsGrowth3y = fo[k]; delete fo[k]; }
+        for (const k of ['revenueCagr3y', 'salesGrowth3y', 'revenueGrowth']) if (fo[k] != null && fo.revenueGrowth3y == null) { fo.revenueGrowth3y = fo[k]; delete fo[k]; }
+      }
+    });
     ['returns', 'business', 'outlook', 'valuation'].forEach((blk) => {
       const o = r[blk];
       Object.keys(o).forEach((k) => {
@@ -389,15 +415,32 @@ FOR EVERY SECTOR IN THE LIST
                 the bellwethers' prices.
   bellwethers   the 3 to 5 largest NSE-listed companies in the sector, each
                 with its NSE symbol. The application fetches their prices
-                itself to check the returns.
+                itself to check the returns. EVERY SECTOR IS MADE OF LISTED
+                COMPANIES: where a sector-wide figure below is not
+                published, send each bellwether's own figures (shown in
+                the JSON below) and the application works the sector out
+                from them:
+                  quarter   its latest quarter's revenue from operations and
+                            net profit, and the same quarter a year earlier,
+                            consolidated, in ₹ crore, from its results filing.
+                            A loss is a negative number; send it.
+                  eps       its EPS for each of the last five financial
+                            years, and "epsTtm" for the trailing twelve
+                            months, from its annual reports and filings.
+                  forecast  its consensus forecast: annual EPS growth
+                            ("epsGrowth3y") and revenue growth
+                            ("revenueGrowth3y") over the next three years
+                            (Trendlyne forecaster, MarketScreener,
+                            Moneycontrol estimates; else its own guidance).
   business      year-on-year growth of the sector's listed companies in
                 aggregate: "revenueGrowth" and "profitGrowth" (net profit),
                 over the last four reported quarters, with "period" (e.g.
                 "four quarters to Q2 FY27 against the year before"), "basis"
                 (which companies are included) and "source". Where no
-                aggregate is published, add up the bellwethers' own reported
-                results and say so in "basis" — every listed company files
-                them, so this can always be established.
+                aggregate is published, leave business out and send each
+                bellwether's "quarter" instead: the application adds them
+                up. Every listed company files them, so they can always be
+                found.
   outlook       "earningsGrowth3y" — forecast annual earnings growth over the
                 next three years; "demandGrowth3y" — forecast annual growth of
                 the industry's demand or revenue over the same years; "years"
@@ -405,21 +448,22 @@ FOR EVERY SECTOR IN THE LIST
                 "risks", each a sentence with a figure where there is one;
                 and "source" (a brokerage or rating-agency sector outlook, an
                 industry body, a government projection), with its date. For a
-                niche sector, use the closest published industry forecast,
-                or the bellwethers' consensus earnings forecasts, and say
-                which in "basis".
+                niche sector, use the closest published industry forecast;
+                where there is none, send each bellwether's "forecast" and
+                the application takes their median. Tailwinds and risks can
+                come from the bellwethers' own earnings calls and annual
+                reports; name the company.
   valuation     the sector index's trailing P/E ("pe") and its five-year
                 average ("pe5yAvg"), with "asOf" and "source" (the NSE index
                 factsheet gives both). If only a five-year MEDIAN is
                 published, send it as "pe5yMedian" — do not leave it out
                 because it is not a mean. If the index is younger than five
                 years, send its long-run median as "peMedian" with
-                "peMedianSince", the year its P/E series starts. WITH NO SECTOR INDEX, use the median of
-                the bellwethers' trailing P/E and the median of their own
-                five-year average P/Es (Screener, Trendlyne, Tickertape and
-                the companies' annual reports publish both), and set "basis"
-                to "bellwethers". Do not leave valuation out for want of an
-                index.
+                "peMedianSince", the year its P/E series starts. WITH NO SECTOR
+                INDEX, or an index under three years old, do not look for
+                P/E averages: send each bellwether's "eps" and "epsTtm". The
+                application works out each company's P/E history from its
+                own price feed.
   why           one sentence: the single most important reason the sector is,
                 or is not, attractive now.
 
@@ -470,7 +514,10 @@ THE JSON (shown laid out here; send it minified)
       "subSector": "Public sector banks",
       "index": "Nifty Bank",
       "returns": { "m3": 0, "m6": 0, "y1": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
-      "bellwethers": [ { "symbol": "SBIN", "name": "State Bank of India" } ],
+      "bellwethers": [ { "symbol": "SBIN", "name": "State Bank of India",
+                         "quarter": { "period": "Q2 FY27", "revenue": 0, "revenuePrev": 0, "profit": 0, "profitPrev": 0, "source": "" },
+                         "eps": [ { "fy": "FY26", "eps": 0 } ], "epsTtm": 0, "epsSource": "",
+                         "forecast": { "epsGrowth3y": 0, "revenueGrowth3y": 0, "years": "FY26 to FY29", "analysts": 0, "source": "" } } ],
       "business": { "revenueGrowth": 0, "profitGrowth": 0, "period": "", "basis": "", "source": "" },
       "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29", "basis": "",
                    "tailwinds": [""], "risks": [""], "source": "" },
@@ -491,7 +538,7 @@ export function finderChecks(d0) {
   if (d) normaliseFinder(d);
   const ver = (d && d.verified && d.verified.sectors) || {};
   const out = [];
-  const add = (group, label, have, want, ask, detail) => out.push({ group, label, have, want, ask, detail });
+  const add = (group, label, have, want, ask, detail, appOnly) => out.push({ group, label, have, want, ask, detail, appOnly: !!appOnly });
   const rows = arr(d && d.sectors).filter((x) => x && S(x.name));
   const have = FINDER_SECTORS.filter((s) => rows.some((r) => nameKey(r.name) === nameKey(s)));
   const absent = FINDER_SECTORS.filter((s) => !have.includes(s));
@@ -512,9 +559,14 @@ export function finderChecks(d0) {
       `${path} — ${what} Missing: ${list}.`, list);
   };
   const lacks = (obj, keys) => keys.filter((k) => !real(obj && obj[k]));
-  /* Build 30. Returns the app measured from prices count as found. A sector
-     with no index but with bellwethers is the app's to measure, not the
-     tool's to search for again: it is listed as such and left out of the ask. */
+  /* Returns the app measured from prices count as found. A sector the app
+     can measure itself (it has an index or two bellwethers) is the app's job,
+     not the tool's: it is listed as such and left out of the ask, unless the
+     app's own check has already failed for it (build 31; build 30 did this
+     for sectors with no index only). */
+  const failed = new Set(arr(d && d.verified && d.verified.failed).map(nameKey));
+  const vfailed = new Set(arr(d && d.verified && d.verified.valuationFailed).map(nameKey));
+  const ran = !!(d && d.verified);
   {
     const appsJob = [];
     const miss = [];
@@ -523,35 +575,56 @@ export function finderChecks(d0) {
       if (v && isNum(v.y1)) return;
       const g = lacks(r.returns, ['m3', 'm6', 'y1']);
       if (!g.length) return;
-      const noIndex = !S(r.index) && arr(r.bellwethers).filter((x) => x && S(x.symbol)).length >= 2 && g.length === 3;
-      (noIndex ? appsJob : miss).push(`${S(r.name)} (${g.join(', ')})`);
+      const measurable = S(r.index) || SECTOR_INDEX[FINDER_SECTORS.find((x) => nameKey(x) === nameKey(r.name))]
+        || bwOf(r).length >= 2;
+      (measurable && !failed.has(nameKey(r.name)) ? appsJob : miss).push(`${S(r.name)} (${g.join(', ')})`);
     });
     const gaps = miss.length + appsJob.length;
     add('Every sector', 'Returns over 3 months, 6 months and 1 year', rows.length - gaps, rows.length,
       'sectors.returns — the sector index\'s return over 3 months ("m3"), 6 months ("m6") and 1 year ("y1"), with "asOf" and "source".'
       + (miss.length ? ` Missing: ${miss.join('; ')}.` : '')
-      + (appsJob.length ? ` Do NOT search for these, which have no index: the application measures them from their bellwethers' prices: ${appsJob.map((x) => x.replace(/ \(.*$/, '')).join(', ')}.` : ''),
-      miss.concat(appsJob.map((x) => x.replace(/\(.*\)/, '(the app measures it from prices)'))).join('; '));
+      + (appsJob.length ? ` Do NOT search for these: the application measures them itself from the index or the bellwethers' prices: ${appsJob.map((x) => x.replace(/ \(.*$/, '')).join(', ')}.` : ''),
+      miss.concat(appsJob.map((x) => x.replace(/\(.*\)/, '(the app measures it from prices)'))).join('; '),
+      !miss.length && appsJob.length > 0);
   }
   need('Bellwether stocks for the price check', 'sectors.bellwethers',
-    (r) => { const n = arr(r.bellwethers).filter((x) => x && S(x.symbol)).length; return n >= 3 ? [] : [`${n} of 3 symbols`]; },
+    (r) => { const n = bwOf(r).length; return n >= 3 ? [] : [`${n} of 3 symbols`]; },
     'the 3 to 5 largest NSE-listed companies, each with its NSE "symbol".');
-  need('Business momentum: sales and profit growth', 'sectors.business',
-    (r) => lacks(r.business, ['revenueGrowth', 'profitGrowth']).concat(r.business && S(r.business.period) ? [] : ['period']),
-    'aggregate "revenueGrowth" and "profitGrowth" over the last four reported quarters, year on year, with "period", "basis" and "source". Where no aggregate is published, add up the bellwethers\' reported results and say so in "basis".');
-  need('Three-year outlook: earnings and demand growth', 'sectors.outlook',
-    (r) => lacks(r.outlook, ['earningsGrowth3y', 'demandGrowth3y']).concat(r.outlook && S(r.outlook.source) ? [] : ['source']),
-    'forecast annual "earningsGrowth3y" and "demandGrowth3y" over the next three years, with "years" and a dated "source". For a niche sector use the closest published industry forecast or the bellwethers\' consensus forecasts, and say which in "basis".');
+  const syms = (r) => bwOf(r).map((b) => S(b.symbol)).join(', ');
+  const eff = (r) => effective(r, d && d.verified);
+  /* Build 31: what a sector lacks is asked of its companies. */
+  need('Business momentum: sales and profit growth', 'sectors.bellwethers.quarter',
+    (r) => { const b = eff(r).business; const g = [].concat(isNum(b.revenueGrowth) ? [] : ['sales'], isNum(b.profitGrowth) ? [] : ['profit']);
+      return g.length ? [`${g.join(' and ')}: the quarter figures of ${syms(r) || 'its bellwethers'}`] : []; },
+    'where the sector\'s aggregate growth is not published, do NOT add it up yourself and do not leave it out: send EACH bellwether\'s own figures from its latest results filing on NSE/BSE, under sectors[].bellwethers[].quarter: { "period": "Q2 FY27", "revenue", "revenuePrev", "profit", "profitPrev", "source" } — revenue from operations and net profit, consolidated, in ₹ crore, for the latest quarter and the same quarter a year earlier. A loss is a negative number: send it, do not skip the company. The application adds the companies up and handles losses. Every listed company files these, so they can always be found.');
+  need('Three-year outlook: earnings and demand growth', 'sectors.bellwethers.forecast',
+    (r) => { const o = eff(r).outlook; const g = [].concat(isNum(o.earningsGrowth3y) ? [] : ['earnings'], isNum(o.demandGrowth3y) ? [] : ['demand']);
+      return g.length ? [`${g.join(' and ')}: the consensus forecasts of ${syms(r) || 'its bellwethers'}`] : []; },
+    'where no sector forecast is published, send EACH bellwether\'s own consensus forecast under sectors[].bellwethers[].forecast: { "epsGrowth3y" (forecast annual EPS growth over the next three years), "revenueGrowth3y" (forecast annual revenue growth), "years": "FY26 to FY29", "analysts" (how many), "source" }. Trendlyne\'s forecaster, MarketScreener\'s consensus and Moneycontrol\'s estimates publish these for listed companies; where no analyst covers a company, its own guidance from the latest earnings call, named as such in "source". The application takes the median across the companies.');
   need('Tailwinds and risks, two of each', 'sectors.outlook.tailwinds',
     (r) => {
       const t = arr(r.outlook && r.outlook.tailwinds).filter((x) => S(x).length > 8).length;
       const k = arr(r.outlook && r.outlook.risks).filter((x) => S(x).length > 8).length;
       return [].concat(t >= 2 ? [] : [`${t} of 2 tailwinds`], k >= 2 ? [] : [`${k} of 2 risks`]);
     },
-    'at least two "tailwinds" and two "risks", each a sentence with a figure where there is one.');
-  need('P/E against its five-year average', 'sectors.valuation',
-    (r) => lacks(r.valuation, ['pe']).concat(r.valuation && (real(r.valuation.pe5yAvg) || real(r.valuation.pe5yMedian) || (real(r.valuation.peMedian) && !(isNum(r.valuation.peMedianSince) && new Date().getFullYear() - r.valuation.peMedianSince < 3))) ? [] : ['pe5yAvg']),
-    'the sector index\'s trailing "pe" and its five-year average "pe5yAvg", with "asOf" and "source". Where only a median is published, send it: "pe5yMedian" for a five-year median, or "peMedian" with "peMedianSince" (the year the series starts) for a long-run median. With no sector index, the median of the bellwethers\' trailing P/E and of their own five-year average P/Es (Screener, Trendlyne, Tickertape publish both), with "basis": "bellwethers".');
+    'at least two "tailwinds" and two "risks", each a sentence with a figure where there is one. Where no sector outlook gives them, take them from the bellwethers\' own latest earnings-call transcripts, investor presentations or annual reports (management discussion and analysis), and name the company in each.');
+  {
+    /* Valuation: the research's own history, else the app's from the
+       companies' prices and EPS. A sector whose companies sent their EPS is
+       the app's to work out (until its check fails); the rest are asked. */
+    const ask = [], app = [];
+    rows.forEach((r) => {
+      if (isNum(eff(r).valuation.ratio)) return;
+      if (bwOf(r).some(canPrice) && !(ran && vfailed.has(nameKey(r.name)))) app.push(S(r.name));
+      else ask.push(`${S(r.name)} (EPS history of ${syms(r) || 'its bellwethers'})`);
+    });
+    add('Every sector', 'P/E against its own history', rows.length - ask.length - app.length, rows.length,
+      'sectors.bellwethers.eps — the sector index\'s trailing "pe" and its five-year average "pe5yAvg" where the index factsheet publishes both. Where it does not (no index, or a series under three years old), do NOT look for P/E averages: send EACH bellwether\'s earnings per share, consolidated and diluted, for each of the last five financial years and the trailing twelve months, under sectors[].bellwethers[]: "eps": [ { "fy": "FY26", "eps": 0 }, … ], "epsTtm": 0, "epsSource". Every annual report and results filing states it. The application works out each company\'s P/E history from its own price feed.'
+      + (ask.length ? ` Missing: ${ask.join('; ')}.` : '')
+      + (app.length ? ` Not needed for ${app.join(', ')}: the application works these out from the EPS already sent.` : ''),
+      ask.concat(app.map((n) => `${n} (the app works it out from prices and EPS)`)).join('; '),
+      !ask.length && app.length > 0);
+  }
   return out;
 }
 
@@ -580,6 +653,7 @@ export function returnsFromBars(bars) {
 export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } = {}) {
   const result = { at: now.toISOString(), benchmark: null, sectors: {}, failed: [] };
   if (!d || typeof fetchBars !== 'function') return result;
+  d = JSON.parse(JSON.stringify(d)); normaliseFinder(d);
   const tryKeys = async (keys) => {
     for (const k of keys) {
       try {
@@ -624,7 +698,159 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } =
   const list = arr(d.sectors).slice();
   for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(one));
   result.failed.sort((a, b) => FINDER_SECTORS.indexOf(a) - FINDER_SECTORS.indexOf(b));
+  /* Build 31. Valuation from the companies: for a sector whose research has
+     no P/E history, each bellwether that sent three years of EPS or more is
+     priced month by month over five years from its own price feed. The
+     sector is the median of its companies: their P/E now, their own
+     five-year average, and how far each stands from its own average. */
+  result.valuation = {}; result.valuationFailed = [];
+  const priceOne = async (b) => {
+    const key = typeof keyFor === 'function' ? keyFor(S(b.symbol), S(b.isin)) : null;
+    if (!key) return null;
+    try {
+      const h = peHistory(await fetchBars(key, { unit: 'months', interval: 1, years: 6 }), b.eps, b.epsTtm);
+      /* A P/E under 1 or over 1,000 is not a valuation: the EPS was sent in
+         another unit (paise, lakh) or for another company. Left out. */
+      const sane = (v) => isNum(v) && v >= 1 && v <= 1000;
+      return h && sane(h.pe) && sane(h.avg) ? { sym: S(b.symbol), ...h, ratio: h.pe / h.avg } : null;
+    } catch (e) { return null; }
+  };
+  const valOne = async (r) => {
+    if (!r || !S(r.name) || toolHistory(r.valuation) && real(r.valuation && r.valuation.pe)) return;
+    const picks = bwOf(r).filter(canPrice).slice(0, 5);
+    if (!picks.length) return;
+    const got = (await Promise.all(picks.map(priceOne))).filter(Boolean);
+    got.sort((a, b) => picks.findIndex((p) => S(p.symbol) === a.sym) - picks.findIndex((p) => S(p.symbol) === b.sym));
+    if (!got.length) { result.valuationFailed.push(S(r.name)); return; }
+    result.valuation[nameKey(r.name)] = { pe: r2(medianOf(got.map((x) => x.pe))), history: r2(medianOf(got.map((x) => x.avg))),
+      ratio: +medianOf(got.map((x) => x.ratio)).toFixed(3), of: got.map((x) => x.sym).join(', '),
+      companies: got.map((x) => ({ symbol: x.sym, pe: x.pe, avg: x.avg, months: x.months })), asOf: got.map((x) => x.asOf).sort().pop() };
+  };
+  for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(valOne));
+  result.valuationFailed.sort((a, b) => FINDER_SECTORS.indexOf(a) - FINDER_SECTORS.indexOf(b));
   return result;
+}
+
+/* ── From the companies themselves (build 31) ───────────────────────── */
+/* Tejas, 23-11-2026: "It's all listed companies." A sector-wide aggregate,
+   a sector P/E history or a sector forecast is often published nowhere, and
+   seven follow-ups could not find them for a dozen sectors. Every listed
+   company files its own results and EPS, and analysts forecast each one. So
+   the tool sends each bellwether's own figures and the application does the
+   adding up itself: sales and profit summed across the companies, each
+   company's P/E history worked out from its own price feed and EPS, and the
+   median of their forecasts. */
+const medianOf = (xs) => {
+  const s = xs.filter(isNum).sort((a, b) => a - b);
+  if (!s.length) return null;
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const bwOf = (r) => arr(r && r.bellwethers).filter((x) => x && typeof x === 'object' && S(x.symbol));
+const r2 = (v) => (isNum(v) ? +v.toFixed(2) : null);
+
+/* "FY26", "FY2026", "2025-26", "2026" → the 31 March that ends it. */
+export function fyEnd(v) {
+  const t = S(v);
+  let y = null, m;
+  if ((m = /(\d{4})\s*[-–\/]\s*(\d{2,4})/.exec(t))) y = Number(m[2].length === 2 ? m[1].slice(0, 2) + m[2] : m[2]);
+  else if ((m = /FY\s*'?(\d{4}|\d{2})\b/i.exec(t))) y = Number(m[1].length === 2 ? '20' + m[1] : m[1]);
+  else if ((m = /^(\d{4})$/.exec(t))) y = Number(m[1]);
+  return y && y > 1990 && y < 2100 ? `${y}-03-31` : null;
+}
+
+/* Sales and profit over the companies that sent both quarters. Profit is
+   summed, so a company that swung to a loss is counted, not dropped; where
+   the year-ago total is itself a loss, the change is set against its size
+   ("loss narrowed by 27%"). */
+export function companyBusiness(r) {
+  const qs = bwOf(r).map((b) => ({ sym: S(b.symbol), q: (b.quarter && typeof b.quarter === 'object') ? b.quarter : {} }));
+  const rev = qs.filter((x) => isNum(x.q.revenue) && isNum(x.q.revenuePrev) && x.q.revenuePrev > 0 && x.q.revenue >= 0);
+  const pro = qs.filter((x) => isNum(x.q.profit) && isNum(x.q.profitPrev));
+  const out = { revenueGrowth: null, profitGrowth: null, lossBase: false, of: [], period: '' };
+  if (rev.length) {
+    const a = rev.reduce((t, x) => t + x.q.revenue, 0), b = rev.reduce((t, x) => t + x.q.revenuePrev, 0);
+    out.revenueGrowth = r2((a / b - 1) * 100);
+  }
+  if (pro.length) {
+    const a = pro.reduce((t, x) => t + x.q.profit, 0), b = pro.reduce((t, x) => t + x.q.profitPrev, 0);
+    if (b > 0) out.profitGrowth = r2((a / b - 1) * 100);
+    else if (b < 0) { out.profitGrowth = r2(((a - b) / Math.abs(b)) * 100); out.lossBase = true; }
+  }
+  out.of = [...new Set(rev.concat(pro).map((x) => x.sym))];
+  out.period = S((rev[0] || pro[0] || { q: {} }).q.period);
+  return out;
+}
+
+/* The median of the companies' consensus forecasts. */
+export function companyOutlook(r) {
+  const fs = bwOf(r).map((b) => ({ sym: S(b.symbol), f: (b.forecast && typeof b.forecast === 'object') ? b.forecast : {} }));
+  const e = fs.filter((x) => isNum(x.f.epsGrowth3y)), g = fs.filter((x) => isNum(x.f.revenueGrowth3y));
+  return { earningsGrowth3y: e.length ? r2(medianOf(e.map((x) => x.f.epsGrowth3y))) : null,
+    demandGrowth3y: g.length ? r2(medianOf(g.map((x) => x.f.revenueGrowth3y))) : null,
+    of: [...new Set(e.concat(g).map((x) => x.sym))], years: S((e[0] || g[0] || { f: {} }).f.years) };
+}
+
+/* A company's P/E history from its own prices and its annual EPS. Each
+   month-end close is divided by the EPS of the latest year whose accounts
+   were out by then (two months after 31 March); a loss year has no P/E and
+   is left out. Over the last five years; 24 months at least. */
+export function peHistory(bars, eps, ttm) {
+  const list = arr(bars).filter((b) => b && isNum(b.c) && b.c > 0 && S(b.date)).sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (!list.length) return null;
+  const years = arr(eps).map((e) => ({ end: fyEnd(e && (e.fy != null ? e.fy : e.year != null ? e.year : e.period)), v: e && e.eps }))
+    .filter((e) => e.end && isNum(e.v)).sort((a, b) => (a.end < b.end ? -1 : 1));
+  const out_ = (y) => { const t = new Date(y + 'T00:00:00Z'); t.setUTCMonth(t.getUTCMonth() + 2); return t.toISOString().slice(0, 10); };
+  const last = list[list.length - 1];
+  const from = new Date(last.date + 'T00:00:00Z'); from.setUTCFullYear(from.getUTCFullYear() - 5);
+  const cut = from.toISOString().slice(0, 10);
+  const pes = [];
+  for (const b of list) {
+    if (b.date < cut) continue;
+    const e = years.filter((y) => out_(y.end) <= b.date).pop();
+    if (e && e.v > 0) pes.push(b.c / e.v);
+  }
+  const lastFy = years.length ? years[years.length - 1].v : null;
+  const now = isNum(ttm) && ttm > 0 ? ttm : (isNum(lastFy) && lastFy > 0 ? lastFy : null);
+  return { pe: now ? r2(last.c / now) : null, avg: pes.length >= 24 ? r2(pes.reduce((a, x) => a + x, 0) / pes.length) : null,
+    months: pes.length, asOf: last.date };
+}
+const epsYears = (b) => arr(b && b.eps).filter((e) => e && isNum(e.eps) && fyEnd(e.fy != null ? e.fy : e.year != null ? e.year : e.period)).length;
+/* A company the app can price over five years: three years of EPS at least. */
+export const canPrice = (b) => epsYears(b) >= 3;
+
+/* The P/E's own history as the research sent it: the five-year average, a
+   five-year median, or the long-run median of a series three years old. */
+function toolHistory(va) {
+  if (!va) return null;
+  if (real(va.pe5yAvg)) return ['pe5yAvg', va.pe5yAvg, 'five-year average'];
+  if (real(va.pe5yMedian)) return ['pe5yMedian', va.pe5yMedian, 'five-year median'];
+  if (real(va.peMedian) && !(isNum(va.peMedianSince) && new Date().getFullYear() - va.peMedianSince < 3))
+    return ['peMedian', va.peMedian, 'long-run median' + (va.peMedianSince ? ' since ' + va.peMedianSince : '')];
+  return null;
+}
+
+/* What a sector stands on, the research's own sector figure first and the
+   companies' figures where it has none. `from` says which. */
+export function effective(r, ver) {
+  const bz = r.business || {}, ol = r.outlook || {}, va = r.valuation || {};
+  const cb = companyBusiness(r), co = companyOutlook(r);
+  const pick = (own, comp) => (real(own) ? [own, 'research'] : isNum(comp) ? [comp, 'companies'] : [null, '']);
+  const [rv, rvF] = pick(bz.revenueGrowth, cb.revenueGrowth), [pf, pfF] = pick(bz.profitGrowth, cb.profitGrowth);
+  const [eg, egF] = pick(ol.earningsGrowth3y, co.earningsGrowth3y), [dg, dgF] = pick(ol.demandGrowth3y, co.demandGrowth3y);
+  const th = toolHistory(va);
+  const cv = ver && ver.valuation && ver.valuation[nameKey(r.name)];
+  let valuation;
+  if (real(va.pe) && th) valuation = { pe: va.pe, history: th[1], historyBasis: th[2], ratio: +(va.pe / th[1]).toFixed(3), from: 'research' };
+  else if (cv && isNum(cv.ratio)) valuation = { pe: cv.pe, history: cv.history, ratio: cv.ratio, from: 'app', of: cv.of,
+    historyBasis: `own five-year average, worked out by the application from the prices and EPS of ${cv.of}` };
+  else valuation = { pe: real(va.pe) ? va.pe : null, history: null, historyBasis: '', ratio: null, from: '' };
+  return {
+    business: { revenueGrowth: rv, profitGrowth: pf, from: { revenue: rvF, profit: pfF }, lossBase: pfF === 'companies' && cb.lossBase,
+      period: (rvF === 'companies' || pfF === 'companies') && !S(bz.period) ? cb.period : S(bz.period), of: cb.of },
+    outlook: { earningsGrowth3y: eg, demandGrowth3y: dg, from: { earnings: egF, demand: dgF }, of: co.of, years: S(ol.years) || co.years },
+    valuation,
+  };
 }
 
 /* ── Scoring ──────────────────────────────────────────────────────────── */
@@ -683,31 +909,26 @@ export function scoreFinder(d0) {
     ['m3', 'm6', 'y1'].forEach((k) => { rel[k] = isNum(ret[k]) && isNum(bm[k]) ? +(ret[k] - bm[k]).toFixed(2) : null; });
     const base = isNum(bm.y1) ? rel : ret;
     const bz = r.business || {}, ol = r.outlook || {}, va = r.valuation || {};
+    /* Build 31: the research's sector figure first, the companies' own
+       figures where it has none. */
+    const ef = effective(r, ver);
+    const eb = ef.business, eo = ef.outlook, ev = ef.valuation;
     return {
       name: S(r.name), short: SHORT_NAMES[FINDER_SECTORS.find((x) => nameKey(x) === nameKey(r.name))] || S(r.name),
       subSector: S(r.subSector), index: S(r.index), why: S(r.why),
       returns: ret, rel,
-      business: { revenueGrowth: real(bz.revenueGrowth) ? bz.revenueGrowth : null,
-        profitGrowth: real(bz.profitGrowth) ? bz.profitGrowth : null, period: S(bz.period), source: S(bz.source) },
-      outlook: { earningsGrowth3y: real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null,
-        demandGrowth3y: real(ol.demandGrowth3y) ? ol.demandGrowth3y : null, years: S(ol.years),
-        tailwinds: arr(ol.tailwinds).map(S).filter(Boolean), risks: arr(ol.risks).map(S).filter(Boolean), source: S(ol.source) },
-      valuation: (() => {
-        /* The P/E's own history: the five-year average where it exists, else a
-           five-year median, else the long-run median of a series at least
-           three years long (build 30). */
-        const hist = real(va.pe5yAvg) ? ['pe5yAvg', va.pe5yAvg, 'five-year average']
-          : real(va.pe5yMedian) ? ['pe5yMedian', va.pe5yMedian, 'five-year median']
-          : real(va.peMedian) && !(isNum(va.peMedianSince) && new Date().getFullYear() - va.peMedianSince < 3) ? ['peMedian', va.peMedian, 'long-run median' + (va.peMedianSince ? ' since ' + va.peMedianSince : '')] : null;
-        return { pe: real(va.pe) ? va.pe : null, pe5yAvg: real(va.pe5yAvg) ? va.pe5yAvg : null,
-          history: hist ? hist[1] : null, historyBasis: hist ? hist[2] : '',
-          ratio: real(va.pe) && hist && hist[1] > 0 ? +(va.pe / hist[1]).toFixed(3) : null,
-          asOf: S(va.asOf), source: S(va.source) };
-      })(),
+      business: { revenueGrowth: eb.revenueGrowth, profitGrowth: eb.profitGrowth, period: eb.period, source: S(bz.source),
+        from: eb.from, lossBase: eb.lossBase, of: eb.of },
+      outlook: { earningsGrowth3y: eo.earningsGrowth3y, demandGrowth3y: eo.demandGrowth3y, years: eo.years,
+        tailwinds: arr(ol.tailwinds).map(S).filter(Boolean), risks: arr(ol.risks).map(S).filter(Boolean), source: S(ol.source),
+        from: eo.from, of: eo.of },
+      valuation: { pe: ev.pe, pe5yAvg: real(va.pe5yAvg) && ev.from === 'research' ? va.pe5yAvg : null,
+        history: ev.history, historyBasis: ev.historyBasis, ratio: ev.ratio, from: ev.from,
+        asOf: S(va.asOf), source: S(va.source) },
       sub: {
         m3: base.m3, m6: base.m6, y1: base.y1,
-        profit: real(bz.profitGrowth) ? bz.profitGrowth : null, revenue: real(bz.revenueGrowth) ? bz.revenueGrowth : null,
-        earnings: real(ol.earningsGrowth3y) ? ol.earningsGrowth3y : null, demand: real(ol.demandGrowth3y) ? ol.demandGrowth3y : null,
+        profit: eb.profitGrowth, revenue: eb.revenueGrowth,
+        earnings: eo.earningsGrowth3y, demand: eo.demandGrowth3y,
       },
     };
   });
@@ -762,7 +983,9 @@ export function scoreFinder(d0) {
       + '6-month and 1-year returns against the Nifty 50 (weighted 25, 35 and 40); business momentum from '
       + 'profit and sales growth over the last four quarters (60 and 40); the three-year outlook from forecast '
       + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average (or, where '
-      + 'the index is younger, its five-year or long-run median), cheaper scoring higher. Each measure is ranked on '
+      + 'the index is younger, its five-year or long-run median), cheaper scoring higher. Where the research has no '
+      + 'sector-wide figure, the application uses the bellwether companies\' own: their sales and profit summed, the '
+      + 'median of their consensus forecasts, and each company\'s P/E history worked out from its prices and EPS. Each measure is ranked on '
       + 'its own and a part is the weighted mean of its measures\' ranks; a part with one measure missing uses the other. Past momentum and the outlook must be established for a sector to be ranked '
       + 'among the leaders; business momentum or valuation that could not be established counts as average '
       + '(the 50th percentile), neither reward nor penalty.',
@@ -774,14 +997,18 @@ function reasonOf(r, bench) {
   const bits = [];
   if (isNum(r.rel.y1)) bits.push(`${r.rel.y1 >= 0 ? 'beat' : 'trailed'} the ${BENCHMARK} by ${Math.abs(r.rel.y1).toFixed(1)} points over a year`);
   else if (isNum(r.returns.y1)) bits.push(`${sgn(r.returns.y1)}% over a year`);
-  if (isNum(r.business.profitGrowth)) bits.push(`profits ${sgn(r.business.profitGrowth)}% over four quarters`);
-  if (isNum(r.outlook.earningsGrowth3y)) bits.push(`earnings forecast to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year`);
+  if (isNum(r.business.profitGrowth)) bits.push(r.business.lossBase
+    ? `combined loss ${r.business.profitGrowth >= 0 ? 'narrowed' : 'widened'} by ${Math.abs(r.business.profitGrowth).toFixed(1)}% (${r.business.of.join(', ')})`
+    : `profits ${sgn(r.business.profitGrowth)}%${r.business.from && r.business.from.profit === 'companies' ? ` across ${r.business.of.join(', ')}` : ' over four quarters'}`);
+  if (isNum(r.outlook.earningsGrowth3y)) bits.push(`earnings forecast to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year${r.outlook.from && r.outlook.from.earnings === 'companies' ? ' (median of the companies\' consensus)' : ''}`);
   else if (isNum(r.outlook.demandGrowth3y)) bits.push(`demand forecast to grow ${r.outlook.demandGrowth3y.toFixed(1)}% a year`);
   if (isNum(r.valuation.pe) && isNum(r.valuation.pe5yAvg)) bits.push(`P/E ${r.valuation.pe.toFixed(1)} against a five-year average of ${r.valuation.pe5yAvg.toFixed(1)}`);
   void bench;
   if (r.neutral && r.neutral.length) bits.push(`${r.neutral.join(' and ')} not established, counted as average`);
   if (r.valuation && r.valuation.historyBasis && r.valuation.historyBasis !== 'five-year average' && isNum(r.valuation.history))
-    bits.push(`P/E set against its ${r.valuation.historyBasis} of ${r.valuation.history.toFixed(1)}`);
+    bits.push(r.valuation.from === 'app'
+      ? `P/E ${isNum(r.valuation.pe) ? r.valuation.pe.toFixed(1) + ' ' : ''}against the companies' own five-year average of ${r.valuation.history.toFixed(1)}, worked out by the application`
+      : `P/E set against its ${r.valuation.historyBasis} of ${r.valuation.history.toFixed(1)}`);
   const s = bits.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : '';
 }

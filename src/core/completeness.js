@@ -126,12 +126,14 @@ function orderedAnnual(rows) {
 
 /* One finding. `have` and `want` are counts in whatever unit the label names;
    `ask` is the sentence the follow-up prompt will carry. */
-function check(out, group, label, have, want, ask, detail) {
+function check(out, group, label, have, want, ask, detail, appOnly) {
   /* Nothing to judge: a "how recent are the readings" check on a block with no
      readings is already reported by the check that found the block empty. */
   if (!(want > 0)) return;
   const ok = have >= want;
-  out.push({ group, label, have, want, ok, ask: ok ? '' : ask, detail: ok ? '' : (detail || '') });
+  /* appOnly (build 31): every gap in it is the application's own to fill from
+     prices; it counts as a gap but is not asked of the research tool. */
+  out.push({ group, label, have, want, ok, ask: ok ? '' : ask, detail: ok ? '' : (detail || ''), appOnly: !ok && !!appOnly });
 }
 
 /* ── A company ────────────────────────────────────────────────────────── */
@@ -572,7 +574,13 @@ export const SOURCE_HINTS = [
     'regulatory disclosures (for a bank, the Basel III Pillar 3 disclosure)', 'the annual report\u2019s management discussion']],
   [/^companies\[[^\]]*\]\.(litigation|governance|management)/, ['NSE/BSE corporate announcements', 'SEBI orders',
     'e-Courts and NCLT cause lists', 'the annual report\u2019s contingent liabilities note']],
-  /* The Sector Finder (build 29). */
+  /* The Sector Finder (build 29). Build 31: each company's own figures. */
+  [/^sectors\.bellwethers\.quarter/, ['each bellwether\u2019s quarterly results filing on NSE or BSE (corporate announcements)',
+    'the company\u2019s results press release and investor presentation', 'Moneycontrol or Business Standard results pages for the company']],
+  [/^sectors\.bellwethers\.forecast/, ['Trendlyne forecaster (consensus EPS and revenue)', 'MarketScreener consensus estimates',
+    'Moneycontrol analyst estimates', 'the company\u2019s own guidance in its latest earnings call']],
+  [/^sectors\.bellwethers\.eps/, ['each bellwether\u2019s annual reports (EPS in the statement of profit and loss)',
+    'the results filings on NSE or BSE', 'Moneycontrol or Screener.in annual figures for the company']],
   [/^sectors\.valuation/, ['the NSE index factsheet on niftyindices.com (P/E and its history)',
     'Screener.in P/E history of the bellwether companies', 'Trendlyne sector P/E', 'Tickertape sector P/E',
     'the median of the bellwethers\u2019 own five-year average P/E']],
@@ -621,11 +629,12 @@ export function completeness(payload, { now = new Date() } = {}) {
   /* Build 28: the Sector Finder's screen is measured the same way. */
   if (isFinderPayload(d)) {
     const checks = [];
-    finderChecks(d).forEach((f) => check(checks, f.group, f.label, f.have, f.want, f.ask, f.detail));
+    finderChecks(d).forEach((f) => check(checks, f.group, f.label, f.have, f.want, f.ask, f.detail, f.appOnly));
     const sc = checks.length
       ? checks.reduce((a, c) => a + Math.max(0, Math.min(1, c.want ? c.have / c.want : 1)), 0) / checks.length : 0;
     const miss = checks.filter((c) => !c.ok);
     annotate(checks, searchLogOf(d));
+    checks.forEach((c) => { if (c.appOnly) c.state = 'app'; });
     return { kind: 'finder', sections: [{ title: 'Sector Finder \u2014 the screen', checks }],
       pct: Math.min(miss.length ? 99 : 100, Math.round(sc * 100)), total: checks.length, met: checks.length - miss.length, missing: miss,
       searched: miss.filter((c) => c.state === 'searched').length, open: miss.filter((c) => c.state === 'open').length };
@@ -671,6 +680,9 @@ export function completeness(payload, { now = new Date() } = {}) {
 /* ── The follow-up prompt ─────────────────────────────────────────────── */
 export function topUpPrompt(payload, { now = new Date() } = {}) {
   const comp = completeness(payload, { now });
+  /* What the application fills itself is not asked for (build 31). */
+  comp.missing = comp.missing.filter((c) => !c.appOnly);
+  comp.sections.forEach((s) => { s.checks = s.checks.filter((c) => !c.appOnly); });
   if (!comp.missing.length) return '';
   const d = payload || {};
   const p2 = (v) => (v < 10 ? '0' : '') + v;

@@ -9395,12 +9395,22 @@ function buildFinder(p, lang){
             + '<br><span class="mut">' + (ret.checked ? 'checked by the application from ' + (ret.basis === 'index' ? 'the ' + e(ret.of) + ' index' : 'the prices of ' + e(ret.of))
               : 'as the research states it, not checked') + (ret.asOf ? ', to ' + e(dmy(ret.asOf)) : '') + '</span>'] },
           { cells: ['Against the Nifty 50', finderPts(x.rel.m3) + ' / ' + finderPts(x.rel.m6) + ' / ' + finderPts(x.rel.y1) + ' points'] },
-          { cells: ['Sales and profit growth', finderPct(bz.revenueGrowth) + ' sales, ' + finderPct(bz.profitGrowth) + ' net profit'
-            + (bz.period ? '<br><span class="mut">' + e(bz.period) + '</span>' : '')] },
+          { cells: ['Sales and profit growth', finderPct(bz.revenueGrowth) + ' sales, '
+            + (bz.lossBase ? 'combined loss ' + (bz.profitGrowth >= 0 ? 'narrowed' : 'widened') + ' by ' + n(Math.abs(bz.profitGrowth), 1) + '%' : finderPct(bz.profitGrowth) + ' net profit')
+            + (bz.period || (bz.from && (bz.from.revenue === 'companies' || bz.from.profit === 'companies'))
+              ? '<br><span class="mut">' + e(bz.period || '') + (bz.from && (bz.from.revenue === 'companies' || bz.from.profit === 'companies')
+                ? (bz.period ? ' · ' : '') + 'added up by the application from ' + e(arr(bz.of).join(', ')) : '') + '</span>' : '')] },
           { cells: ['Forecast growth, a year', finderPct(ol.earningsGrowth3y) + ' earnings, ' + finderPct(ol.demandGrowth3y) + ' demand'
-            + (ol.years ? '<br><span class="mut">' + e(ol.years) + (ol.source ? ' · ' + e(ol.source) : '') + '</span>' : '')] },
-          { cells: ['P/E against its five-year average', isNum_(va.pe) ? n(va.pe, 1) + ' against ' + n(va.pe5yAvg, 1)
-            + ' (' + (va.ratio < 1 ? 'below' : 'above') + ' its average)' : '—'] }
+            + (function(){
+                var bits = [];
+                if (ol.years) bits.push(e(ol.years));
+                if (ol.source) bits.push(e(ol.source));
+                if (ol.from && (ol.from.earnings === 'companies' || ol.from.demand === 'companies')) bits.push('median of the consensus for ' + e(arr(ol.of).join(', ')));
+                return bits.length ? '<br><span class="mut">' + bits.join(' · ') + '</span>' : '';
+              })()] },
+          { cells: ['P/E against its own history', isNum_(va.pe) && isNum_(va.history) ? n(va.pe, 1) + ' against ' + n(va.history, 1)
+            + ' (' + (va.ratio < 1 ? 'below' : 'above') + ' its history)'
+            + (va.historyBasis ? '<br><span class="mut">' + e(va.historyBasis) + '</span>' : '') : '—'] }
         ], { kv: true, widths: ['34%', '66%'] }) + '</figure>'
         + (arr(ol.tailwinds).length ? '<p class="mut" style="margin-top:1.5mm"><b>Tailwinds.</b></p>' + eqList(ol.tailwinds.slice(0, 4)) : '')
         + (arr(ol.risks).length ? '<p class="mut"><b>Risks.</b></p>' + eqList(ol.risks.slice(0, 4)) : '');

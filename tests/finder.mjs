@@ -143,9 +143,11 @@ console.log('\nDepth and the follow-up');
 const fx = finderFixture({ thin: ['Retail', 'Aviation'] });
 const c = completeness(fx);
 ok('a screen is measured as a screen', c.kind === 'finder' && c.sections.length === 1);
-const pe = c.missing.find((x) => x.label === 'P/E against its five-year average');
-ok('the two sectors without a valuation are named, with the fields they lack', pe && pe.have === 39 && pe.want === 41
-  && /Retail \(pe, pe5yAvg\); Aviation \(pe, pe5yAvg\)/.test(pe.detail || ''), pe && pe.detail);
+const pe = c.missing.find((x) => x.label === 'P/E against its own history');
+/* Build 31: a sector without a valuation is asked for its companies' EPS,
+   named by symbol, not for a sector P/E average it may not have. */
+ok('the two sectors without a valuation are named, with the companies to look up', pe && pe.have === 39 && pe.want === 41
+  && /Retail \(EPS history of AAA25, BBB25, CCC25\); Aviation \(EPS history of AAA29, BBB29, CCC29\)/.test(pe.detail || ''), pe && pe.detail);
 ok('the percentage stays under 100 while anything is missing', c.pct < 100, c.pct);
 const tp = topUpPrompt(fx);
 ok('the follow-up is for the Sector Finder screen', /the Sector Finder screen/.test(tp) && /"kind": "sectorScreen"/.test(tp) && /Sectors are matched by\s+"name"/.test(tp));
@@ -159,7 +161,7 @@ const mg = mergeTopUp(fx, add);
 ok('a follow-up merges into the sectors by name, whatever the case', mg.ok && mg.merged.sectors.length === 41
   && mg.merged.sectors.find((s) => s.name === 'Retail').valuation.pe === 40
   && mg.merged.sectors.find((s) => s.name === 'Aviation').valuation.pe === 30);
-ok('and closes the gap', !completeness(mg.merged).missing.some((x) => x.label === 'P/E against its five-year average'));
+ok('and closes the gap', !completeness(mg.merged).missing.some((x) => x.label === 'P/E against its own history'));
 
 console.log('\nTwo screens compared');
 const a = F.scoreFinder(finderFixture());

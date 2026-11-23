@@ -100,7 +100,7 @@ const scored = scoreFinder(messy).rows[0];
 ok('and the sector is then scored on every part', scored.parts.momentum != null && scored.parts.business != null && scored.parts.outlook != null && scored.parts.valuation != null);
 const dep = completeness(messy).missing.map((c) => c.label);
 ok('its depth no longer lacks returns, outlook or valuation', !dep.includes('Returns over 3 months, 6 months and 1 year')
-  && !dep.includes('P/E against its five-year average') && !dep.includes('Tailwinds and risks, two of each'), dep.join(' | '));
+  && !dep.includes('P/E against its own history') && !dep.includes('Tailwinds and risks, two of each'), dep.join(' | '));
 const unit = { run: {}, global: { marketSizeUsdBn: 1 }, companies: [{ symbol: 'X', snapshot: { marketCap: '₹2,13,614 crore' } }] };
 const ru = readCheck(unit);
 ok('a figure with a scale word keeps its text and is listed, not turned into a bare number',

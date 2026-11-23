@@ -538,6 +538,7 @@ body.previewing{overflow:hidden;}
 /* Build 28: the state of a missing item in the depth lists. */
 .st-searched{color:var(--warn,#E0A030);font-size:.92em;font-weight:600;}
 .st-open{color:var(--ink3,#8A94A8);font-size:.92em;}
+.st-app{color:var(--ok,#4FAE7B);font-size:.92em;font-weight:600;}
 #toolRow.armed,#toolRowCo.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
 #toolRow.armed .btn,#toolRowCo.armed .btn{background:var(--surf);border-color:var(--gold);}
 /* Build 27: the paste box is marked the same way while Import is open, on the
@@ -570,7 +571,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="22-11-2026.30";</script>
+<script>window.APP_BUILD="23-11-2026.31";</script>
 </head>
 <body>
 
@@ -5651,7 +5652,9 @@ function verifyFinder(id){
   if($('#finderMsg')) $('#finderMsg').textContent = 'Checking the returns against index and stock prices…';
   return EQ.prices.loadInstrumentMap().then(function(map){
     return EQ.finder.verifyReturns(rec.data, {
-      fetchBars: function(key){ return EQ.prices.fetchUpstox(key, { unit:'days', interval:1, years:2 }); },
+      /* Daily prices for the returns; monthly over six years for the
+         companies' P/E history (build 31). */
+      fetchBars: function(key, o){ return EQ.prices.fetchUpstox(key, o || { unit:'days', interval:1, years:2 }); },
       keyFor: function(sym, isin){ return EQ.prices.instrumentKeyFor(sym, map, isin || null); }
     });
   }).then(function(v){
@@ -5660,14 +5663,30 @@ function verifyFinder(id){
     if(!hit) return false;
     hit.data.verified = v;
     libWrite(lib);
-    var n = Object.keys(v.sectors || {}).length;
+    var n = Object.keys(v.sectors || {}).length, nv = Object.keys(v.valuation || {}).length;
     if($('#finderMsg')) $('#finderMsg').textContent = n
       ? 'Returns checked by the app for ' + n + ' sector' + (n === 1 ? '' : 's') + (v.benchmark ? ' and the Nifty 50' : '')
-        + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures.' : '.')
+        + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures' : '')
+        + (nv ? '. P/E history worked out from company prices and EPS for ' + nv + ' sector' + (nv === 1 ? '' : 's') : '') + '.'
       : 'The price source could not be reached, so the returns are the research’s own, marked "not checked".';
     renderFinder();
     return true;
-  }, function(){ FINDER_BUSY = false; return false; });
+  }, function(){
+    /* Build 31: a check that could not run at all is recorded as failed for
+       every sector, so the next follow-up asks the research for the returns
+       instead of leaving them to an app that cannot reach its prices. */
+    FINDER_BUSY = false;
+    var lib = libRead(), hit = lib.filter(function(r){ return r.id === id; })[0];
+    if(hit){
+      var names = (hit.data.sectors || []).map(function(x){ return x && x.name; }).filter(Boolean);
+      hit.data.verified = { at: new Date().toISOString(), benchmark: null, sectors: {}, failed: names,
+        valuation: {}, valuationFailed: names, error: true };
+      libWrite(lib);
+    }
+    if($('#finderMsg')) $('#finderMsg').textContent = 'The price source could not be reached, so the returns are the research’s own, marked "not checked". The next follow-up asks the research for them.';
+    renderFinder();
+    return false;
+  });
 }
 window.verifyFinder = verifyFinder;
 /* The Sector Screen PDF is built from the screen on show, with the one before
@@ -5738,7 +5757,7 @@ window.addEventListener('eq:ready', function(){
   /* A screen saved while offline is checked once the engine is up. */
   setTimeout(function(){
     var last = finderRecords().slice(-1)[0];
-    if(last && !(last.data && last.data.verified)) verifyFinder(last.id);
+    if(last && !(last.data && last.data.verified && !last.data.verified.error)) verifyFinder(last.id);
   }, 1500);
 });
 
@@ -5773,6 +5792,7 @@ function topUpTarget(d){
   return segRecord();
 }
 function stateWord(c){
+  if(c && c.state === 'app') return 'the app works it out from prices';
   if(!c || c.state !== 'searched') return c && c.state === 'found' ? 'found' : 'not yet searched';
   var d = c.lastTried ? String(c.lastTried).replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$3-$2-$1') : '';
   return 'searched, not found \u00d7' + c.tries + (d ? ', last ' + d : '');

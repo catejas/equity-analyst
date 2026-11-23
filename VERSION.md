@@ -26,7 +26,31 @@ behave and it is not a fault.
 
 ## Current build
 
-`22-11-2026.30` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`23-11-2026.31` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 31, after seven real follow-ups that still left a dozen sectors without
+sector-wide figures (Tejas: "Find a way to get data. It's all listed
+companies."). The tool now sends each bellwether company's own figures and
+the application works the sector out:
+- **Sales and profit:** each company's latest quarter and the same quarter a
+  year earlier (`bellwethers[].quarter`), summed by the app. A company that
+  swung to a loss is counted; a loss in both years scores as the loss
+  narrowing or widening.
+- **Valuation:** each company's EPS for five years and TTM
+  (`bellwethers[].eps`, `epsTtm`). The price check fetches six years of
+  monthly prices and works out each company's own P/E history (month-end
+  close over the EPS of the latest year whose accounts were out); the sector
+  is the median of its companies.
+- **Outlook:** each company's consensus EPS and revenue growth
+  (`bellwethers[].forecast`); the sector is their median.
+- **The research's own sector figure comes first**; the companies fill only
+  what it lacks, and the PDF says which.
+- **The follow-up names the companies** to look up, by symbol. What the app
+  measures itself (returns of any sector with an index or two bellwethers;
+  P/E history once EPS is in) is not asked of the tool, until the app's own
+  check fails for it. A check that could not run at all is recorded as
+  failed, so the research is asked instead.
+- New suite `finder31.mjs`; the real fixtures now include follow-ups 5 to 7.
 
 Build 30, from the five real Finder payloads of 22-11-2026 (base plus four
 follow-ups). Nothing in them went unread; the gaps were structural:
