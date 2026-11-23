@@ -128,7 +128,7 @@ console.log('\nThe follow-up asks the companies');
   ok('business names the companies whose quarter figures are wanted', /Education \(sales and profit: the quarter figures of NIITLTD, APTECHT, CAREERP\)/.test(bz.detail), bz.detail);
   ok('and asks for each company\'s filing, losses included', /EACH bellwether/.test(bz.ask) && /A loss is a negative number/.test(bz.ask));
   const ol = ch.find((c) => c.label.startsWith('Three-year'));
-  ok('the outlook asks each company\'s consensus', /consensus forecasts of NIITLTD/.test(ol.detail) && /Trendlyne/.test(ol.ask));
+  ok('the outlook asks each company\'s consensus estimates or guidance', /consensus estimates or guidance of NIITLTD/.test(ol.detail) && /Trendlyne/.test(ol.ask) && /guidance/.test(ol.ask));
   const va = ch.find((c) => c.label.startsWith('P/E'));
   ok('valuation asks for EPS, not for P/E averages', /Education \(EPS history of NIITLTD, APTECHT, CAREERP\)/.test(va.ask) && /do NOT look for P\/E averages/.test(va.ask), va.ask.slice(-200));
   ok('a sector whose companies sent EPS is the app\'s to work out', /Aviation \(the app works it out/.test(va.detail) && !/Missing: [^.]*Aviation/.test(va.ask));
@@ -163,7 +163,7 @@ console.log('\nThe prompt');
 {
   const pr = F.buildFinderPrompt({ now: new Date('2026-11-23T10:00:00Z') });
   ok('says every sector is made of listed companies', /EVERY SECTOR IS MADE OF LISTED\s+COMPANIES/.test(pr));
-  ok('shows the companies\' quarter, EPS and forecast in the JSON', /"quarter": \{ "period"/.test(pr) && /"eps": \[ \{ "fy"/.test(pr) && /"forecast": \{ "epsGrowth3y"/.test(pr));
+  ok('shows the companies\' quarter, EPS and forecast in the JSON', /"quarter": \{ "period"/.test(pr) && /"eps": \[ \{ "fy"/.test(pr) && /"forecast": \{ "eps": \[/.test(pr) && /"guidance": \{ "revenueGrowth"/.test(pr));
   ok('no longer asks the tool to add the results up itself', !/add up the bellwethers/.test(pr));
 }
 

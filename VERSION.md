@@ -26,7 +26,29 @@ behave and it is not a fault.
 
 ## Current build
 
-`23-11-2026.31` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`23-11-2026.32` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 32, Tejas's decisions of 23-11-2026 after follow-ups 8 and 9:
+- **The price check is queued.** A check asked for while one runs runs
+  next; a result whose data stamp (`finderStamp`) no longer matches the
+  screen is thrown away and run again. His three follow-ups, imported back to
+  back, had left the first check, run before his EPS arrived, stamped on the
+  merged screen, so P/E history read "the app works it out" for good. On
+  launch, a screen whose check was run on older data is checked again. A
+  **Check prices again** button, and progress ("6 of 41 sectors…").
+- **Calendar years** (CY21 = 31-12-2021) and estimate years (FY27E) are read:
+  ABB's EPS can now be priced.
+- **The outlook, in tiers.** Published (the research's sector forecast, or the
+  companies' consensus estimates as the site shows them, year by year; with
+  two forecast years the third is extended at their trend), then Guidance
+  (the company's own), then Past (its last three years' EPS growth, capped at
+  ±50% a year, counted at half weight). A sector takes the best tier its
+  companies reached and the median of those companies only.
+- **A badge on the outlook figure only**: Published, Guidance or Past, in the
+  ranking table (tap for the source) and the Sector Screen PDF.
+- A past-trend figure is scored but still asked for in every follow-up.
+- New suites `finder32.mjs`, `finder32ui.mjs`; follow-ups 8 (two parts) and 9
+  added as fixtures.
 
 Build 31, after seven real follow-ups that still left a dozen sectors without
 sector-wide figures (Tejas: "Find a way to get data. It's all listed

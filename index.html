@@ -539,6 +539,9 @@ body.previewing{overflow:hidden;}
 .st-searched{color:var(--warn,#E0A030);font-size:.92em;font-weight:600;}
 .st-open{color:var(--ink3,#8A94A8);font-size:.92em;}
 .st-app{color:var(--ok,#4FAE7B);font-size:.92em;font-weight:600;}
+.obadge{display:inline-block;border:0;border-radius:9px;padding:1px 7px;margin:0 2px;font-size:10.5px;font-weight:700;line-height:15px;letter-spacing:.2px;cursor:pointer;vertical-align:1px;}
+.ob-published{background:#DDF2E6;color:#1E7A47;}.ob-guidance{background:#DDE9FA;color:#24569E;}.ob-past{background:#E7E7E9;color:#55565C;}
+.opair{white-space:nowrap;}.onote{display:block;font-size:11px;color:var(--mut,#777);margin-top:2px;}.onote.hidden{display:none;}
 #toolRow.armed,#toolRowCo.armed{outline:2px solid var(--gold);outline-offset:6px;border-radius:14px;}
 #toolRow.armed .btn,#toolRowCo.armed .btn{background:var(--surf);border-color:var(--gold);}
 /* Build 27: the paste box is marked the same way while Import is open, on the
@@ -571,7 +574,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="23-11-2026.31";</script>
+<script>window.APP_BUILD="23-11-2026.32";</script>
 </head>
 <body>
 
@@ -625,6 +628,7 @@ body.previewing{overflow:hidden;}
       </div>
     </div>
     <div id="finderMsg" class="note" style="margin-top:8px;"></div>
+    <button class="btn sm hidden" id="btnFinderRecheck" style="margin:6px 0 0;">Check prices again</button>
     <div id="finderDepth"></div>
   </div>
 
@@ -5482,6 +5486,27 @@ function pctCell(v, checked){
   if(typeof v !== 'number' || !isFinite(v)) return '<span class="mut">—</span>';
   return '<span class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + v.toFixed(1) + '</span>';
 }
+/* Build 32. A small badge on each outlook figure says where it came from:
+   Published (a consensus or published forecast), Guidance (the companies'
+   own) or Past (their past EPS growth, at half weight). Tap for the source. */
+var OBADGE = { published: 'Published', guidance: 'Guidance', past: 'Past' };
+function outlookBadges(x){
+  var o = x.outlook || {}, t = o.tier || {}, nt = o.note || {}, out = '', notes = '';
+  var ks = ['earnings', 'demand'].filter(function(k){ return t[k] && OBADGE[t[k]]; });
+  if(!ks.length) return '';
+  var key = esc(x.name) + '|outlook';
+  ks.forEach(function(k){ notes += '<span class="onote hidden" data-for="' + key + (ks.length > 1 && t.earnings !== t.demand ? '|' + k : '') + '">'
+    + esc(k.charAt(0).toUpperCase() + k.slice(1)) + ': ' + esc(nt[k] || '') + '</span>'; });
+  /* Both figures from the same kind of source: one badge. */
+  if(ks.length === 1 || t.earnings === t.demand){
+    var tier = t[ks[0]];
+    out = ' <button type="button" class="obadge ob-' + tier + '" data-k="' + key + '" aria-label="outlook: ' + OBADGE[tier] + '">' + OBADGE[tier] + '</button>';
+  } else {
+    ks.forEach(function(k){ out += ' <span class="opair">' + k + ' <button type="button" class="obadge ob-' + t[k] + '" data-k="' + key + '|' + k
+      + '" aria-label="' + k + ' outlook: ' + OBADGE[t[k]] + '">' + OBADGE[t[k]] + '</button></span>'; });
+  }
+  return '<span class="sub obadges">outlook' + out + '</span>' + notes;
+}
 function finderTableHtml(sc){
   if(!sc || !sc.rows.length) return '';
   var b = sc.benchmark || {};
@@ -5490,7 +5515,8 @@ function finderTableHtml(sc){
     return '<tr class="' + (top ? 'top' : '') + '"><td class="n">' + x.rank + '</td>'
       + '<td><b>' + esc(x.name) + '</b>' + (x.subSector ? '<span class="sub">' + esc(x.subSector) + '</span>' : '')
       + (!x.eligible ? '<span class="sub">not ranked among the leaders: no ' + esc(x.missingParts.filter(function(k){ return k === 'momentum' || k === 'outlook'; }).join(' or ')) + '</span>'
-          : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.join(' and ')) + ' counted as average</span>' : '')) + '</td>'
+          : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.join(' and ')) + ' counted as average</span>' : ''))
+      + outlookBadges(x) + '</td>'
       + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b></td>'
       + '<td class="n">' + pctCell(x.rel.m3) + '<br>' + pctCell(x.rel.m6) + '<br>' + pctCell(x.rel.y1) + '</td>'
       + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked') + '</td></tr>';
@@ -5522,6 +5548,7 @@ function renderFinder(){
   var tag = $('#finderTag');
   if(tag){ tag.textContent = rec ? 'screened' : 'empty'; tag.className = 'tag' + (rec ? ' ok' : ''); }
   if($('#btnFinderUpdate')) $('#btnFinderUpdate').disabled = !rec;
+  if($('#btnFinderRecheck')) $('#btnFinderRecheck').classList.toggle('hidden', !rec);
   if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
   if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
   if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc) : '';
@@ -5644,47 +5671,84 @@ function saveFinder(d){
 /* The app's own check of the returns: the sector index from Upstox, or the
    bellwether stocks where no index answers. Never blocks; a failure leaves
    the research's figures in place, marked "not checked". */
-var FINDER_BUSY = false;
+var FINDER_BUSY = false, FINDER_AGAIN = null;
+/* Build 32. Tejas imported three follow-ups one after another while the
+   first price check was still running. The later checks were skipped, and
+   the first, worked out before his EPS arrived, was stamped onto the merged
+   screen, so its P/E history read "the app works it out" for good. Now a
+   check asked for while one runs is queued and runs next, and a result
+   whose data stamp no longer matches the screen is thrown away and the
+   check run again. */
+function finderNeedsCheck(rec){
+  if(!rec || !rec.data) return false;
+  var v = rec.data.verified;
+  return !v || !!v.error || v.stamp !== EQ.finder.finderStamp(rec.data);
+}
+function finderProgress(phase, done, total){
+  if(!$('#finderMsg')) return;
+  $('#finderMsg').textContent = phase === 'returns'
+    ? 'Checking returns against index and stock prices: ' + done + ' of ' + total + ' sectors…'
+    : 'Working out P/E history from company prices and EPS: ' + done + ' of ' + total + ' sectors…';
+}
+function finderAfter(){
+  var next = FINDER_AGAIN; FINDER_AGAIN = null;
+  if(next) verifyFinder(next);
+}
 function verifyFinder(id){
-  if(FINDER_BUSY || !window.EQ || !EQ.finder || !EQ.prices) return Promise.resolve(false);
+  if(!window.EQ || !EQ.finder || !EQ.prices) return Promise.resolve(false);
+  if(FINDER_BUSY){ FINDER_AGAIN = id; return Promise.resolve(false); }
   var rec = recById(id); if(!rec) return Promise.resolve(false);
   FINDER_BUSY = true;
+  if($('#btnFinderRecheck')) $('#btnFinderRecheck').disabled = true;
   if($('#finderMsg')) $('#finderMsg').textContent = 'Checking the returns against index and stock prices…';
   return EQ.prices.loadInstrumentMap().then(function(map){
     return EQ.finder.verifyReturns(rec.data, {
       /* Daily prices for the returns; monthly over six years for the
          companies' P/E history (build 31). */
       fetchBars: function(key, o){ return EQ.prices.fetchUpstox(key, o || { unit:'days', interval:1, years:2 }); },
-      keyFor: function(sym, isin){ return EQ.prices.instrumentKeyFor(sym, map, isin || null); }
+      keyFor: function(sym, isin){ return EQ.prices.instrumentKeyFor(sym, map, isin || null); },
+      onProgress: finderProgress
     });
   }).then(function(v){
     FINDER_BUSY = false;
+    if($('#btnFinderRecheck')) $('#btnFinderRecheck').disabled = false;
     var lib = libRead(), hit = lib.filter(function(r){ return r.id === id; })[0];
-    if(!hit) return false;
+    if(!hit){ finderAfter(); return false; }
+    /* The screen changed while the check ran: this result is for the old
+       data. Not saved; checked again. */
+    if(v.stamp !== EQ.finder.finderStamp(hit.data)){
+      if(!FINDER_AGAIN) FINDER_AGAIN = id;
+      finderAfter();
+      return false;
+    }
     hit.data.verified = v;
     libWrite(lib);
     var n = Object.keys(v.sectors || {}).length, nv = Object.keys(v.valuation || {}).length;
     if($('#finderMsg')) $('#finderMsg').textContent = n
       ? 'Returns checked by the app for ' + n + ' sector' + (n === 1 ? '' : 's') + (v.benchmark ? ' and the Nifty 50' : '')
         + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures' : '')
-        + (nv ? '. P/E history worked out from company prices and EPS for ' + nv + ' sector' + (nv === 1 ? '' : 's') : '') + '.'
+        + (nv ? '. P/E history worked out from company prices and EPS for ' + nv + ' sector' + (nv === 1 ? '' : 's') : '')
+        + ((v.valuationFailed || []).length ? '; ' + v.valuationFailed.length + ' could not be priced and are asked again' : '') + '.'
       : 'The price source could not be reached, so the returns are the research’s own, marked "not checked".';
     renderFinder();
+    finderAfter();
     return true;
   }, function(){
     /* Build 31: a check that could not run at all is recorded as failed for
        every sector, so the next follow-up asks the research for the returns
        instead of leaving them to an app that cannot reach its prices. */
     FINDER_BUSY = false;
+    if($('#btnFinderRecheck')) $('#btnFinderRecheck').disabled = false;
     var lib = libRead(), hit = lib.filter(function(r){ return r.id === id; })[0];
     if(hit){
       var names = (hit.data.sectors || []).map(function(x){ return x && x.name; }).filter(Boolean);
       hit.data.verified = { at: new Date().toISOString(), benchmark: null, sectors: {}, failed: names,
-        valuation: {}, valuationFailed: names, error: true };
+        valuation: {}, valuationFailed: names, error: true, stamp: EQ.finder.finderStamp(hit.data) };
       libWrite(lib);
     }
-    if($('#finderMsg')) $('#finderMsg').textContent = 'The price source could not be reached, so the returns are the research’s own, marked "not checked". The next follow-up asks the research for them.';
+    if($('#finderMsg')) $('#finderMsg').textContent = 'The price source could not be reached, so the returns are the research’s own, marked "not checked". The next follow-up asks the research for them. Tap Check prices again to retry.';
     renderFinder();
+    finderAfter();
     return false;
   });
 }
@@ -5723,6 +5787,18 @@ document.addEventListener('click', function(ev){
     return;
   }
   if(ev.target.closest('#btnFinderImport')){ openImport({ kind:'finder', rank:0 }); return; }
+  if(ev.target.closest('#btnFinderRecheck')){
+    var fr = finderRecords().filter(function(r){ return r.id === SEL.finder; })[0] || finderRecords().slice(-1)[0];
+    if(fr) verifyFinder(fr.id);
+    return;
+  }
+  var ob = ev.target.closest('.obadge');
+  if(ob){
+    /* The note sits in the same table cell as the badge's line. */
+    var cell = ob.closest('td') || ob.parentNode, k = ob.getAttribute('data-k');
+    [].forEach.call(cell.querySelectorAll('.onote'), function(nt){ if(nt.getAttribute('data-for') === k) nt.classList.toggle('hidden'); });
+    return;
+  }
   if(ev.target.closest('#btnFinderDelete')){
     var fr = finderRecord(); if(!fr) return;
     if(!confirm('Delete ' + (versionsOf(fr).length > 1 ? 'the ' + verWord(fr) + ' version of ' : '') + 'the Sector Finder screen saved '
@@ -5757,7 +5833,9 @@ window.addEventListener('eq:ready', function(){
   /* A screen saved while offline is checked once the engine is up. */
   setTimeout(function(){
     var last = finderRecords().slice(-1)[0];
-    if(last && !(last.data && last.data.verified && !last.data.verified.error)) verifyFinder(last.id);
+    /* Build 32: also a screen whose check was run on older data, such as one
+       stamped before a follow-up arrived. */
+    if(last && finderNeedsCheck(last)) verifyFinder(last.id);
   }, 1500);
 });
 

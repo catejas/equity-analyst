@@ -285,8 +285,25 @@ export function normaliseFinder(d) {
       }
       if (b.ttmEps != null && b.epsTtm == null) { b.epsTtm = b.ttmEps; delete b.ttmEps; }
       if (isO(b.consensus) && !isO(b.forecast)) { b.forecast = b.consensus; delete b.consensus; fixes.push(`${r.name}: ${b.symbol}.consensus read as forecast`); }
+      for (const k of ['managementGuidance', 'companyGuidance', 'outlookGuidance']) if (isO(b[k]) && !isO(b.guidance)) { b.guidance = b[k]; delete b[k]; fixes.push(`${r.name}: ${b.symbol}.${k} read as guidance`); }
+      if (isO(b.guidance)) {
+        const gd = b.guidance;
+        for (const k of ['salesGrowth', 'revenue', 'topLineGrowth']) if (gd[k] != null && gd.revenueGrowth == null) { gd.revenueGrowth = gd[k]; delete gd[k]; }
+        for (const k of ['patGrowth', 'earningsGrowth', 'netProfitGrowth', 'profit']) if (gd[k] != null && gd.profitGrowth == null) { gd.profitGrowth = gd[k]; delete gd[k]; }
+      }
       if (isO(b.forecast)) {
         const fo = b.forecast;
+        /* Yearly estimates sent as { "FY27": 61.2, "FY28": 70.4 } (build 32). */
+        [['eps', 'eps'], ['revenue', 'value']].forEach(([k, v]) => {
+          if (!isO(fo[k]) || Array.isArray(fo[k])) return;
+          const o = fo[k]; fo[k] = [];
+          Object.keys(o).forEach((y) => fo[k].push({ fy: y.replace(/E$/i, ''), [v]: o[y], ...(/A$|actual/i.test(y) ? { actual: true } : {}) }));
+          fixes.push(`${r.name}: ${b.symbol}.forecast.${k} read as a list by year`);
+        });
+        for (const k of ['estimates', 'epsEstimates']) if (Array.isArray(fo[k]) && !fo.eps) { fo.eps = fo[k]; delete fo[k]; }
+        for (const k of ['revenueEstimates', 'salesEstimates', 'sales']) if (Array.isArray(fo[k]) && !fo.revenue) { fo.revenue = fo[k]; delete fo[k]; }
+        arr(fo.revenue).forEach((e) => { if (isO(e) && e.value == null) for (const k of ['revenue', 'sales', 'amount']) if (e[k] != null) { e.value = e[k]; delete e[k]; } });
+        [fo.eps, fo.revenue].forEach((l) => arr(l).forEach((e) => { if (isO(e) && typeof e.fy === 'string' && /\d\s*E$/i.test(e.fy)) e.fy = e.fy.replace(/E$/i, ''); }));
         for (const k of ['epsCagr3y', 'earningsGrowth3y', 'patGrowth3y', 'epsGrowth']) if (fo[k] != null && fo.epsGrowth3y == null) { fo.epsGrowth3y = fo[k]; delete fo[k]; }
         for (const k of ['revenueCagr3y', 'salesGrowth3y', 'revenueGrowth']) if (fo[k] != null && fo.revenueGrowth3y == null) { fo.revenueGrowth3y = fo[k]; delete fo[k]; }
       }
@@ -427,11 +444,14 @@ FOR EVERY SECTOR IN THE LIST
                   eps       its EPS for each of the last five financial
                             years, and "epsTtm" for the trailing twelve
                             months, from its annual reports and filings.
-                  forecast  its consensus forecast: annual EPS growth
-                            ("epsGrowth3y") and revenue growth
-                            ("revenueGrowth3y") over the next three years
-                            (Trendlyne forecaster, MarketScreener,
-                            Moneycontrol estimates; else its own guidance).
+                  forecast  its consensus estimates, year by year as the
+                            site shows them (EPS and revenue for FY27E,
+                            FY28E…, with the last actual year marked
+                            "actual": true), from one site for the whole
+                            sector. Two forecast years are enough.
+                  guidance  where no analyst covers it, its own guided
+                            annual revenue and profit growth from its latest
+                            earnings call.
   business      year-on-year growth of the sector's listed companies in
                 aggregate: "revenueGrowth" and "profitGrowth" (net profit),
                 over the last four reported quarters, with "period" (e.g.
@@ -449,8 +469,10 @@ FOR EVERY SECTOR IN THE LIST
                 and "source" (a brokerage or rating-agency sector outlook, an
                 industry body, a government projection), with its date. For a
                 niche sector, use the closest published industry forecast;
-                where there is none, send each bellwether's "forecast" and
-                the application takes their median. Tailwinds and risks can
+                where there is none, send each bellwether's "forecast"
+                (consensus estimates as published) or "guidance", and the
+                application takes their median. Where neither exists, it
+                uses the companies' past EPS trend, marked as such. Tailwinds and risks can
                 come from the bellwethers' own earnings calls and annual
                 reports; name the company.
   valuation     the sector index's trailing P/E ("pe") and its five-year
@@ -517,7 +539,10 @@ THE JSON (shown laid out here; send it minified)
       "bellwethers": [ { "symbol": "SBIN", "name": "State Bank of India",
                          "quarter": { "period": "Q2 FY27", "revenue": 0, "revenuePrev": 0, "profit": 0, "profitPrev": 0, "source": "" },
                          "eps": [ { "fy": "FY26", "eps": 0 } ], "epsTtm": 0, "epsSource": "",
-                         "forecast": { "epsGrowth3y": 0, "revenueGrowth3y": 0, "years": "FY26 to FY29", "analysts": 0, "source": "" } } ],
+                         "forecast": { "eps": [ { "fy": "FY26", "eps": 0, "actual": true }, { "fy": "FY27", "eps": 0 } ],
+                                       "revenue": [ { "fy": "FY26", "value": 0, "actual": true }, { "fy": "FY27", "value": 0 } ],
+                                       "analysts": 0, "asOf": "", "source": "" },
+                         "guidance": { "revenueGrowth": 0, "profitGrowth": 0, "years": "", "source": "" } } ],
       "business": { "revenueGrowth": 0, "profitGrowth": 0, "period": "", "basis": "", "source": "" },
       "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29", "basis": "",
                    "tailwinds": [""], "risks": [""], "source": "" },
@@ -597,10 +622,16 @@ export function finderChecks(d0) {
     (r) => { const b = eff(r).business; const g = [].concat(isNum(b.revenueGrowth) ? [] : ['sales'], isNum(b.profitGrowth) ? [] : ['profit']);
       return g.length ? [`${g.join(' and ')}: the quarter figures of ${syms(r) || 'its bellwethers'}`] : []; },
     'where the sector\'s aggregate growth is not published, do NOT add it up yourself and do not leave it out: send EACH bellwether\'s own figures from its latest results filing on NSE/BSE, under sectors[].bellwethers[].quarter: { "period": "Q2 FY27", "revenue", "revenuePrev", "profit", "profitPrev", "source" } — revenue from operations and net profit, consolidated, in ₹ crore, for the latest quarter and the same quarter a year earlier. A loss is a negative number: send it, do not skip the company. The application adds the companies up and handles losses. Every listed company files these, so they can always be found.');
+  /* Build 32. A figure counts as found only when it is a forecast or the
+     company's guidance. One the app took from the past trend is scored (at
+     half weight) but is still asked for, as every missing figure is. */
   need('Three-year outlook: earnings and demand growth', 'sectors.bellwethers.forecast',
-    (r) => { const o = eff(r).outlook; const g = [].concat(isNum(o.earningsGrowth3y) ? [] : ['earnings'], isNum(o.demandGrowth3y) ? [] : ['demand']);
-      return g.length ? [`${g.join(' and ')}: the consensus forecasts of ${syms(r) || 'its bellwethers'}`] : []; },
-    'where no sector forecast is published, send EACH bellwether\'s own consensus forecast under sectors[].bellwethers[].forecast: { "epsGrowth3y" (forecast annual EPS growth over the next three years), "revenueGrowth3y" (forecast annual revenue growth), "years": "FY26 to FY29", "analysts" (how many), "source" }. Trendlyne\'s forecaster, MarketScreener\'s consensus and Moneycontrol\'s estimates publish these for listed companies; where no analyst covers a company, its own guidance from the latest earnings call, named as such in "source". The application takes the median across the companies.');
+    (r) => { const o = eff(r).outlook;
+      const lack = (m, key) => !isNum(o[key]) || (o.tier && o.tier[m] === 'past');
+      const g = [].concat(lack('earnings', 'earningsGrowth3y') ? ['earnings'] : [], lack('demand', 'demandGrowth3y') ? ['demand'] : []);
+      const past = o.tier && o.tier.earnings === 'past' ? ' (past trend used until a forecast is found)' : '';
+      return g.length ? [`${g.join(' and ')}: the consensus estimates or guidance of ${syms(r) || 'its bellwethers'}${past}`] : []; },
+    'where no sector forecast is published, send EACH bellwether\'s consensus estimates EXACTLY AS THE SITE SHOWS THEM, year by year — do not work out a three-year rate yourself: sectors[].bellwethers[].forecast: { "eps": [ { "fy": "FY26", "eps": 0, "actual": true }, { "fy": "FY27", "eps": 0 }, { "fy": "FY28", "eps": 0 } ], "revenue": [ { "fy": "FY26", "value": 0, "actual": true }, { "fy": "FY27", "value": 0 }, { "fy": "FY28", "value": 0 } ], "analysts", "asOf", "source" }. Include the last actual year marked "actual": true. Two forecast years are enough: the application extends a third at their trend. Use ONE site for all the companies of a sector (StockAnalysis, Sharpely, MarketScreener, Trendlyne or Moneycontrol) and name it in "source". Where no analyst covers a company, send its own guidance from the latest earnings call or investor presentation: sectors[].bellwethers[].guidance: { "revenueGrowth", "profitGrowth" (annual %), "years", "source" }. The application takes the median across the companies; where neither exists it falls back to the companies\' past EPS trend, at half weight.');
   need('Tailwinds and risks, two of each', 'sectors.outlook.tailwinds',
     (r) => {
       const t = arr(r.outlook && r.outlook.tailwinds).filter((x) => S(x).length > 8).length;
@@ -650,8 +681,20 @@ export function returnsFromBars(bars) {
 /* Fetches the benchmark and every sector, index first, bellwethers second.
    `fetchBars(key)` resolves daily bars or rejects; `keyFor(symbol)` gives an
    equity instrument key or null. Never rejects. */
-export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } = {}) {
-  const result = { at: now.toISOString(), benchmark: null, sectors: {}, failed: [] };
+/* A fingerprint of what a screen says, without the app's own price check
+   (build 32). A check carries the fingerprint of the data it was run on, so
+   a result worked out before a follow-up arrived is never stamped onto the
+   merged screen: the app sees the mismatch and checks again. */
+export function finderStamp(d) {
+  const t = JSON.stringify({ b: d && d.benchmark, s: d && d.sectors });
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36) + '.' + t.length.toString(36);
+}
+
+export async function verifyReturns(d, { fetchBars, keyFor, now = new Date(), onProgress } = {}) {
+  const result = { at: now.toISOString(), benchmark: null, sectors: {}, failed: [], stamp: finderStamp(d) };
+  const tell = (phase, done, total) => { try { if (typeof onProgress === 'function') onProgress(phase, done, total); } catch (e) { /* the page's display only */ } };
   if (!d || typeof fetchBars !== 'function') return result;
   d = JSON.parse(JSON.stringify(d)); normaliseFinder(d);
   const tryKeys = async (keys) => {
@@ -696,7 +739,8 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } =
     } else result.failed.push(S(r.name));
   };
   const list = arr(d.sectors).slice();
-  for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(one));
+  for (let i = 0; i < list.length; i += 6) { tell('returns', i, list.length); await Promise.all(list.slice(i, i + 6).map(one)); }
+  tell('returns', list.length, list.length);
   result.failed.sort((a, b) => FINDER_SECTORS.indexOf(a) - FINDER_SECTORS.indexOf(b));
   /* Build 31. Valuation from the companies: for a sector whose research has
      no P/E history, each bellwether that sent three years of EPS or more is
@@ -726,7 +770,9 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date() } =
       ratio: +medianOf(got.map((x) => x.ratio)).toFixed(3), of: got.map((x) => x.sym).join(', '),
       companies: got.map((x) => ({ symbol: x.sym, pe: x.pe, avg: x.avg, months: x.months })), asOf: got.map((x) => x.asOf).sort().pop() };
   };
-  for (let i = 0; i < list.length; i += 6) await Promise.all(list.slice(i, i + 6).map(valOne));
+  const toPrice = list.filter((r) => r && S(r.name) && !(toolHistory(r.valuation) && real(r.valuation && r.valuation.pe)) && bwOf(r).some(canPrice));
+  for (let i = 0; i < toPrice.length; i += 6) { tell('valuation', i, toPrice.length); await Promise.all(toPrice.slice(i, i + 6).map(valOne)); }
+  tell('valuation', toPrice.length, toPrice.length);
   result.valuationFailed.sort((a, b) => FINDER_SECTORS.indexOf(a) - FINDER_SECTORS.indexOf(b));
   return result;
 }
@@ -753,8 +799,13 @@ const r2 = (v) => (isNum(v) ? +v.toFixed(2) : null);
 export function fyEnd(v) {
   const t = S(v);
   let y = null, m;
+  /* Build 32: a calendar year ("CY21", "CY2024") ends on 31 December (ABB). */
+  if ((m = /CY\s*'?(\d{4}|\d{2})(?:E|A)?\b/i.exec(t))) {
+    const cy = Number(m[1].length === 2 ? '20' + m[1] : m[1]);
+    return cy > 1990 && cy < 2100 ? `${cy}-12-31` : null;
+  }
   if ((m = /(\d{4})\s*[-–\/]\s*(\d{2,4})/.exec(t))) y = Number(m[2].length === 2 ? m[1].slice(0, 2) + m[2] : m[2]);
-  else if ((m = /FY\s*'?(\d{4}|\d{2})\b/i.exec(t))) y = Number(m[1].length === 2 ? '20' + m[1] : m[1]);
+  else if ((m = /FY\s*'?(\d{4}|\d{2})(?:E|A)?\b/i.exec(t))) y = Number(m[1].length === 2 ? '20' + m[1] : m[1]);
   else if ((m = /^(\d{4})$/.exec(t))) y = Number(m[1]);
   return y && y > 1990 && y < 2100 ? `${y}-03-31` : null;
 }
@@ -782,13 +833,102 @@ export function companyBusiness(r) {
   return out;
 }
 
-/* The median of the companies' consensus forecasts. */
+/* ── The outlook from the companies (build 32) ─────────────────────────
+   Tejas, 23-11-2026: forecasts first, then the company's own guidance, then
+   its past trend, and a badge on the figure saying which. In order, for each
+   company and each measure:
+     Published  a consensus forecast. Either a growth rate the site states
+                ("epsGrowth3y"), or the yearly estimates it shows (FY27E,
+                FY28E…) from which the app works out the annual growth from
+                the last actual year. Where only two forecast years are
+                published, the third is extended at the growth between them
+                (his rule); one year is used as it stands.
+     Guidance   the company's own guided growth, from its latest earnings call.
+     Past       its EPS growth over the last three reported years, worked out
+                by the app from the EPS already sent, capped at ±50% a year
+                (his rule: one trough year must not decide a sector). Past
+                counts at half weight in the score.
+   A sector takes the best tier any of its companies reached, and the median
+   of the companies at that tier: forecasts are never mixed with history. */
+export const OUTLOOK_TIERS = ['published', 'guidance', 'past'];
+export const PAST_CAP = 50;
+const seriesOf = (list, key) => arr(list).map((e) => ({ end: fyEnd(e && (e.fy != null ? e.fy : e.year != null ? e.year : e.period)),
+  fy: S(e && (e.fy != null ? e.fy : e.year != null ? e.year : e.period)), v: e && e[key], actual: !!(e && e.actual) }))
+  .filter((e) => e.end && isNum(e.v)).sort((a, b) => (a.end < b.end ? -1 : 1));
+const yrs = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / (365.25 * 864e5));
+
+/* Annual growth from a base actual to the yearly estimates after it. */
+export function forecastGrowth(base, est) {
+  const f = est.filter((e) => base && e.end > base.end && e.v > 0);
+  if (!base || !(base.v > 0) || !f.length) return null;
+  if (f.length >= 3 || (f.length && yrs(base.end, f[f.length - 1].end) >= 3)) {
+    const last = f.filter((e) => yrs(base.end, e.end) <= 3).pop() || f[f.length - 1];
+    const n = Math.max(1, yrs(base.end, last.end));
+    return { g: (Math.pow(last.v / base.v, 1 / n) - 1) * 100, years: `${base.fy} to ${last.fy}`, extended: false };
+  }
+  if (f.length === 2) {
+    const g2 = f[1].v / f[0].v;
+    const third = f[1].v * g2;
+    const n = yrs(base.end, f[1].end) + 1;
+    return { g: (Math.pow(third / base.v, 1 / n) - 1) * 100,
+      years: `${base.fy} to ${f[1].fy} and one more year extended at the ${f[0].fy}–${f[1].fy} trend`, extended: true };
+  }
+  const n = Math.max(1, yrs(base.end, f[0].end));
+  return { g: (Math.pow(f[0].v / base.v, 1 / n) - 1) * 100, years: `${base.fy} to ${f[0].fy}`, extended: false };
+}
+
+/* One company's view of one measure, at the best tier it has. */
+function companyView(b, measure) {
+  const fo = (b.forecast && typeof b.forecast === 'object') ? b.forecast : {};
+  const gd = (b.guidance && typeof b.guidance === 'object') ? b.guidance : {};
+  const sym = S(b.symbol);
+  if (measure === 'earnings') {
+    if (isNum(fo.epsGrowth3y)) return { sym, tier: 'published', g: fo.epsGrowth3y, years: S(fo.years), src: S(fo.source) };
+    const est = seriesOf(fo.eps, 'eps');
+    const act = est.filter((e) => e.actual).pop() || seriesOf(b.eps, 'eps').filter((e) => !est.some((x) => !x.actual && x.end <= e.end)).pop();
+    const fg = forecastGrowth(act, est.filter((e) => !e.actual));
+    if (fg) return { sym, tier: 'published', g: fg.g, years: fg.years, extended: fg.extended, src: S(fo.source) };
+    const gg = isNum(gd.profitGrowth) ? gd.profitGrowth : gd.epsGrowth;
+    if (isNum(gg)) return { sym, tier: 'guidance', g: gg, years: S(gd.years), src: S(gd.source) };
+    const h = seriesOf(b.eps, 'eps'), last = h[h.length - 1];
+    const back = last && h.filter((e) => yrs(e.end, last.end) === 3).pop();
+    if (last && back && last.v > 0 && back.v > 0) {
+      const g = (Math.pow(last.v / back.v, 1 / 3) - 1) * 100;
+      return { sym, tier: 'past', g: Math.max(-PAST_CAP, Math.min(PAST_CAP, g)), capped: Math.abs(g) > PAST_CAP,
+        years: `${back.fy} to ${last.fy}`, src: S(b.epsSource) };
+    }
+    return null;
+  }
+  if (isNum(fo.revenueGrowth3y)) return { sym, tier: 'published', g: fo.revenueGrowth3y, years: S(fo.years), src: S(fo.source) };
+  const rev = seriesOf(fo.revenue, 'value');
+  const base = rev.filter((e) => e.actual).pop();
+  const est = rev.filter((e) => !e.actual);
+  const fg = base ? forecastGrowth(base, est)
+    : est.length >= 2 ? { g: (Math.pow(est[est.length - 1].v / est[0].v, 1 / Math.max(1, yrs(est[0].end, est[est.length - 1].end))) - 1) * 100,
+      years: `${est[0].fy} to ${est[est.length - 1].fy}` } : null;
+  if (fg) return { sym, tier: 'published', g: fg.g, years: fg.years, extended: fg.extended, src: S(fo.source) };
+  if (isNum(gd.revenueGrowth)) return { sym, tier: 'guidance', g: gd.revenueGrowth, years: S(gd.years), src: S(gd.source) };
+  return null;
+}
+
 export function companyOutlook(r) {
-  const fs = bwOf(r).map((b) => ({ sym: S(b.symbol), f: (b.forecast && typeof b.forecast === 'object') ? b.forecast : {} }));
-  const e = fs.filter((x) => isNum(x.f.epsGrowth3y)), g = fs.filter((x) => isNum(x.f.revenueGrowth3y));
-  return { earningsGrowth3y: e.length ? r2(medianOf(e.map((x) => x.f.epsGrowth3y))) : null,
-    demandGrowth3y: g.length ? r2(medianOf(g.map((x) => x.f.revenueGrowth3y))) : null,
-    of: [...new Set(e.concat(g).map((x) => x.sym))], years: S((e[0] || g[0] || { f: {} }).f.years) };
+  const out = { earningsGrowth3y: null, demandGrowth3y: null, of: [], years: '', tier: {}, note: {} };
+  [['earnings', 'earningsGrowth3y'], ['demand', 'demandGrowth3y']].forEach(([m, key]) => {
+    const views = bwOf(r).map((b) => companyView(b, m)).filter(Boolean);
+    const tier = OUTLOOK_TIERS.find((t) => views.some((v) => v.tier === t));
+    if (!tier) return;
+    const at = views.filter((v) => v.tier === tier);
+    out[key] = r2(medianOf(at.map((v) => v.g)));
+    out.tier[m] = tier;
+    const word = tier === 'published' ? 'consensus forecast' : tier === 'guidance' ? 'company guidance' : 'past EPS growth';
+    out.note[m] = `median of the ${word} of ${at.map((v) => v.sym).join(', ')}`
+      + (at.some((v) => v.years) ? `, ${at.find((v) => v.years).years}` : '')
+      + (at.some((v) => v.capped) ? `; ${at.filter((v) => v.capped).map((v) => v.sym).join(', ')} capped at ±${PAST_CAP}% a year` : '')
+      + (tier === 'past' ? '; counted at half weight' : '');
+    at.forEach((v) => { if (!out.of.includes(v.sym)) out.of.push(v.sym); });
+    if (!out.years) out.years = (at.find((v) => v.years) || {}).years || '';
+  });
+  return out;
 }
 
 /* A company's P/E history from its own prices and its annual EPS. Each
@@ -848,7 +988,12 @@ export function effective(r, ver) {
   return {
     business: { revenueGrowth: rv, profitGrowth: pf, from: { revenue: rvF, profit: pfF }, lossBase: pfF === 'companies' && cb.lossBase,
       period: (rvF === 'companies' || pfF === 'companies') && !S(bz.period) ? cb.period : S(bz.period), of: cb.of },
-    outlook: { earningsGrowth3y: eg, demandGrowth3y: dg, from: { earnings: egF, demand: dgF }, of: co.of, years: S(ol.years) || co.years },
+    outlook: { earningsGrowth3y: eg, demandGrowth3y: dg, from: { earnings: egF, demand: dgF }, of: co.of, years: S(ol.years) || co.years,
+      /* Build 32: where each outlook figure comes from, for its badge. A
+         sector figure the research found is a published forecast. */
+      tier: { earnings: egF === 'research' ? 'published' : egF ? co.tier.earnings : '', demand: dgF === 'research' ? 'published' : dgF ? co.tier.demand : '' },
+      note: { earnings: egF === 'research' ? `published sector forecast${S(ol.source) ? ': ' + S(ol.source) : ''}` : egF ? co.note.earnings : '',
+        demand: dgF === 'research' ? `published sector forecast${S(ol.source) ? ': ' + S(ol.source) : ''}` : dgF ? co.note.demand : '' } },
     valuation,
   };
 }
@@ -921,7 +1066,7 @@ export function scoreFinder(d0) {
         from: eb.from, lossBase: eb.lossBase, of: eb.of },
       outlook: { earningsGrowth3y: eo.earningsGrowth3y, demandGrowth3y: eo.demandGrowth3y, years: eo.years,
         tailwinds: arr(ol.tailwinds).map(S).filter(Boolean), risks: arr(ol.risks).map(S).filter(Boolean), source: S(ol.source),
-        from: eo.from, of: eo.of },
+        from: eo.from, of: eo.of, tier: eo.tier, note: eo.note },
       valuation: { pe: ev.pe, pe5yAvg: real(va.pe5yAvg) && ev.from === 'research' ? va.pe5yAvg : null,
         history: ev.history, historyBasis: ev.historyBasis, ratio: ev.ratio, from: ev.from,
         asOf: S(va.asOf), source: S(va.source) },
@@ -946,6 +1091,11 @@ export function scoreFinder(d0) {
   };
   const pct = {};
   Object.values(SUB).flat().forEach(([m]) => { if (!pct[m]) pct[m] = percentiles(rows.map((r) => r.sub[m])); });
+  /* Build 32: an outlook that is only the past trend is history, not a
+     forecast. Its rank is pulled halfway towards average (Tejas's decision). */
+  ['earnings', 'demand'].forEach((m) => rows.forEach((r, i) => {
+    if (r.outlook.tier && r.outlook.tier[m] === 'past' && isNum(pct[m][i])) pct[m][i] = +(50 + (pct[m][i] - 50) / 2).toFixed(1);
+  }));
   rows.forEach((r, i) => {
     r.parts = {};
     r.partial = [];
@@ -985,7 +1135,9 @@ export function scoreFinder(d0) {
       + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average (or, where '
       + 'the index is younger, its five-year or long-run median), cheaper scoring higher. Where the research has no '
       + 'sector-wide figure, the application uses the bellwether companies\' own: their sales and profit summed, the '
-      + 'median of their consensus forecasts, and each company\'s P/E history worked out from its prices and EPS. Each measure is ranked on '
+      + 'median of their consensus forecasts (a third year extended at the trend of two published years), else of their '
+      + 'own guidance, else of their past three-year EPS growth capped at ±50% a year and counted at half weight; and each '
+      + 'company\'s P/E history worked out from its prices and EPS. Each measure is ranked on '
       + 'its own and a part is the weighted mean of its measures\' ranks; a part with one measure missing uses the other. Past momentum and the outlook must be established for a sector to be ranked '
       + 'among the leaders; business momentum or valuation that could not be established counts as average '
       + '(the 50th percentile), neither reward nor penalty.',
@@ -1000,7 +1152,12 @@ function reasonOf(r, bench) {
   if (isNum(r.business.profitGrowth)) bits.push(r.business.lossBase
     ? `combined loss ${r.business.profitGrowth >= 0 ? 'narrowed' : 'widened'} by ${Math.abs(r.business.profitGrowth).toFixed(1)}% (${r.business.of.join(', ')})`
     : `profits ${sgn(r.business.profitGrowth)}%${r.business.from && r.business.from.profit === 'companies' ? ` across ${r.business.of.join(', ')}` : ' over four quarters'}`);
-  if (isNum(r.outlook.earningsGrowth3y)) bits.push(`earnings forecast to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year${r.outlook.from && r.outlook.from.earnings === 'companies' ? ' (median of the companies\' consensus)' : ''}`);
+  if (isNum(r.outlook.earningsGrowth3y)) {
+    const t = r.outlook.tier && r.outlook.tier.earnings;
+    bits.push(t === 'past'
+      ? `no forecast found, so earnings taken at their past growth of ${r.outlook.earningsGrowth3y.toFixed(1)}% a year (half weight)`
+      : `earnings ${t === 'guidance' ? 'guided' : 'forecast'} to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year${r.outlook.from && r.outlook.from.earnings === 'companies' ? (t === 'guidance' ? ' (median of the companies\' guidance)' : ' (median of the companies\' consensus)') : ''}`);
+  }
   else if (isNum(r.outlook.demandGrowth3y)) bits.push(`demand forecast to grow ${r.outlook.demandGrowth3y.toFixed(1)}% a year`);
   if (isNum(r.valuation.pe) && isNum(r.valuation.pe5yAvg)) bits.push(`P/E ${r.valuation.pe.toFixed(1)} against a five-year average of ${r.valuation.pe5yAvg.toFixed(1)}`);
   void bench;

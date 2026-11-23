@@ -9334,6 +9334,13 @@ function buildUpdate(p, lang){
    is built. The research supplies figures; every score is the application's. */
 function finderPct(v){ return isNum_(v) ? (v > 0 ? '+' : '') + n(v, 1) + '%' : '—'; }
 function finderPts(v){ return isNum_(v) ? '<span class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + n(v, 1) + '</span>' : '—'; }
+/* Build 32. The outlook badge: Published, Guidance or Past. */
+var FINDER_BADGE = { published: ['Published', '#DDF2E6', '#1E7A47'], guidance: ['Guidance', '#DDE9FA', '#24569E'], past: ['Past', '#E7E7E9', '#55565C'] };
+function finderBadge(ol, k) {
+  var b = FINDER_BADGE[(ol && ol.tier && ol.tier[k]) || ''];
+  return b ? ' <span class="fbadge" style="display:inline-block;background:' + b[1] + ';color:' + b[2]
+    + ';border-radius:6px;padding:0 5px;font-size:7pt;font-weight:700;line-height:10pt;">' + b[0] + '</span>' : '';
+}
 function buildFinder(p, lang){
   lang = lang || 'en';
   var F = (p && p.finder) || { rows: [], top3: [], counts: {}, benchmark: {}, weights: {} };
@@ -9400,13 +9407,14 @@ function buildFinder(p, lang){
             + (bz.period || (bz.from && (bz.from.revenue === 'companies' || bz.from.profit === 'companies'))
               ? '<br><span class="mut">' + e(bz.period || '') + (bz.from && (bz.from.revenue === 'companies' || bz.from.profit === 'companies')
                 ? (bz.period ? ' · ' : '') + 'added up by the application from ' + e(arr(bz.of).join(', ')) : '') + '</span>' : '')] },
-          { cells: ['Forecast growth, a year', finderPct(ol.earningsGrowth3y) + ' earnings, ' + finderPct(ol.demandGrowth3y) + ' demand'
+          { cells: ['Forecast growth, a year', finderPct(ol.earningsGrowth3y) + ' earnings' + finderBadge(ol, 'earnings')
+            + '; ' + finderPct(ol.demandGrowth3y) + ' demand' + finderBadge(ol, 'demand')
             + (function(){
-                var bits = [];
-                if (ol.years) bits.push(e(ol.years));
-                if (ol.source) bits.push(e(ol.source));
-                if (ol.from && (ol.from.earnings === 'companies' || ol.from.demand === 'companies')) bits.push('median of the consensus for ' + e(arr(ol.of).join(', ')));
-                return bits.length ? '<br><span class="mut">' + bits.join(' · ') + '</span>' : '';
+                /* Build 32: each figure's own source, under its badge. */
+                var t = ol.tier || {}, nt = ol.note || {}, bits = [];
+                ['earnings', 'demand'].forEach(function(k){ if (t[k] && nt[k]) bits.push((k === 'earnings' ? 'Earnings: ' : 'Demand: ') + e(nt[k])); });
+                if (!bits.length && ol.years) bits.push(e(ol.years));
+                return bits.length ? '<br><span class="mut">' + bits.join('<br>') + '</span>' : '';
               })()] },
           { cells: ['P/E against its own history', isNum_(va.pe) && isNum_(va.history) ? n(va.pe, 1) + ' against ' + n(va.history, 1)
             + ' (' + (va.ratio < 1 ? 'below' : 'above') + ' its history)'

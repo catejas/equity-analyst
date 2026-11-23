@@ -18,14 +18,16 @@ fresh checkout failed 68 of 89 suites before testing anything.
 
 ## Sector Finder, real, exactly as received (22-11-2026)
 
-Tejas's first real Sector Finder run and its seven follow-ups, read by
-`finderreal.mjs` (build 30) and `finder31.mjs` (build 31).
+Tejas's first real Sector Finder run and its ten follow-ups, read by
+`finderreal.mjs` (build 30), `finder31.mjs` (build 31) and `finder32.mjs` (build 32).
 
 | File | What it is |
 |---|---|
 | `finder-22-11-2026-base.json` | The 41-sector screen (77% depth on build 29) |
 | `finder-22-11-2026-topup1.json` to `-topup4.json` | The four follow-ups, in the order they were sent |
 | `finder-22-11-2026-topup5.json` to `-topup7.json` | Follow-ups 5 to 7 (23-11-2026): long-run medians, bellwether business growth; read by `finderreal.mjs` and `finder31.mjs` |
+| `finder-22-11-2026-topup8a.json`, `-topup8b.json` | Follow-up 8 in two parts (23-11-2026, on build 31): each bellwether's Q2 FY27 quarter, tailwinds and risks from company filings; consensus forecasts refused (sites show FY27/FY28 only). Read by `finder32.mjs` |
+| `finder-22-11-2026-topup9.json` | Follow-up 9 (23-11-2026): five years of EPS for 94 bellwethers from Screener.in, incl. ABB in calendar years. Read by `finder32.mjs` |
 
 ## Built from those by the app itself
 
