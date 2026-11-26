@@ -52,7 +52,11 @@ console.log('\nThe ranking');
 ok('at least 27 sectors can rank in the Top 3 (23 before build 30)', s.counts.eligible >= 27, JSON.stringify(s.counts));
 ok('the Top 3 is three sectors with momentum and outlook', s.top3.length === 3 && s.top3.every((r) => r.eligible), s.top3.map((r) => r.name).join(', '));
 const c = completeness(d);
-ok('depth is at least 78% (77% before)', c.pct >= 78, `${c.pct}%`);
+/* Build 33 adds stage-1 ROE and the stage-2 deep dive to the depth; the
+   build-30 checks are measured on their own. */
+const old30 = c.sections[0].checks.filter((x) => !/Return on equity|consensus over three months|Deep dive/.test(x.label) && x.group !== 'Deep dive on the shortlist');
+const pct30 = Math.round(old30.reduce((a, x) => a + Math.min(1, x.want ? x.have / x.want : 1), 0) / old30.length * 100);
+ok('depth on the build-30 checks is at least 60% before the price check (2- and 3-year returns are the app\'s to measure)', pct30 >= 60, `${pct30}% (whole screen ${c.pct}%)`);
 
 console.log('\nThe follow-up');
 const ret = F.finderChecks(d).find((x) => x.label.startsWith('Returns'));
@@ -77,7 +81,7 @@ const v = await F.verifyReturns(d, {
 ok('every sector with two bellwethers is measured', noIndex.every((n) => v.sectors[F.nameKey(n)]), v.failed.join(', '));
 const dv = JSON.parse(JSON.stringify(d)); dv.verified = v;
 const sv = F.scoreFinder(dv);
-ok('the no-index sectors then have momentum', noIndex.every((n) => sv.rows.find((r) => r.name === n).parts.momentum != null));
+ok('the no-index sectors then have momentum', noIndex.every((n) => sv.rows.find((r) => r.name === n).parts.performance != null));
 ok('and the follow-up no longer lists their returns', !F.finderChecks(dv).find((x) => x.label.startsWith('Returns')).detail.includes('app measures'));
 ok('more sectors can rank once measured', sv.counts.eligible > s.counts.eligible, `${s.counts.eligible} → ${sv.counts.eligible}`);
 

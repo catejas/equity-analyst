@@ -574,7 +574,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="23-11-2026.32";</script>
+<script>window.APP_BUILD="26-11-2026.33";</script>
 </head>
 <body>
 
@@ -607,9 +607,11 @@ body.previewing{overflow:hidden;}
        its own, then the AI tool buttons — the Company page's shape. -->
   <div class="card runbox" id="finderBox">
     <h2><span>Sector Finder</span> <span class="tag" id="finderTag">empty</span></h2>
-    <p class="hint">Screens every sector in the app's list: how it has done against the Nifty 50
-    over 3 months, 6 months and 1 year, its sales and profit growth, its three-year outlook and its
-    valuation. The app scores and ranks them and names the Top 3.</p>
+    <p class="hint">Two stages. <b>Find Sectors</b> screens every sector in the app's list: its return
+    against the Nifty 500 over 1, 2 and 3 years and the risk taken, its fundamentals, its three-year
+    outlook and its valuation. The app shortlists the best ten. <b>Deep Dive</b> then studies the
+    shortlist: government policy and Budgets, global and regional trends, money flows and risks.
+    The app scores all seven pillars and names the Top 3.</p>
     <label for="finderVer">Version</label>
     <div class="selwrap"><select id="finderVer" disabled><option value="">— no saved screen —</option></select></div>
     <div class="grid4" style="margin-top:11px;">
@@ -618,6 +620,7 @@ body.previewing{overflow:hidden;}
       <button class="btn sm" id="btnFinderImport" style="margin:0;">Import Data</button>
       <button class="btn sm dang" id="btnFinderDelete" style="margin:0;" disabled>Delete</button>
     </div>
+    <button class="btn sm pri hidden" id="btnFinderDeep" style="margin:8px 0 0;width:100%;">Deep Dive on the Shortlist</button>
     <div id="finderAge"></div>
     <div id="finderTable"></div>
     <div id="finderDocs" class="hidden" style="margin-top:12px;">
@@ -5507,31 +5510,34 @@ function outlookBadges(x){
   }
   return '<span class="sub obadges">outlook' + out + '</span>' + notes;
 }
+var PILLAR_SHORT = { performance:'performance', fundamentals:'fundamentals', outlook:'outlook', policy:'policy', global:'global', valuation:'valuation', risk:'risk' };
 function finderTableHtml(sc){
   if(!sc || !sc.rows.length) return '';
-  var b = sc.benchmark || {};
+  var b = sc.benchmark || {}, bn = sc.relativeTo || 'Nifty 500';
   var row = function(x){
     var top = sc.top3.some(function(t){ return t.name === x.name; });
-    return '<tr class="' + (top ? 'top' : '') + '"><td class="n">' + x.rank + '</td>'
+    return '<tr class="' + (top ? 'top' : '') + (x.shortlisted ? ' short' : '') + '"><td class="n">' + x.rank + '</td>'
       + '<td><b>' + esc(x.name) + '</b>' + (x.subSector ? '<span class="sub">' + esc(x.subSector) + '</span>' : '')
-      + (!x.eligible ? '<span class="sub">not ranked among the leaders: no ' + esc(x.missingParts.filter(function(k){ return k === 'momentum' || k === 'outlook'; }).join(' or ')) + '</span>'
-          : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.join(' and ')) + ' counted as average</span>' : ''))
+      + (!x.eligible ? '<span class="sub">not ranked among the leaders: no ' + esc(x.missing1.filter(function(k){ return k === 'performance' || k === 'outlook'; }).map(function(k){ return PILLAR_SHORT[k]; }).join(' or ')) + '</span>'
+          : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.map(function(k){ return PILLAR_SHORT[k]; }).join(', ')) + ' counted as average</span>' : ''))
       + outlookBadges(x) + '</td>'
-      + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b></td>'
-      + '<td class="n">' + pctCell(x.rel.m3) + '<br>' + pctCell(x.rel.m6) + '<br>' + pctCell(x.rel.y1) + '</td>'
-      + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked') + '</td></tr>';
+      + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b><span class="sub">' + (x.shortlisted ? '7 pillars' : 'screen') + '</span></td>'
+      + '<td class="n">' + pctCell(x.rel.y1) + '<br>' + pctCell(x.rel.y2) + '<br>' + pctCell(x.rel.y3) + '</td>'
+      + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked')
+      + (x.returns.maxDD != null ? '<span class="sub">fall ' + Math.abs(x.returns.maxDD).toFixed(0) + '%</span>' : '') + '</td></tr>';
   };
   var head = '<tr><th>#</th><th>Sector</th><th style="text-align:right">Score</th>'
-    + '<th style="text-align:right">vs Nifty<br>3m/6m/1y</th><th style="text-align:right">Returns</th></tr>';
-  var first = sc.rows.slice(0, 10), rest = sc.rows.slice(10);
-  return '<table class="ftbl">' + head + first.map(row).join('') + '</table>'
-    + (rest.length ? '<details class="fmore"><summary>Show all ' + sc.rows.length + ' sectors</summary>'
+    + '<th style="text-align:right">vs ' + esc(bn) + '<br>1y/2y/3y</th><th style="text-align:right">Returns</th></tr>';
+  var short = sc.rows.filter(function(x){ return x.shortlisted; }), rest = sc.rows.filter(function(x){ return !x.shortlisted; });
+  return '<div class="fmore" style="margin-top:10px;"><b>Shortlist</b> — scored on all seven pillars</div>'
+    + '<table class="ftbl">' + head + short.map(row).join('') + '</table>'
+    + (rest.length ? '<details class="fmore"><summary>The other ' + rest.length + ' sectors (screen score)</summary>'
         + '<table class="ftbl">' + head + rest.map(row).join('') + '</table></details>' : '')
-    + '<div class="fmore">Nifty 50: ' + pctCell(b.m3) + ' / ' + pctCell(b.m6) + ' / ' + pctCell(b.y1) + '% over 3m / 6m / 1y'
+    + '<div class="fmore">' + esc(bn) + ': ' + pctCell(b.y1) + ' / ' + pctCell(b.y2) + ' / ' + pctCell(b.y3) + '% over 1y / 2y a year / 3y a year'
     + (b.checked ? ' · checked by the app' : ' · as the research states it')
-    + '. Columns show points above or below the Nifty 50. ' + sc.counts.complete + ' of ' + sc.counts.screened
-    + ' sectors fully scored' + (sc.counts.neutral ? ', ' + sc.counts.neutral + ' with a part counted as average' : '')
-    + '; returns checked for ' + sc.counts.checked + '.</div>';
+    + '. Columns show points above or below the ' + esc(bn) + '. ' + sc.counts.complete + ' of ' + sc.counts.screened
+    + ' sectors fully scored' + (sc.counts.neutral ? ', ' + sc.counts.neutral + ' with a pillar counted as average' : '')
+    + '; returns checked for ' + sc.counts.checked + '; deep dive done for ' + sc.counts.deepDone + ' of ' + sc.counts.shortlist + '.</div>';
 }
 function renderFinder(){
   var box = $('#finderBox'); if(!box) return;
@@ -5549,6 +5555,13 @@ function renderFinder(){
   if(tag){ tag.textContent = rec ? 'screened' : 'empty'; tag.className = 'tag' + (rec ? ' ok' : ''); }
   if($('#btnFinderUpdate')) $('#btnFinderUpdate').disabled = !rec;
   if($('#btnFinderRecheck')) $('#btnFinderRecheck').classList.toggle('hidden', !rec);
+  if($('#btnFinderDeep')){
+    /* Build 33: the second stage, once a screen has a shortlist. */
+    var deepOn = !!(sc && sc.shortlist && sc.shortlist.length);
+    $('#btnFinderDeep').classList.toggle('hidden', !deepOn);
+    $('#btnFinderDeep').textContent = deepOn ? (sc.counts.deepDone ? 'Deep Dive again (' + sc.counts.deepDone + ' of ' + sc.shortlist.length + ' done)'
+      : 'Deep Dive on the ' + sc.shortlist.length + ' Shortlisted Sectors') : 'Deep Dive';
+  }
   if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
   if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
   if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc) : '';
@@ -5725,7 +5738,8 @@ function verifyFinder(id){
     libWrite(lib);
     var n = Object.keys(v.sectors || {}).length, nv = Object.keys(v.valuation || {}).length;
     if($('#finderMsg')) $('#finderMsg').textContent = n
-      ? 'Returns checked by the app for ' + n + ' sector' + (n === 1 ? '' : 's') + (v.benchmark ? ' and the Nifty 50' : '')
+      ? 'Returns over 1, 2 and 3 years, volatility and falls checked by the app for ' + n + ' sector' + (n === 1 ? '' : 's')
+        + (v.benchmark500 ? ', against the Nifty 500' : v.benchmark ? ', against the Nifty 50' : '')
         + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures' : '')
         + (nv ? '. P/E history worked out from company prices and EPS for ' + nv + ' sector' + (nv === 1 ? '' : 's') : '')
         + ((v.valuationFailed || []).length ? '; ' + v.valuationFailed.length + ' could not be priced and are asked again' : '') + '.'
@@ -5787,6 +5801,14 @@ document.addEventListener('click', function(ev){
     return;
   }
   if(ev.target.closest('#btnFinderImport')){ openImport({ kind:'finder', rank:0 }); return; }
+  if(ev.target.closest('#btnFinderDeep')){
+    var dr = finderRecord();
+    if(!dr || !window.EQ || !EQ.finder){ return; }
+    LAST_PROMPT = '';
+    deliverPrompt(EQ.finder.buildDeepDivePrompt(dr.data, { now: new Date() }), 'Deep Dive prompt copied for the shortlisted sectors.\n\n'
+      + 'Pick a tool — the four buttons are highlighted below. Paste, send, and bring the reply back with Import Data in the Sector Finder box: it is added to the saved screen.');
+    return;
+  }
   if(ev.target.closest('#btnFinderRecheck')){
     var fr = finderRecords().filter(function(r){ return r.id === SEL.finder; })[0] || finderRecords().slice(-1)[0];
     if(fr) verifyFinder(fr.id);
@@ -5871,6 +5893,7 @@ function topUpTarget(d){
 }
 function stateWord(c){
   if(c && c.state === 'app') return 'the app works it out from prices';
+  if(c && c.state === 'deep') return 'tap Deep Dive on the Shortlist';
   if(!c || c.state !== 'searched') return c && c.state === 'found' ? 'found' : 'not yet searched';
   var d = c.lastTried ? String(c.lastTried).replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$3-$2-$1') : '';
   return 'searched, not found \u00d7' + c.tries + (d ? ', last ' + d : '');

@@ -217,8 +217,12 @@ console.log('\nThe real run: seven follow-ups, then the companies\' figures');
   ok('and its valuation, worked out by the app where the research had none', after.rows.every((r) => !r.missingParts.includes('valuation')),
     after.rows.filter((r) => r.missingParts.includes('valuation')).map((r) => r.name).join(', '));
   ok('every sector can now rank for the Top 3', after.counts.eligible === 41, `${before.counts.eligible} → ${after.counts.eligible}`);
-  ok('nothing is counted as merely average any more', after.counts.neutral === 0, after.counts.neutral);
-  ok('depth rises well above 80%', c.pct >= 95, `${completeness(d).pct}% (left: ${c.missing.map((m) => m.label).join('; ')})`);
+  ok('nothing on the stage-1 pillars is counted as merely average any more', after.rows.every((r) => !r.neutral.some((k) => ['fundamentals', 'valuation', 'risk'].includes(k))),
+    after.rows.filter((r) => r.neutral.some((k) => ['fundamentals', 'valuation', 'risk'].includes(k))).map((r) => r.name + ':' + r.neutral).join(' '));
+  /* Build 33 adds ROE and the deep dive; what is left is those and the
+     real data's own thin tailwinds. */
+  ok('what is left is ROE, the deep dive and tailwinds', c.missing.every((m) => /Tailwinds|Return on equity|Deep dive/.test(m.label)),
+    `${c.pct}% (left: ${c.missing.map((m) => m.label).join('; ')})`);
 }
 
 console.log(`\n${ran - fail}/${ran} passed`);

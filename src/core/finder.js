@@ -1,3 +1,4 @@
+import { weekly, periodReturn, basket, priceMetrics, breadth } from './sector-metrics.js';
 /* The Sector Finder (build 28).
  *
  * Tejas, 22-11-2026: "we can search the Top3 companies of any sector but now I
@@ -39,9 +40,11 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const real = (v) => isNum(v) && v !== 0;
 const arr = (v) => (Array.isArray(v) ? v : []);
 
-export const FINDER_WEIGHTS = Object.freeze({ momentum: 35, business: 20, outlook: 35, valuation: 10 });
 export const FINDER_LINE = 'F|screen';
 export const BENCHMARK = 'Nifty 50';
+/* Build 33: sectors are set against the Nifty 500, the broad market, since
+   many are mid-cap heavy; the Nifty 50 is kept beside it. */
+export const BENCHMARK_BROAD = 'Nifty 500';
 /* How the three lookbacks combine into one momentum reading: the year counts
    most, the quarter least, so one strong quarter cannot carry a sector. */
 const MOMENTUM_MIX = { m3: 0.25, m6: 0.35, y1: 0.40 };
@@ -77,7 +80,7 @@ export const SECTOR_INDEX = Object.freeze({
 /* Upstox's instrument names for NSE indices differ in places from NSE's own
    (it abbreviates). Both are tried. */
 const UPSTOX_INDEX = {
-  'nifty 50': 'Nifty 50', 'nifty bank': 'Nifty Bank', 'nifty it': 'Nifty IT', 'nifty pharma': 'Nifty Pharma',
+  'nifty 50': 'Nifty 50', 'nifty 500': 'Nifty 500', 'nifty bank': 'Nifty Bank', 'nifty it': 'Nifty IT', 'nifty pharma': 'Nifty Pharma',
   'nifty auto': 'Nifty Auto', 'nifty fmcg': 'Nifty FMCG', 'nifty metal': 'Nifty Metal', 'nifty realty': 'Nifty Realty',
   'nifty energy': 'Nifty Energy', 'nifty media': 'Nifty Media', 'nifty psu bank': 'Nifty PSU Bank',
   'nifty private bank': 'Nifty Pvt Bank', 'nifty financial services': 'Nifty Fin Service',
@@ -117,7 +120,8 @@ export const nameKey = (v) => S(v).toLowerCase().replace(/&/g, ' and ').replace(
 export function isFinderPayload(d) {
   if (!d || typeof d !== 'object') return false;
   if (d.run && /sector\s*screen|finder/i.test(S(d.run.kind))) return true;
-  return Array.isArray(d.sectors) && !arr(d.companies).length && !d.macro && !d.shortlist;
+  return Array.isArray(d.sectors) && !arr(d.companies).length && !d.shortlist
+    && (!d.macro || d.sectors.some((x) => x && x.deepDive));
 }
 
 /* ── Reading a reply as the tool actually wrote it (build 29) ───────────
@@ -388,20 +392,23 @@ The application compares the two screens itself.
 
 Today is ${today}. You are screening every sector of the Indian listed market
 in the list below, for an equity research application. For each sector it needs
-how the sector has done over the last 3 months, 6 months and 1 year, what is
-behind that in the businesses themselves, and how it is expected to grow over
-the next three years.
+how the sector has done over the last 1, 2 and 3 years, what is behind that in
+the businesses themselves, and how it is expected to grow over the next three
+years. This is STAGE 1, the screen of every sector. The application then
+shortlists the best ten and asks for a deeper study of those (government
+policy and Budgets, global and regional trends, money flows) separately.
 ${upd}
 NUMBERS ARE NUMBERS. Write 12.5, not "12.5%", "12.5 percent" or "12-13". A
 range is its midpoint. A P/E is 22.4, not "22.4x".
 
 YOU DO NOT RANK THE SECTORS AND YOU DO NOT PICK THE BEST ONES.
-The application scores and ranks every sector from the figures you return:
-past momentum against the Nifty 50 (35%), business momentum over the last four
-quarters (20%), the three-year outlook (35%) and valuation against the
-sector's own history (10%). Your job is to get each figure right, dated and
-sourced. A sector without its returns or its outlook cannot be ranked among
-the leaders, and a missing business or valuation figure is counted as merely
+The application scores and ranks every sector from the figures you return,
+on seven pillars: past performance over 1, 2 and 3 years against the Nifty 500
+(20%), business fundamentals (15%), the growth outlook (20%), government and
+policy (15%), global and regional (10%), valuation (10%) and risk (10%). It
+measures returns, volatility and falls itself from prices. Your job is to get
+each figure right, dated and sourced. A sector without its outlook cannot be
+ranked among the leaders, and any other missing figure is counted as merely
 average, so every missing figure can cost a sector its place.
 
 HOW TO RESEARCH IT
@@ -421,8 +428,9 @@ FOR EVERY SECTOR IN THE LIST
                 sector's own list of sub-sectors, written exactly as listed.
   index         the NSE index that tracks it, as NSE names it (the one shown
                 in brackets unless a better one exists), or null if none does.
-  returns       the index's price return over the last 3 months ("m3"),
-                6 months ("m6") and 1 year ("y1") to the latest close, in
+  returns       the index's price return over the last 1 year ("y1"), and
+                over 2 and 3 years as an ANNUAL rate ("y2", "y3" — the
+                compound growth a year), to the latest close, in
                 percent, with "asOf" (the close used, DD-MM-YYYY) and
                 "source" (NSE index data, or the factsheet). With no index,
                 the market-cap-weighted return of the sector's listed
@@ -449,9 +457,17 @@ FOR EVERY SECTOR IN THE LIST
                             FY28E…, with the last actual year marked
                             "actual": true), from one site for the whole
                             sector. Two forecast years are enough.
+                            Add "revision3m": the percentage change in its
+                            next-year consensus EPS over the last three
+                            months (positive when analysts raised it).
                   guidance  where no analyst covers it, its own guided
                             annual revenue and profit growth from its latest
                             earnings call.
+                  roe       its return on equity for the last financial year,
+                            in percent.
+                  netDebtEbitda  its net debt divided by EBITDA for the last
+                            financial year (negative for net cash). Leave it
+                            out for a bank, NBFC or insurer.
   business      year-on-year growth of the sector's listed companies in
                 aggregate: "revenueGrowth" and "profitGrowth" (net profit),
                 over the last four reported quarters, with "period" (e.g.
@@ -489,8 +505,8 @@ FOR EVERY SECTOR IN THE LIST
   why           one sentence: the single most important reason the sector is,
                 or is not, attractive now.
 
-And the benchmark: the Nifty 50's return over the same three periods, to the
-same close.
+And the benchmark: the Nifty 500's return over the same three periods, to
+the same close (the application also measures it, and the Nifty 50, itself).
 
 THE SECTORS (${FINDER_SECTORS.length})
 
@@ -529,20 +545,21 @@ THE JSON (shown laid out here; send it minified)
     "researchNotes": "what you could and could not establish, and why",
     "searchLog": [ { "path": "sectors[Banking].valuation.pe5yAvg", "searched": ["source tried"], "reason": "why it could not be established" } ]
   },
-  "benchmark": { "name": "${BENCHMARK}", "returns": { "m3": 0, "m6": 0, "y1": 0 }, "asOf": "DD-MM-YYYY", "source": "" },
+  "benchmark": { "name": "${BENCHMARK_BROAD}", "returns": { "y1": 0, "y2": 0, "y3": 0 }, "asOf": "DD-MM-YYYY", "source": "" },
   "sectors": [
     {
       "name": "Banking",
       "subSector": "Public sector banks",
       "index": "Nifty Bank",
-      "returns": { "m3": 0, "m6": 0, "y1": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
+      "returns": { "y1": 0, "y2": 0, "y3": 0, "asOf": "DD-MM-YYYY", "basis": "index", "source": "" },
       "bellwethers": [ { "symbol": "SBIN", "name": "State Bank of India",
                          "quarter": { "period": "Q2 FY27", "revenue": 0, "revenuePrev": 0, "profit": 0, "profitPrev": 0, "source": "" },
                          "eps": [ { "fy": "FY26", "eps": 0 } ], "epsTtm": 0, "epsSource": "",
                          "forecast": { "eps": [ { "fy": "FY26", "eps": 0, "actual": true }, { "fy": "FY27", "eps": 0 } ],
                                        "revenue": [ { "fy": "FY26", "value": 0, "actual": true }, { "fy": "FY27", "value": 0 } ],
-                                       "analysts": 0, "asOf": "", "source": "" },
-                         "guidance": { "revenueGrowth": 0, "profitGrowth": 0, "years": "", "source": "" } } ],
+                                       "analysts": 0, "revision3m": 0, "asOf": "", "source": "" },
+                         "guidance": { "revenueGrowth": 0, "profitGrowth": 0, "years": "", "source": "" },
+                         "roe": 0, "netDebtEbitda": 0 } ],
       "business": { "revenueGrowth": 0, "profitGrowth": 0, "period": "", "basis": "", "source": "" },
       "outlook": { "earningsGrowth3y": 0, "demandGrowth3y": 0, "years": "FY26 to FY29", "basis": "",
                    "tailwinds": [""], "risks": [""], "source": "" },
@@ -551,6 +568,130 @@ THE JSON (shown laid out here; send it minified)
     }
   ]
 }
+`;
+}
+
+/* ── Stage 2: the deep dive on the shortlist (build 33) ─────────────── */
+/* What the five ICICI Securities samples Tejas sent on 26-11-2026 rest on,
+   and the Finder lacked: money flows by sector, government targets and
+   scheme money actually spent, trade measures, the prices that drive each
+   sector's profits, ownership trends, and a macro backdrop. Asked for the
+   ten shortlisted sectors only, so the reply stays a size a tool can send. */
+export function buildDeepDivePrompt(d, { now = new Date() } = {}) {
+  const sc = scoreFinder(d);
+  const today = dmyOf(now);
+  const list = sc.shortlist.map((r, i) => {
+    const bws = arr((arr(d && d.sectors).find((x) => nameKey(x && x.name) === nameKey(r.name)) || {}).bellwethers)
+      .map((b) => S(b && b.symbol)).filter(Boolean);
+    return `${p2(i + 1)}. ${r.name}${bws.length ? `  [bellwethers: ${bws.join(', ')}]` : ''}`;
+  }).join('\n');
+  return `SECTOR FINDER — STAGE 2: THE DEEP DIVE ON THE SHORTLIST
+
+Today is ${today}. The application screened every sector of the Indian listed
+market and shortlisted the ${sc.shortlist.length} below. For each, it now needs the evidence a
+professional sector analyst weighs beyond prices and results: government
+policy and money, global and regional trends, what drives the sector's
+profits, who is buying it, and the risks. The application scores this itself
+(government and policy 15%, global and regional 10%, and parts of past
+performance, fundamentals and risk). You do not rank or rate the sectors.
+
+NUMBERS ARE NUMBERS: 12.5, not "12.5%". Amounts in ₹ crore unless the field
+says otherwise. Every figure carries its date or period and its source.
+SEARCH for every figure; do not answer from memory. Never write 0, "" or null
+for something you could not find: leave it out and add an entry to
+"run.searchLog" naming the sources you tried.
+
+THE SHORTLIST (${sc.shortlist.length})
+
+${list}
+
+FOR EVERY SECTOR IN THE SHORTLIST, under "deepDive":
+
+  flows       foreign portfolio investment in the sector, from NSDL's
+              fortnightly sector-wise FPI data (fpi.nsdl.co.in): "fpiNet12mCr"
+              (net investment over the last 12 months), "fpiNet3mCr" (last 3
+              months), "fpiAucCr" (FPI assets under custody in the sector, the
+              latest fortnight), "asOf", "source".
+  budget      the Union Budget allocation to the sector's main ministry or
+              department heads, for each of the last FIVE years: { "fy",
+              "head", "be" (Budget Estimate), "re" (Revised Estimate), "actual"
+              (where published) }. Use the same heads every year.
+  schemes     the main government schemes for the sector (PLI, mission,
+              programme): { "name", "outlay" (total sanctioned), "disbursed"
+              (released or spent so far), "asOf", "endYear", "source" }.
+  targets     national targets the sector serves (capacity, production,
+              penetration): { "target", "current", "goal", "by", "unit",
+              "source" } — e.g. installed power capacity 520 GW now, 900 GW
+              by FY32 (National Electricity Plan).
+  policy      policy, regulatory and trade measures of the last two years and
+              those announced: safeguard and anti-dumping duties, import
+              quotas, export curbs, EU CBAM, tax changes, regulation:
+              { "event", "date", "impact" (1 helps the sector, -1 hurts it,
+              0 neutral), "detail" }. At least three.
+  global      "marketSizeUsdBn" (global market), "marketGrowth3y" (forecast
+              annual growth of the global market), "indiaShareNow" and
+              "indiaSharePrev" (India's share of the global market, in
+              percent, now and five years ago, with "indiaShareYears"),
+              "exportsCagr3y" and "importsCagr3y" (India's exports and imports
+              of the sector's products, annual growth over three years),
+              "source".
+  drivers     the two to four prices or rates that drive the sector's profits
+              (LME aluminium, coking coal, steel price, crude, the rupee, the
+              repo rate, freight): { "name", "unit", "now", "yearAgo",
+              "effect" ("rising helps" or "rising hurts"), "source" }.
+  risks       the sector's main risks: { "risk", "severity" ("high",
+              "medium" or "low"), "detail" }. At least three, including
+              regulatory and concentration risk.
+  commentary  "thesis" (the investment case in three or four sentences),
+              "bull" and "bear" (what could go right and wrong), "catalysts"
+              ([{ "event", "date" }] — dated events in the next 12 months:
+              Budget, policy decisions, capacity commissioning, results).
+
+And for every bellwether of every shortlisted sector, under its own symbol:
+  holding     its shareholding pattern for each of the last FIVE quarters:
+              [{ "q": "Sep-26", "promoter", "fii", "dii" }], in percent, from
+              its exchange filings.
+
+AND ONCE, for the market as a whole, under "macro":
+  "repoRate", "repoRatePrev" (a year ago), "cpi" (latest CPI inflation),
+  "gdpGrowth" (latest quarter, real), "crude" (Brent, US$ a barrel) and
+  "crudeYearAgo", "usdInr" and "usdInrYearAgo", "us10y" (US 10-year yield),
+  "fpiIndiaNet3mCr" (FPI net investment in Indian equity, last 3 months),
+  "msciIndia1y" and "msciEm1y" (1-year returns of MSCI India and MSCI
+  Emerging Markets), "asOf", "source".
+
+HOW TO SEND IT
+
+Return ONE fenced code block tagged json, as the last thing in your reply,
+minified on ONE LINE, "schema" first, nothing after the closing fence:
+
+{
+  "schema": "equity-analyst/5",
+  "run": { "kind": "sectorScreen", "topUp": true, "stage": "deepDive", "generatedAt": "", "tool": "", "searchLog": [] },
+  "macro": { "repoRate": 0, "repoRatePrev": 0, "cpi": 0, "gdpGrowth": 0, "crude": 0, "crudeYearAgo": 0, "usdInr": 0, "usdInrYearAgo": 0,
+             "us10y": 0, "fpiIndiaNet3mCr": 0, "msciIndia1y": 0, "msciEm1y": 0, "asOf": "DD-MM-YYYY", "source": "" },
+  "sectors": [
+    {
+      "name": "Power and utilities",
+      "deepDive": {
+        "flows": { "fpiNet12mCr": 0, "fpiNet3mCr": 0, "fpiAucCr": 0, "asOf": "DD-MM-YYYY", "source": "" },
+        "budget": [ { "fy": "FY27", "head": "Ministry of Power", "be": 0, "re": 0, "actual": 0 } ],
+        "schemes": [ { "name": "RDSS", "outlay": 0, "disbursed": 0, "asOf": "", "endYear": "", "source": "" } ],
+        "targets": [ { "target": "Installed capacity", "current": 0, "goal": 0, "by": "FY32", "unit": "GW", "source": "" } ],
+        "policy": [ { "event": "", "date": "DD-MM-YYYY", "impact": 1, "detail": "" } ],
+        "global": { "marketSizeUsdBn": 0, "marketGrowth3y": 0, "indiaShareNow": 0, "indiaSharePrev": 0, "indiaShareYears": "2021 to 2026",
+                    "exportsCagr3y": 0, "importsCagr3y": 0, "source": "" },
+        "drivers": [ { "name": "", "unit": "", "now": 0, "yearAgo": 0, "effect": "rising helps", "source": "" } ],
+        "risks": [ { "risk": "", "severity": "medium", "detail": "" } ],
+        "commentary": { "thesis": "", "bull": "", "bear": "", "catalysts": [ { "event": "", "date": "" } ] }
+      },
+      "bellwethers": [ { "symbol": "NTPC", "holding": [ { "q": "Sep-26", "promoter": 0, "fii": 0, "dii": 0 } ] } ]
+    }
+  ]
+}
+
+If it will not all fit in one reply, send as many sectors as fit, in the order
+listed, end the block cleanly and say CONTINUE.
 `;
 }
 
@@ -563,18 +704,23 @@ export function finderChecks(d0) {
   if (d) normaliseFinder(d);
   const ver = (d && d.verified && d.verified.sectors) || {};
   const out = [];
-  const add = (group, label, have, want, ask, detail, appOnly) => out.push({ group, label, have, want, ask, detail, appOnly: !!appOnly });
+  const add = (group, label, have, want, ask, detail, appOnly) => out.push({ group, label, have, want, ask, detail, appOnly: appOnly || false });
   const rows = arr(d && d.sectors).filter((x) => x && S(x.name));
   const have = FINDER_SECTORS.filter((s) => rows.some((r) => nameKey(r.name) === nameKey(s)));
   const absent = FINDER_SECTORS.filter((s) => !have.includes(s));
   add('The screen', 'Sectors screened', have.length, FINDER_SECTORS.length,
     `sectors — every sector in the list must be screened. Missing: ${absent.join(', ')}. Send each with all its blocks.`,
     absent.join(', '));
+  /* Build 33: the benchmark is the Nifty 500 over 1, 2 and 3 years. The app
+     measures it itself; it is asked of the research only once the app's own
+     check could not run. */
+  const vb = d && d.verified;
   const b = (d && d.benchmark && d.benchmark.returns) || {};
-  const bMiss = ['m3', 'm6', 'y1'].filter((k) => !real(b[k]));
-  add('The screen', 'Nifty 50 returns over 3 months, 6 months and 1 year', 3 - bMiss.length, 3,
-    `benchmark.returns — the Nifty 50's price return over ${bMiss.join(', ')} to the latest close, with "asOf" and "source".`,
-    bMiss.join(', '));
+  const benchApp = !!(vb && ((vb.benchmark500 && isNum(vb.benchmark500.y1)) || (vb.benchmark && isNum(vb.benchmark.y1))));
+  const bMiss = benchApp ? [] : ['y1', 'y2', 'y3'].filter((k) => !real(b[k]));
+  add('The screen', 'Nifty 500 returns over 1, 2 and 3 years', 3 - bMiss.length, 3,
+    `benchmark.returns — the Nifty 500's price return over ${bMiss.join(', ')} (2 and 3 years as an annual rate) to the latest close, with "asOf" and "source".`,
+    bMiss.join(', ') + (bMiss.length && !(vb && vb.error) ? ' (the app measures it from prices)' : ''), bMiss.length > 0 && !(vb && vb.error));
   /* `gaps(r)` names the fields a sector lacks, so the follow-up asks for
      exactly them: "Retail (pe5yAvg), Aviation (pe, pe5yAvg)". */
   const need = (label, path, gaps, what) => {
@@ -597,16 +743,16 @@ export function finderChecks(d0) {
     const miss = [];
     rows.forEach((r) => {
       const v = ver[nameKey(r.name)];
-      if (v && isNum(v.y1)) return;
-      const g = lacks(r.returns, ['m3', 'm6', 'y1']);
+      if (v && (isNum(v.y1) || isNum(v.y3))) return;
+      const g = lacks(r.returns, ['y1', 'y2', 'y3']);
       if (!g.length) return;
       const measurable = S(r.index) || SECTOR_INDEX[FINDER_SECTORS.find((x) => nameKey(x) === nameKey(r.name))]
         || bwOf(r).length >= 2;
       (measurable && !failed.has(nameKey(r.name)) ? appsJob : miss).push(`${S(r.name)} (${g.join(', ')})`);
     });
     const gaps = miss.length + appsJob.length;
-    add('Every sector', 'Returns over 3 months, 6 months and 1 year', rows.length - gaps, rows.length,
-      'sectors.returns — the sector index\'s return over 3 months ("m3"), 6 months ("m6") and 1 year ("y1"), with "asOf" and "source".'
+    add('Every sector', 'Returns over 1, 2 and 3 years', rows.length - gaps, rows.length,
+      'sectors.returns — the sector index\'s return over 1 year ("y1"), and over 2 and 3 years as an annual rate ("y2", "y3"), with "asOf" and "source".'
       + (miss.length ? ` Missing: ${miss.join('; ')}.` : '')
       + (appsJob.length ? ` Do NOT search for these: the application measures them itself from the index or the bellwethers' prices: ${appsJob.map((x) => x.replace(/ \(.*$/, '')).join(', ')}.` : ''),
       miss.concat(appsJob.map((x) => x.replace(/\(.*\)/, '(the app measures it from prices)'))).join('; '),
@@ -656,6 +802,53 @@ export function finderChecks(d0) {
       ask.concat(app.map((n) => `${n} (the app works it out from prices and EPS)`)).join('; '),
       !ask.length && app.length > 0);
   }
+  /* Build 33: the companies' return on equity and leverage, and the change
+     in consensus over three months. */
+  need('Return on equity of the bellwethers', 'sectors.bellwethers.roe',
+    (r) => (isNum(companyQuality(r).roe) ? [] : [`ROE and net debt to EBITDA of ${syms(r) || 'its bellwethers'}`]),
+    'each bellwether\'s "roe" (return on equity, last financial year, %) and "netDebtEbitda" (net debt ÷ EBITDA, negative for net cash; leave it out for a bank, NBFC or insurer), under sectors[].bellwethers[], from its annual report or a results page (Screener.in, Moneycontrol).');
+  need('Change in consensus over three months', 'sectors.bellwethers.forecast.revision3m',
+    (r) => (isNum(companyQuality(r).revision) || !bwOf(r).some((b) => b.forecast && arr(b.forecast.eps).length) ? [] : [`revision3m of ${syms(r)}`]),
+    'for each bellwether with consensus estimates, "revision3m" under its "forecast": the percentage change in its next-year consensus EPS over the last three months (positive when analysts raised it), from the same site as the estimates.');
+  /* Stage 2, the shortlist only. Until the deep dive has been run, one item
+     says so (the Deep dive prompt asks for it, not the follow-up). */
+  const sc = scoreFinder(d);
+  const short = sc.shortlist.map((x) => rows.find((r) => nameKey(r.name) === nameKey(x.name))).filter(Boolean);
+  const started = short.some((r) => r.deepDive) || !!(d && d.macro);
+  if (!started) {
+    add('Deep dive on the shortlist', 'Deep dive on the ' + short.length + ' shortlisted sectors', 0, short.length,
+      'run the deep dive', short.map((r) => S(r.name)).join(', '), 'deep');
+  } else {
+    const needS = (label, path, gaps, what) => {
+      const miss = short.map((r) => ({ name: S(r.name), g: gaps(r, r.deepDive || {}) })).filter((x) => x.g.length);
+      const list = miss.map((x) => `${x.name} (${x.g.join(', ')})`).join('; ');
+      add('Deep dive on the shortlist', label, short.length - miss.length, short.length, `${path} — ${what} Missing: ${list}.`, list);
+    };
+    needS('Foreign portfolio flows', 'sectors.deepDive.flows', (r, dd) => (dd.flows && isNum(dd.flows.fpiNet12mCr) && dd.flows.fpiAucCr > 0 ? [] : ['fpiNet12mCr, fpiAucCr']),
+      'from NSDL\'s fortnightly sector-wise FPI data (fpi.nsdl.co.in): "fpiNet12mCr", "fpiNet3mCr", "fpiAucCr", "asOf", "source".');
+    needS('Budget allocation, five years', 'sectors.deepDive.budget', (r, dd) => { const n = arr(dd.budget).filter((x) => x && isNum(x.be)).length; return n >= 3 ? [] : [`${n} of 5 years`]; },
+      'the Union Budget allocation to the sector\'s ministry or department heads for each of the last five years: { "fy", "head", "be", "re", "actual" }, in ₹ crore, from the Expenditure Budget documents (indiabudget.gov.in).');
+    needS('Scheme money disbursed', 'sectors.deepDive.schemes', (r, dd) => (arr(dd.schemes).some((x) => x && x.outlay > 0 && isNum(x.disbursed)) ? [] : ['outlay and disbursed']),
+      'the main schemes (PLI, missions, programmes): { "name", "outlay", "disbursed", "asOf", "endYear", "source" }, from the ministry\'s dashboard, PIB releases or the scheme\'s own portal.');
+    needS('Policy, regulation and trade measures', 'sectors.deepDive.policy', (r, dd) => { const n = arr(dd.policy).filter((x) => x && isNum(x.impact)).length; return n >= 3 ? [] : [`${n} of 3`]; },
+      'at least three measures of the last two years or announced: { "event", "date", "impact" (1 helps, -1 hurts, 0 neutral), "detail" } — duties, quotas, export curbs, CBAM, tax, regulation (DGTR, CBIC, PIB, the regulator).');
+    needS('Global market and India\'s share', 'sectors.deepDive.global', (r, dd) => { const g = dd.global || {};
+      return [].concat(isNum(g.marketGrowth3y) ? [] : ['marketGrowth3y'], isNum(g.indiaShareNow) && isNum(g.indiaSharePrev) ? [] : ['indiaShareNow, indiaSharePrev'], isNum(g.exportsCagr3y) ? [] : ['exportsCagr3y']); },
+      '"marketGrowth3y", "indiaShareNow", "indiaSharePrev", "exportsCagr3y", "importsCagr3y", "source" — from industry bodies, global research houses, and DGCI&S / Ministry of Commerce trade data (tradestat.commerce.gov.in).');
+    needS('Profit drivers, now and a year ago', 'sectors.deepDive.drivers', (r, dd) => { const n = arr(dd.drivers).filter((x) => x && isNum(x.now) && isNum(x.yearAgo)).length; return n >= 2 ? [] : [`${n} of 2`]; },
+      'two to four prices or rates that drive its profits: { "name", "unit", "now", "yearAgo", "effect" ("rising helps" or "rising hurts"), "source" } — LME, commodity exchanges, RBI, the bellwethers\' earnings calls.');
+    needS('Risks, graded', 'sectors.deepDive.risks', (r, dd) => { const n = arr(dd.risks).filter((x) => x && S(x.risk) && /high|medium|low/i.test(S(x.severity))).length; return n >= 3 ? [] : [`${n} of 3`]; },
+      'at least three: { "risk", "severity" ("high", "medium", "low"), "detail" }, including regulatory and concentration risk.');
+    needS('Institutional ownership, five quarters', 'sectors.bellwethers.holding', (r) => { const n = bwOf(r).filter((b) => arr(b.holding).filter((q) => q && isNum(q.fii) && isNum(q.dii)).length >= 2).length; return n >= 2 ? [] : [`shareholding of ${syms(r)}`]; },
+      'each bellwether\'s shareholding pattern for the last five quarters: "holding": [{ "q": "Sep-26", "promoter", "fii", "dii" }], from its exchange filings (NSE/BSE shareholding pattern).');
+    needS('Thesis, bull and bear case, catalysts', 'sectors.deepDive.commentary', (r, dd) => { const c = dd.commentary || {};
+      return [].concat(S(c.thesis).length > 40 ? [] : ['thesis'], S(c.bull) && S(c.bear) ? [] : ['bull, bear'], arr(c.catalysts).length >= 2 ? [] : ['two dated catalysts']); },
+      '"thesis" (three or four sentences), "bull", "bear", "catalysts": [{ "event", "date" }] — dated events in the next 12 months.');
+    const m = (d && d.macro) || {};
+    const mk = ['repoRate', 'cpi', 'crude', 'usdInr', 'fpiIndiaNet3mCr', 'msciIndia1y', 'msciEm1y'].filter((k) => !isNum(m[k]));
+    add('Deep dive on the shortlist', 'Macro backdrop', 7 - mk.length, 7,
+      `macro — the market-wide readings: ${mk.join(', ')}, with their year-ago values where asked, "asOf" and "source" (RBI, MoSPI, NSDL, MSCI factsheets).`, mk.join(', '));
+  }
   return out;
 }
 
@@ -697,45 +890,53 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date(), on
   const tell = (phase, done, total) => { try { if (typeof onProgress === 'function') onProgress(phase, done, total); } catch (e) { /* the page's display only */ } };
   if (!d || typeof fetchBars !== 'function') return result;
   d = JSON.parse(JSON.stringify(d)); normaliseFinder(d);
-  const tryKeys = async (keys) => {
-    for (const k of keys) {
-      try {
-        const r = returnsFromBars(await fetchBars(k));
-        if (r && isNum(r.y1)) return { ...r, key: k };
-      } catch (e) { /* the next name */ }
-    }
+  /* Build 33. Four years of weekly closes for every index and stock, so the
+     1-, 2- and 3-year returns, volatility, largest fall, consistency and
+     relative strength all come from the app's own prices. One fetch per
+     instrument per check (memoised): a bellwether priced for a basket is
+     reused for breadth. */
+  const WEEKS = { unit: 'weeks', interval: 1, years: 4 };
+  const memo = new Map();
+  const get = (k, o = WEEKS) => {
+    const id = k + '|' + o.unit + '|' + o.years;
+    if (!memo.has(id)) memo.set(id, Promise.resolve().then(() => fetchBars(k, o)).then((b) => weekly(b), () => null));
+    return memo.get(id);
+  };
+  const firstIndex = async (keys) => {
+    for (const k of keys) { const w = await get(k); if (w && w.length >= 8 && isNum(periodReturn(w, 12))) return { key: k, w }; }
     return null;
   };
-  /* A stock counts with 3- and 6-month returns even if it has no year yet. */
-  const tryStock = async (k) => {
-    try { const rr = returnsFromBars(await fetchBars(k)); return rr && isNum(rr.m6) ? { ...rr, key: k } : null; } catch (e) { return null; }
+  const b500 = await firstIndex(indexKeys(BENCHMARK_BROAD));
+  const b50 = await firstIndex(indexKeys(S(d.benchmark && d.benchmark.name) || BENCHMARK).concat(indexKeys(BENCHMARK)));
+  const benchW = (b500 || b50 || {}).w || null;
+  if (b50) result.benchmark = { ...priceMetrics(b50.w), basis: 'index', of: BENCHMARK };
+  if (b500) result.benchmark500 = { ...priceMetrics(b500.w), basis: 'index', of: BENCHMARK_BROAD };
+  result.relativeTo = b500 ? BENCHMARK_BROAD : BENCHMARK;
+  const bwSeries = async (r) => {
+    const picks = bwOf(r).slice(0, 5);
+    const got = await Promise.all(picks.map(async (p) => {
+      const key = typeof keyFor === 'function' ? keyFor(S(p.symbol), S(p.isin)) : null;
+      const w = key ? await get(key) : null;
+      return w && w.length >= 8 ? { sym: S(p.symbol), w } : null;
+    }));
+    return got.filter(Boolean);
   };
-  const bench = await tryKeys(indexKeys(S(d.benchmark && d.benchmark.name) || BENCHMARK).concat(indexKeys(BENCHMARK)));
-  if (bench) result.benchmark = { ...bench, basis: 'index', of: BENCHMARK };
-  /* Six sectors at a time (build 30): 41 sectors, some with five stocks each,
-     one request after another took over a minute on a phone. */
+  /* Six sectors at a time (build 30). */
   const one = async (r) => {
     if (!r || !S(r.name)) return;
     const names = [S(r.index), SECTOR_INDEX[FINDER_SECTORS.find((s) => nameKey(s) === nameKey(r.name))]].filter(Boolean);
-    let got = await tryKeys([...new Set(names.flatMap(indexKeys))]);
-    if (got) { result.sectors[nameKey(r.name)] = { ...got, basis: 'index', of: got.key.split('|')[1] }; return; }
-    /* The bellwethers, equally weighted. Two at least, or it is one company. */
-    const picks = arr(r.bellwethers).filter((x) => x && S(x.symbol)).slice(0, 5);
-    const each = [];
-    await Promise.all(picks.map(async (p) => {
-      const key = typeof keyFor === 'function' ? keyFor(S(p.symbol), S(p.isin)) : null;
-      if (!key) return;
-      const got1 = await tryStock(key);
-      if (got1 && isNum(got1.m3) && isNum(got1.m6)) each.push({ sym: S(p.symbol), ...got1 });
-    }));
-    each.sort((a, b) => picks.findIndex((p) => S(p.symbol) === a.sym) - picks.findIndex((p) => S(p.symbol) === b.sym));
-    if (each.length >= 2) {
-      /* Each period over the stocks that have it: a stock listed under a year
-         ago (Pine Labs, LG Electronics India in the 22-11 run) has no 1-year
-         return and must not turn the average into "not a number". */
-      const avg = (k) => { const xs = each.filter((x) => isNum(x[k])); return xs.length >= 2 ? +(xs.reduce((a, x) => a + x[k], 0) / xs.length).toFixed(2) : null; };
-      result.sectors[nameKey(r.name)] = { m3: avg('m3'), m6: avg('m6'), y1: avg('y1'),
-        asOf: each.map((x) => x.asOf).sort().pop(), basis: 'basket', of: each.map((x) => x.sym).join(', ') };
+    const [ix, stocks] = await Promise.all([firstIndex([...new Set(names.flatMap(indexKeys))]), bwSeries(r)]);
+    const br = breadth(stocks.map((x) => x.w));
+    if (ix) {
+      result.sectors[nameKey(r.name)] = { ...priceMetrics(ix.w, benchW), basis: 'index', of: ix.key.split('|')[1], breadth: br };
+      return;
+    }
+    /* The bellwethers, equally weighted and chain-linked. Two at least, or it
+       is one company. */
+    const bk = stocks.length >= 2 ? basket(stocks.map((x) => x.w)) : [];
+    const pm = bk.length >= 8 ? priceMetrics(bk, benchW) : null;
+    if (pm && (isNum(pm.y1) || isNum(pm.m6))) {
+      result.sectors[nameKey(r.name)] = { ...pm, basis: 'basket', of: stocks.map((x) => x.sym).join(', '), breadth: br };
     } else result.failed.push(S(r.name));
   };
   const list = arr(d.sectors).slice();
@@ -998,7 +1199,54 @@ export function effective(r, ver) {
   };
 }
 
-/* ── Scoring ──────────────────────────────────────────────────────────── */
+/* ── Scoring (build 33) ─────────────────────────────────────────────────
+   Tejas, 26-11-2026, approving the proposal of that day: seven pillars, as
+   in the Independent Sector Research, scored in two stages.
+
+     Stage 1, the screen: all 41 sectors, on what the app measures from
+     prices and the companies' own filings — past performance, fundamentals,
+     outlook, valuation and risk. The best ten form the shortlist.
+     Stage 2, the deep dive: the shortlist only, adding government and
+     policy, global and regional, money flows, ownership and the graded
+     risks. The Top 3 are the best three of the shortlist on all seven.
+
+   Each measure is ranked among the sectors that have it (the stage-2 ones
+   among the shortlist), and a pillar is the weighted mean of its measures'
+   ranks. Past performance and the outlook must be established; any other
+   pillar that could not be counts as average (50). */
+export const PILLAR_WEIGHTS = Object.freeze({ performance: 20, fundamentals: 15, outlook: 20, policy: 15, global: 10, valuation: 10, risk: 10 });
+export const PILLAR_NAMES = Object.freeze({ performance: 'Past performance', fundamentals: 'Business fundamentals', outlook: 'Growth outlook',
+  policy: 'Government and policy', global: 'Global and regional', valuation: 'Valuation', risk: 'Risk' });
+export const STAGE1_PILLARS = Object.freeze(['performance', 'fundamentals', 'outlook', 'valuation', 'risk']);
+export const SHORTLIST = 10;
+/* [measure, weight inside the pillar, stage (1 or 2), required]. */
+export const MEASURES = Object.freeze({
+  performance: [['rel1', 0.20, 1, true], ['rel2', 0.25, 1], ['rel3', 0.35, 1], ['consistency', 0.10, 1], ['flows', 0.10, 2]],
+  fundamentals: [['profit', 0.25, 1], ['revenue', 0.15, 1], ['eps3y', 0.25, 1], ['roe', 0.20, 1], ['ownership', 0.15, 2]],
+  outlook: [['earnings', 0.45, 1], ['demand', 0.30, 1], ['revision', 0.25, 1]],
+  policy: [['budget', 0.30, 2], ['utilisation', 0.20, 2], ['schemes', 0.20, 2], ['policyNet', 0.30, 2]],
+  global: [['globalGrowth', 0.30, 2], ['indiaShare', 0.20, 2], ['exports', 0.20, 2], ['drivers', 0.30, 2]],
+  valuation: [['cheap', 0.6, 1], ['pegCheap', 0.4, 1]],
+  risk: [['lowVol', 0.30, 1], ['smallDD', 0.30, 1], ['lowLev', 0.20, 1], ['lowRisk', 0.20, 2]],
+});
+export const MEASURE_NAMES = Object.freeze({
+  rel1: '1-year return against the index', rel2: '2-year return a year against the index', rel3: '3-year return a year against the index',
+  consistency: 'quarters beating the index, of the last 12', flows: 'foreign portfolio flows, 12 months, % of holdings',
+  profit: 'profit growth, latest quarter', revenue: 'sales growth, latest quarter', eps3y: 'EPS growth a year, last 3 years',
+  roe: 'return on equity', ownership: 'change in institutional holding, 4 quarters',
+  earnings: 'forecast earnings growth a year', demand: 'forecast demand growth a year', revision: 'change in consensus EPS, 3 months',
+  budget: 'Budget allocation growth a year', utilisation: 'Budget actually spent', schemes: 'scheme money disbursed of outlay',
+  policyNet: 'policy and trade measures, net', globalGrowth: 'global market growth a year', indiaShare: 'change in India\'s global share',
+  exports: 'export growth a year', drivers: 'profit drivers moving its way, net', cheap: 'P/E below its own history', pegCheap: 'P/E for its growth (PEG)',
+  lowVol: 'volatility (lower is better)', smallDD: 'largest fall, 3 years (smaller is better)', lowLev: 'net debt to EBITDA (lower is better)',
+  lowRisk: 'graded risks (fewer and milder is better)',
+});
+/* The pillars that count as average when absent. */
+export const CORE_PARTS = Object.freeze(['performance', 'outlook']);
+export const NEUTRAL_PARTS = Object.freeze(['fundamentals', 'policy', 'global', 'valuation', 'risk']);
+/* Kept for older screens and documents: the build-28 names. */
+export const FINDER_WEIGHTS = PILLAR_WEIGHTS;
+
 function percentiles(values) {
   /* values: array of number|null. Returns 0-100 per value, null stays null. */
   const xs = values.filter(isNum);
@@ -1009,149 +1257,264 @@ function percentiles(values) {
     return +(((below + (equal - 1) / 2) / (xs.length - 1)) * 100).toFixed(1);
   });
 }
-/* parts: [value, weight, required?]. Missing optional sub-parts are left out
-   and the rest re-weighted; a missing required one leaves the part empty. */
-/* (kept for reference: the build-29 composite) */
+/* parts: [value, weight, required?] (kept for reference). */
 export const mix = (parts) => {
   if (parts.some(([v, , req]) => req && !isNum(v))) return null;
   const ok = parts.filter(([v]) => isNum(v));
   if (!ok.length) return null;
   return ok.reduce((a, [v, w]) => a + v * w, 0) / ok.reduce((a, [, w]) => a + w, 0);
 };
-/* The parts a sector cannot do without, and those counted as average when
-   absent. */
-export const CORE_PARTS = Object.freeze(['momentum', 'outlook']);
-export const NEUTRAL_PARTS = Object.freeze(['business', 'valuation']);
 
-export function scoreFinder(d0) {
+/* The companies' quality: median ROE, leverage, past EPS growth (capped at
+   ±50% a year, as for the outlook) and the 3-month change in consensus. */
+export function companyQuality(r) {
+  const bws = bwOf(r);
+  const num = (v) => (isNum(v) ? v : null);
+  const eps3 = bws.map((b) => {
+    const h = seriesOf(b.eps, 'eps'), last = h[h.length - 1];
+    const bk = last && h.filter((e) => yrs(e.end, last.end) === 3).pop();
+    if (!(last && bk && last.v > 0 && bk.v > 0)) return null;
+    return Math.max(-PAST_CAP, Math.min(PAST_CAP, (Math.pow(last.v / bk.v, 1 / 3) - 1) * 100));
+  });
+  const rev = bws.map((b) => num(b.forecast && b.forecast.revision3m));
+  return { roe: r2(medianOf(bws.map((b) => num(b.roe)))), leverage: r2(medianOf(bws.map((b) => num(b.netDebtEbitda)))),
+    eps3y: r2(medianOf(eps3)), revision: r2(medianOf(rev)),
+    of: { roe: bws.filter((b) => isNum(b.roe)).map((b) => S(b.symbol)), eps3y: bws.filter((b, i) => isNum(eps3[i])).map((b) => S(b.symbol)),
+      revision: bws.filter((b, i) => isNum(rev[i])).map((b) => S(b.symbol)) } };
+}
+
+/* The deep dive's measures, worked out by the app from the figures sent. */
+export function deepMeasures(r, now = new Date()) {
+  const dd = (r && r.deepDive && typeof r.deepDive === 'object') ? r.deepDive : {};
+  const num = (v) => (isNum(v) ? v : null);
+  const out = {};
+  const fl = dd.flows || {};
+  out.flows = isNum(fl.fpiNet12mCr) && fl.fpiAucCr > 0 ? r2(fl.fpiNet12mCr / fl.fpiAucCr * 100) : null;
+  /* Institutional (FII + DII) holding: now against four quarters earlier,
+     the median across the companies. */
+  const own = bwOf(r).map((b) => {
+    const q = arr(b.holding).filter((x) => x && isNum(x.fii) && isNum(x.dii));
+    if (q.length < 2) return null;
+    const ord = q.slice().sort((a, c) => (qEnd(a.q) < qEnd(c.q) ? -1 : 1));
+    const last = ord[ord.length - 1], first = ord[Math.max(0, ord.length - 5)];
+    return (last.fii + last.dii) - (first.fii + first.dii);
+  });
+  out.ownership = r2(medianOf(own));
+  /* Budget: growth a year of the Budget Estimate over the years sent, and
+     the share actually spent in the latest year with actuals. */
+  const bud = arr(dd.budget).map((b) => ({ end: fyEnd(b && b.fy), fy: S(b && b.fy), be: num(b && b.be), actual: num(b && (b.actual != null ? b.actual : b.re)) }))
+    .filter((b) => b.end).sort((a, c) => (a.end < c.end ? -1 : 1));
+  const be = bud.filter((b) => b.be > 0);
+  if (be.length >= 2) { const n = yrs(be[0].end, be[be.length - 1].end); if (n >= 1) out.budget = r2((Math.pow(be[be.length - 1].be / be[0].be, 1 / n) - 1) * 100); }
+  const spent = bud.filter((b) => b.be > 0 && isNum(b.actual)).pop();
+  out.utilisation = spent ? r2(spent.actual / spent.be * 100) : null;
+  const sch = arr(dd.schemes).filter((x) => x && x.outlay > 0 && isNum(x.disbursed));
+  out.schemes = sch.length ? r2(medianOf(sch.map((x) => x.disbursed / x.outlay * 100))) : null;
+  const pol = arr(dd.policy).filter((x) => x && isNum(x.impact));
+  out.policyNet = pol.length ? Math.max(-5, Math.min(5, pol.reduce((a, x) => a + Math.sign(x.impact), 0))) : null;
+  const gl = dd.global || {};
+  out.globalGrowth = num(gl.marketGrowth3y);
+  out.indiaShare = isNum(gl.indiaShareNow) && isNum(gl.indiaSharePrev) ? r2(gl.indiaShareNow - gl.indiaSharePrev) : null;
+  out.exports = num(gl.exportsCagr3y);
+  /* A driver moving the sector's way: rising when rising helps, falling when
+     rising hurts. Net of those moving against it. */
+  const drv = arr(dd.drivers).filter((x) => x && isNum(x.now) && isNum(x.yearAgo) && x.yearAgo !== 0 && /help|hurt/i.test(S(x.effect)));
+  out.drivers = drv.length ? drv.reduce((a, x) => a + Math.sign(x.now - x.yearAgo) * (/help/i.test(S(x.effect)) ? 1 : -1), 0) : null;
+  const rk = arr(dd.risks).filter((x) => x && /high|medium|low/i.test(S(x.severity)));
+  out.riskGrade = rk.length ? rk.reduce((a, x) => a + (/high/i.test(x.severity) ? 2 : /medium/i.test(x.severity) ? 1 : 0.25), 0) : null;
+  void now;
+  return out;
+}
+/* "Sep-26", "Q2 FY27", "2026-09" → a sortable date. */
+function qEnd(v) {
+  const t = S(v); let m;
+  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  if ((m = /([a-z]{3})[a-z]*[\s'\-]*(\d{2,4})/i.exec(t)) && MON[m[1].toLowerCase()]) {
+    const y = m[2].length === 2 ? 2000 + Number(m[2]) : Number(m[2]);
+    return `${y}-${String(MON[m[1].toLowerCase()]).padStart(2, '0')}`;
+  }
+  if ((m = /Q([1-4])\s*FY\s*'?(\d{2,4})/i.exec(t))) {
+    const fy = m[2].length === 2 ? 2000 + Number(m[2]) : Number(m[2]);
+    const mon = [6, 9, 12, 3][Number(m[1]) - 1];
+    return `${mon === 3 ? fy : fy - 1}-${String(mon).padStart(2, '0')}`;
+  }
+  if ((m = /(\d{4})-(\d{2})/.exec(t))) return `${m[1]}-${m[2]}`;
+  return t;
+}
+
+export function scoreFinder(d0, { weights = PILLAR_WEIGHTS, shortlistSize = SHORTLIST } = {}) {
   /* Saved screens that predate a reading rule are read with today's rules,
      on a copy, so the saved reply itself is never changed by scoring. */
   const d = d0 && typeof d0 === 'object' ? JSON.parse(JSON.stringify(d0)) : d0;
   if (d) normaliseFinder(d);
   const ver = (d && d.verified) || {};
-  const bTool = (d && d.benchmark && d.benchmark.returns) || {};
-  const benchTool = { m3: real(bTool.m3) ? bTool.m3 : null, m6: real(bTool.m6) ? bTool.m6 : null, y1: real(bTool.y1) ? bTool.y1 : null,
-    checked: false, asOf: S(d && d.benchmark && d.benchmark.asOf) };
-  const benchApp = ver.benchmark && isNum(ver.benchmark.y1)
-    ? { m3: ver.benchmark.m3, m6: ver.benchmark.m6, y1: ver.benchmark.y1, checked: true, asOf: ver.benchmark.asOf }
-    : benchTool;
-  const bench = benchApp;
+  /* The benchmark: the Nifty 500 as the app measured it, else the Nifty 50
+     as the app measured it, else the research's own figures. */
+  const appBench = ver.benchmark500 && isNum(ver.benchmark500.y1) ? { ...ver.benchmark500, name: BENCHMARK_BROAD }
+    : ver.benchmark && isNum(ver.benchmark.y1) ? { ...ver.benchmark, name: BENCHMARK } : null;
+  const tb = (d && d.benchmark) || {};
+  const tr = tb.returns || {};
+  const toolBench = { y1: real(tr.y1) ? tr.y1 : null, y2: real(tr.y2) ? tr.y2 : null, y3: real(tr.y3) ? tr.y3 : null,
+    m3: real(tr.m3) ? tr.m3 : null, m6: real(tr.m6) ? tr.m6 : null, name: S(tb.name) || BENCHMARK, asOf: S(tb.asOf), checked: false };
+  const bench = appBench ? { ...appBench, checked: true } : toolBench;
   const rows = arr(d && d.sectors).filter((r) => r && S(r.name)).map((r) => {
     const v = (ver.sectors || {})[nameKey(r.name)];
     const t = r.returns || {};
-    const ret = v && isNum(v.y1)
-      ? { m3: v.m3, m6: v.m6, y1: v.y1, checked: true, basis: v.basis, of: v.of, asOf: v.asOf,
-          tool: { m3: t.m3, m6: t.m6, y1: t.y1 } }
-      : { m3: real(t.m3) ? t.m3 : null, m6: real(t.m6) ? t.m6 : null, y1: real(t.y1) ? t.y1 : null,
+    const ret = v && (isNum(v.y1) || isNum(v.y3))
+      ? { ...v, checked: true, tool: { y1: t.y1, y2: t.y2, y3: t.y3 } }
+      : { y1: real(t.y1) ? t.y1 : null, y2: real(t.y2) ? t.y2 : null, y3: real(t.y3) ? t.y3 : null,
+          m3: real(t.m3) ? t.m3 : null, m6: real(t.m6) ? t.m6 : null,
           checked: false, basis: S(t.basis) || 'stated by the research', of: S(r.index), asOf: S(t.asOf) };
-    /* Build 30: a return the app measured is set against the Nifty 50 as the
-       app measured it, to the same close; a return the research stated is set
-       against the Nifty 50 as the research stated it. Mixing the two compared
-       an October close with a November one (the 22-11-2026 run used month-end
-       dashboards to 31-10-2026). */
-    const bm = ret.checked ? benchApp : benchTool;
+    /* A return the app measured is set against the index the app measured,
+       to the same close; one the research stated, against the research's. */
+    const bm = ret.checked ? (appBench || toolBench) : toolBench;
     const rel = {};
-    ['m3', 'm6', 'y1'].forEach((k) => { rel[k] = isNum(ret[k]) && isNum(bm[k]) ? +(ret[k] - bm[k]).toFixed(2) : null; });
-    const base = isNum(bm.y1) ? rel : ret;
+    ['y1', 'y2', 'y3', 'm3', 'm6'].forEach((k) => { rel[k] = isNum(ret[k]) && isNum(bm[k]) ? +(ret[k] - bm[k]).toFixed(2) : null; });
     const bz = r.business || {}, ol = r.outlook || {}, va = r.valuation || {};
-    /* Build 31: the research's sector figure first, the companies' own
-       figures where it has none. */
     const ef = effective(r, ver);
     const eb = ef.business, eo = ef.outlook, ev = ef.valuation;
+    const q = companyQuality(r), dm = deepMeasures(r);
+    const peg = isNum(ev.pe) && isNum(eo.earningsGrowth3y) && eo.earningsGrowth3y > 0 ? r2(ev.pe / eo.earningsGrowth3y) : null;
     return {
       name: S(r.name), short: SHORT_NAMES[FINDER_SECTORS.find((x) => nameKey(x) === nameKey(r.name))] || S(r.name),
       subSector: S(r.subSector), index: S(r.index), why: S(r.why),
-      returns: ret, rel,
+      returns: ret, rel, relativeTo: bm.name || BENCHMARK,
       business: { revenueGrowth: eb.revenueGrowth, profitGrowth: eb.profitGrowth, period: eb.period, source: S(bz.source),
         from: eb.from, lossBase: eb.lossBase, of: eb.of },
+      quality: q,
       outlook: { earningsGrowth3y: eo.earningsGrowth3y, demandGrowth3y: eo.demandGrowth3y, years: eo.years,
         tailwinds: arr(ol.tailwinds).map(S).filter(Boolean), risks: arr(ol.risks).map(S).filter(Boolean), source: S(ol.source),
-        from: eo.from, of: eo.of, tier: eo.tier, note: eo.note },
+        from: eo.from, of: eo.of, tier: eo.tier, note: eo.note, revision: q.revision },
       valuation: { pe: ev.pe, pe5yAvg: real(va.pe5yAvg) && ev.from === 'research' ? va.pe5yAvg : null,
-        history: ev.history, historyBasis: ev.historyBasis, ratio: ev.ratio, from: ev.from,
+        history: ev.history, historyBasis: ev.historyBasis, ratio: ev.ratio, from: ev.from, peg,
         asOf: S(va.asOf), source: S(va.source) },
+      deep: dm, deepDive: r.deepDive && typeof r.deepDive === 'object' ? r.deepDive : null,
       sub: {
-        m3: base.m3, m6: base.m6, y1: base.y1,
-        profit: eb.profitGrowth, revenue: eb.revenueGrowth,
-        earnings: eo.earningsGrowth3y, demand: eo.demandGrowth3y,
+        /* No benchmark at all: the sectors are ranked on their own returns
+           (every sector alike), as before build 33. */
+        rel1: isNum(bm.y1) ? rel.y1 : ret.y1, rel2: isNum(bm.y1) ? rel.y2 : ret.y2, rel3: isNum(bm.y1) ? rel.y3 : ret.y3,
+        consistency: isNum(ret.quartersBeat) && ret.quarters >= 4 ? +(ret.quartersBeat / ret.quarters * 12).toFixed(1) : null,
+        flows: dm.flows,
+        profit: eb.profitGrowth, revenue: eb.revenueGrowth, eps3y: q.eps3y, roe: q.roe, ownership: dm.ownership,
+        earnings: eo.earningsGrowth3y, demand: eo.demandGrowth3y, revision: q.revision,
+        budget: dm.budget, utilisation: dm.utilisation, schemes: dm.schemes, policyNet: dm.policyNet,
+        globalGrowth: dm.globalGrowth, indiaShare: dm.indiaShare, exports: dm.exports, drivers: dm.drivers,
+        cheap: isNum(ev.ratio) ? -ev.ratio : null, pegCheap: isNum(peg) ? -peg : null,
+        lowVol: isNum(ret.vol) ? -ret.vol : null, smallDD: isNum(ret.maxDD) ? ret.maxDD : null,
+        lowLev: isNum(q.leverage) ? -q.leverage : null, lowRisk: isNum(dm.riskGrade) ? -dm.riskGrade : null,
       },
     };
   });
-  rows.forEach((r) => { r.sub.cheap = isNum(r.valuation.ratio) ? -r.valuation.ratio : null; });
-  /* Build 30. Each measure is ranked among the sectors on its own, and a
-     part is the weighted mean of its measures' percentiles. Ranking the
-     measures separately keeps unlike scales apart: a 9% demand forecast is
-     not set against a 30% earnings forecast. A part needs its required
-     measure (the 1-year return) or, where none is required, any one. */
-  const SUB = {
-    momentum: [['m3', MOMENTUM_MIX.m3], ['m6', MOMENTUM_MIX.m6], ['y1', MOMENTUM_MIX.y1, true]],
-    business: [['profit', 0.6], ['revenue', 0.4]],
-    outlook: [['earnings', 0.6], ['demand', 0.4]],
-    valuation: [['cheap', 1, true]],
-  };
-  const pct = {};
-  Object.values(SUB).flat().forEach(([m]) => { if (!pct[m]) pct[m] = percentiles(rows.map((r) => r.sub[m])); });
-  /* Build 32: an outlook that is only the past trend is history, not a
-     forecast. Its rank is pulled halfway towards average (Tejas's decision). */
-  ['earnings', 'demand'].forEach((m) => rows.forEach((r, i) => {
-    if (r.outlook.tier && r.outlook.tier[m] === 'past' && isNum(pct[m][i])) pct[m][i] = +(50 + (pct[m][i] - 50) / 2).toFixed(1);
+  /* A pillar from its measures' ranks. `use` is the measures allowed. */
+  const pctAll = {};
+  const all = Object.values(MEASURES).flat();
+  all.filter(([, , st]) => st === 1).forEach(([m]) => { pctAll[m] = percentiles(rows.map((r) => r.sub[m])); });
+  const halve = (pct) => ['earnings', 'demand'].forEach((m) => rows.forEach((r, i) => {
+    /* Build 32: an outlook that is only the past trend counts at half weight. */
+    if (pct[m] && r.outlook.tier && r.outlook.tier[m] === 'past' && isNum(pct[m][i])) pct[m][i] = +(50 + (pct[m][i] - 50) / 2).toFixed(1);
   }));
+  halve(pctAll);
+  const pillarOf = (pct, i, part, stage2) => {
+    const ms = MEASURES[part].filter(([, , st]) => st === 1 || stage2);
+    if (!ms.length) return { v: null };
+    if (ms.some(([m, , , req]) => req && !isNum(pct[m] && pct[m][i]))) return { v: null };
+    const got = ms.filter(([m]) => isNum(pct[m] && pct[m][i]));
+    if (!got.length) return { v: null };
+    return { v: +(got.reduce((a, [m, w]) => a + pct[m][i] * w, 0) / got.reduce((a, [, w]) => a + w, 0)).toFixed(1),
+      partial: got.length < ms.length };
+  };
+  const combine = (parts, keys) => {
+    const w = keys.reduce((a, k) => a + (weights[k] || 0), 0);
+    return w ? +(keys.reduce((a, k) => a + parts[k] * (weights[k] || 0), 0) / w).toFixed(1) : null;
+  };
+  /* Stage 1: every sector, on the stage-1 measures. */
   rows.forEach((r, i) => {
-    r.parts = {};
-    r.partial = [];
-    Object.keys(SUB).forEach((part) => {
-      const ms = SUB[part];
-      if (ms.some(([m, , req]) => req && !isNum(pct[m][i]))) { r.parts[part] = null; return; }
-      const got = ms.filter(([m]) => isNum(pct[m][i]));
-      if (!got.length) { r.parts[part] = null; return; }
-      if (got.length < ms.length) r.partial.push(part);
-      r.parts[part] = +(got.reduce((a, [m, w]) => a + pct[m][i] * w, 0) / got.reduce((a, [, w]) => a + w, 0)).toFixed(1);
+    const p1 = {};
+    STAGE1_PILLARS.forEach((k) => { p1[k] = pillarOf(pctAll, i, k, false).v; });
+    r.missing1 = STAGE1_PILLARS.filter((k) => !isNum(p1[k]));
+    r.eligible = CORE_PARTS.every((k) => isNum(p1[k]));
+    STAGE1_PILLARS.forEach((k) => { if (!isNum(p1[k]) && NEUTRAL_PARTS.includes(k)) p1[k] = 50; });
+    r.stage1Parts = p1;
+    r.stage1Score = r.eligible ? combine(p1, STAGE1_PILLARS) : null;
+  });
+  const byStage1 = rows.filter((r) => r.eligible).sort((a, b) => (b.stage1Score - a.stage1Score) || a.name.localeCompare(b.name));
+  const short = byStage1.slice(0, shortlistSize);
+  rows.forEach((r) => { r.shortlisted = short.includes(r); r.stage1Rank = byStage1.indexOf(r) + 1 || null; });
+  /* Stage 2: the shortlist, on every measure; the stage-2 ones ranked among
+     the shortlist only. */
+  const idx = short.map((r) => rows.indexOf(r));
+  const pctS = {};
+  all.forEach(([m, , st]) => {
+    if (st === 1) { pctS[m] = pctAll[m]; return; }
+    const ranks = percentiles(idx.map((i) => rows[i].sub[m]));
+    pctS[m] = rows.map((r, i) => { const j = idx.indexOf(i); return j >= 0 ? ranks[j] : null; });
+  });
+  rows.forEach((r, i) => {
+    const parts = {}; r.partial = []; r.neutral = []; r.missingParts = [];
+    Object.keys(MEASURES).forEach((k) => {
+      const p = r.shortlisted ? pillarOf(pctS, i, k, true) : (STAGE1_PILLARS.includes(k) ? pillarOf(pctAll, i, k, false) : { v: null });
+      parts[k] = p.v;
+      if (p.partial) r.partial.push(k);
     });
-  });
-  rows.forEach((r) => {
-    r.missingParts = Object.keys(FINDER_WEIGHTS).filter((k) => !isNum(r.parts[k]));
-    /* Business and valuation, when absent, count as average. */
-    r.neutral = r.missingParts.filter((k) => NEUTRAL_PARTS.includes(k));
-    r.neutral.forEach((k) => { r.parts[k] = 50; });
-    const have = Object.keys(FINDER_WEIGHTS).filter((k) => isNum(r.parts[k]));
-    const w = have.reduce((a, k) => a + FINDER_WEIGHTS[k], 0);
-    r.score = w ? +(have.reduce((a, k) => a + r.parts[k] * FINDER_WEIGHTS[k], 0) / w).toFixed(1) : null;
+    const keys = r.shortlisted ? Object.keys(MEASURES) : STAGE1_PILLARS;
+    keys.forEach((k) => {
+      if (isNum(parts[k])) return;
+      r.missingParts.push(k);
+      if (NEUTRAL_PARTS.includes(k)) { parts[k] = 50; r.neutral.push(k); }
+    });
+    r.parts = parts;
     r.complete = !r.missingParts.length;
-    r.eligible = CORE_PARTS.every((k) => !r.missingParts.includes(k));
+    r.finalScore = r.shortlisted && r.eligible ? combine(parts, Object.keys(MEASURES)) : null;
+    r.score = r.shortlisted ? r.finalScore : r.stage1Score;
+    r.stage = r.shortlisted ? 2 : 1;
+    /* What each pillar contributed to the score, in points. */
+    const w = keys.reduce((a, k) => a + (weights[k] || 0), 0);
+    r.contrib = {};
+    keys.forEach((k) => { r.contrib[k] = w && isNum(parts[k]) ? +(parts[k] * (weights[k] || 0) / w).toFixed(1) : null; });
+    /* Each measure's rank, for the report. */
+    r.measureRanks = {};
+    all.forEach(([m]) => { const p = (r.shortlisted ? pctS : pctAll)[m]; r.measureRanks[m] = p ? p[i] : null; });
   });
-  rows.sort((a, b) => (Number(b.eligible) - Number(a.eligible))
+  rows.sort((a, b) => (Number(b.shortlisted) - Number(a.shortlisted)) || (Number(b.eligible) - Number(a.eligible))
     || ((isNum(b.score) ? b.score : -1) - (isNum(a.score) ? a.score : -1)) || a.name.localeCompare(b.name));
   rows.forEach((r, i) => { r.rank = i + 1; r.reason = reasonOf(r, bench); });
-  const top3 = rows.filter((r) => r.eligible).slice(0, 3);
+  const shortlist = rows.filter((r) => r.shortlisted);
+  const top3 = shortlist.slice(0, 3);
+  const deepDone = shortlist.filter((r) => r.deepDive && ['policy', 'global'].some((k) => !r.missingParts.includes(k))).length;
   return {
-    benchmark: bench, rows, top3,
+    benchmark: bench, relativeTo: bench.name || BENCHMARK, rows, top3, shortlist,
     counts: { screened: rows.length, complete: rows.filter((r) => r.complete).length,
       eligible: rows.filter((r) => r.eligible).length, neutral: rows.filter((r) => r.neutral.length).length,
-      checked: rows.filter((r) => r.returns.checked).length, listed: FINDER_SECTORS.length },
-    weights: FINDER_WEIGHTS, mix: MOMENTUM_MIX,
-    basis: 'Each part is a percentile among the sectors screened: past momentum from the 3-month, '
-      + '6-month and 1-year returns against the Nifty 50 (weighted 25, 35 and 40); business momentum from '
-      + 'profit and sales growth over the last four quarters (60 and 40); the three-year outlook from forecast '
-      + 'earnings and demand growth (60 and 40); valuation from the P/E against its own five-year average (or, where '
-      + 'the index is younger, its five-year or long-run median), cheaper scoring higher. Where the research has no '
-      + 'sector-wide figure, the application uses the bellwether companies\' own: their sales and profit summed, the '
-      + 'median of their consensus forecasts (a third year extended at the trend of two published years), else of their '
-      + 'own guidance, else of their past three-year EPS growth capped at ±50% a year and counted at half weight; and each '
-      + 'company\'s P/E history worked out from its prices and EPS. Each measure is ranked on '
-      + 'its own and a part is the weighted mean of its measures\' ranks; a part with one measure missing uses the other. Past momentum and the outlook must be established for a sector to be ranked '
-      + 'among the leaders; business momentum or valuation that could not be established counts as average '
-      + '(the 50th percentile), neither reward nor penalty.',
+      checked: rows.filter((r) => r.returns.checked).length, listed: FINDER_SECTORS.length,
+      shortlist: shortlist.length, deepDone },
+    weights, stage1: STAGE1_PILLARS, measures: MEASURES,
+    basis: 'Two stages. Stage 1 scores all the sectors screened on five pillars: past performance (the 1-, 2- and '
+      + '3-year returns against the ' + (bench.name || BENCHMARK) + ', weighted 20, 25 and 35, and the share of the last twelve quarters it '
+      + 'beat the index in), business fundamentals (profit and sales growth in the latest quarter, EPS growth over three years, '
+      + 'return on equity), the growth outlook (forecast earnings and demand growth, and the change in consensus over three '
+      + 'months), valuation (P/E against its own history, and against its growth) and risk (volatility, largest fall, '
+      + 'leverage). The best ' + shortlistSize + ' form the shortlist. Stage 2 adds, for the shortlist only, government and policy '
+      + '(Budget allocation and how much of it was spent, scheme money disbursed, policy and trade measures), global and '
+      + 'regional (global market growth, India\'s share, exports, the prices that drive the sector\'s profits), foreign '
+      + 'portfolio flows, institutional ownership and the graded risks. Weights: ' + Object.keys(weights).map((k) => `${PILLAR_NAMES[k].toLowerCase()} ${weights[k]}`).join(', ')
+      + '. Each measure is ranked among the sectors that have it; a pillar is the weighted mean of its measures\' ranks. '
+      + 'Past performance and the outlook must be established; any other pillar that could not be counts as average (50). '
+      + 'Where the research has no sector-wide figure, the application uses the bellwether companies\' own; an outlook taken '
+      + 'from the past trend counts at half weight, and one company\'s past growth is capped at ±50% a year.',
   };
 }
 
 const sgn = (v) => (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1);
 function reasonOf(r, bench) {
   const bits = [];
-  if (isNum(r.rel.y1)) bits.push(`${r.rel.y1 >= 0 ? 'beat' : 'trailed'} the ${BENCHMARK} by ${Math.abs(r.rel.y1).toFixed(1)} points over a year`);
+  const bn = r.relativeTo || (bench && bench.name) || BENCHMARK;
+  if (isNum(r.rel.y3)) bits.push(`${r.rel.y3 >= 0 ? 'beat' : 'trailed'} the ${bn} by ${Math.abs(r.rel.y3).toFixed(1)} points a year over three years`);
+  else if (isNum(r.rel.y1)) bits.push(`${r.rel.y1 >= 0 ? 'beat' : 'trailed'} the ${bn} by ${Math.abs(r.rel.y1).toFixed(1)} points over a year`);
   else if (isNum(r.returns.y1)) bits.push(`${sgn(r.returns.y1)}% over a year`);
+  if (isNum(r.returns.quartersBeat) && r.returns.quarters) bits.push(`ahead in ${r.returns.quartersBeat} of the last ${r.returns.quarters} quarters`);
   if (isNum(r.business.profitGrowth)) bits.push(r.business.lossBase
     ? `combined loss ${r.business.profitGrowth >= 0 ? 'narrowed' : 'widened'} by ${Math.abs(r.business.profitGrowth).toFixed(1)}% (${r.business.of.join(', ')})`
-    : `profits ${sgn(r.business.profitGrowth)}%${r.business.from && r.business.from.profit === 'companies' ? ` across ${r.business.of.join(', ')}` : ' over four quarters'}`);
+    : `profits ${sgn(r.business.profitGrowth)}%${r.business.from && r.business.from.profit === 'companies' ? ` across ${r.business.of.join(', ')}` : ' in the latest results'}`);
   if (isNum(r.outlook.earningsGrowth3y)) {
     const t = r.outlook.tier && r.outlook.tier.earnings;
     bits.push(t === 'past'
@@ -1159,13 +1522,13 @@ function reasonOf(r, bench) {
       : `earnings ${t === 'guidance' ? 'guided' : 'forecast'} to grow ${r.outlook.earningsGrowth3y.toFixed(1)}% a year${r.outlook.from && r.outlook.from.earnings === 'companies' ? (t === 'guidance' ? ' (median of the companies\' guidance)' : ' (median of the companies\' consensus)') : ''}`);
   }
   else if (isNum(r.outlook.demandGrowth3y)) bits.push(`demand forecast to grow ${r.outlook.demandGrowth3y.toFixed(1)}% a year`);
-  if (isNum(r.valuation.pe) && isNum(r.valuation.pe5yAvg)) bits.push(`P/E ${r.valuation.pe.toFixed(1)} against a five-year average of ${r.valuation.pe5yAvg.toFixed(1)}`);
-  void bench;
-  if (r.neutral && r.neutral.length) bits.push(`${r.neutral.join(' and ')} not established, counted as average`);
-  if (r.valuation && r.valuation.historyBasis && r.valuation.historyBasis !== 'five-year average' && isNum(r.valuation.history))
+  if (isNum(r.outlook.revision)) bits.push(`consensus EPS ${r.outlook.revision >= 0 ? 'raised' : 'cut'} ${Math.abs(r.outlook.revision).toFixed(1)}% in three months`);
+  if (isNum(r.valuation.pe) && isNum(r.valuation.history))
     bits.push(r.valuation.from === 'app'
-      ? `P/E ${isNum(r.valuation.pe) ? r.valuation.pe.toFixed(1) + ' ' : ''}against the companies' own five-year average of ${r.valuation.history.toFixed(1)}, worked out by the application`
-      : `P/E set against its ${r.valuation.historyBasis} of ${r.valuation.history.toFixed(1)}`);
+      ? `P/E ${r.valuation.pe.toFixed(1)} against the companies' own five-year average of ${r.valuation.history.toFixed(1)}, worked out by the application`
+      : `P/E ${r.valuation.pe.toFixed(1)} against its ${r.valuation.historyBasis || 'history'} of ${r.valuation.history.toFixed(1)}`);
+  if (isNum(r.returns.maxDD)) bits.push(`largest fall in three years ${Math.abs(r.returns.maxDD).toFixed(1)}%`);
+  if (r.neutral && r.neutral.length) bits.push(`${r.neutral.map((k) => PILLAR_NAMES[k].toLowerCase()).join(' and ')} not established, counted as average`);
   const s = bits.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : '';
 }

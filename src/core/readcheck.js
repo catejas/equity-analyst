@@ -24,7 +24,7 @@
  * prompt, so this check and the brief cannot drift apart. */
 import { buildResearchPrompt } from './prompt-builder.js';
 import { KNOWN_KEYS } from './known-keys.js';
-import { buildFinderPrompt, isFinderPayload, normaliseFinder } from './finder.js';
+import { buildFinderPrompt, buildDeepDivePrompt, isFinderPayload, normaliseFinder } from './finder.js';
 
 const S = (v) => (v == null ? '' : String(v).trim());
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -84,7 +84,11 @@ function union(a, b) {
 }
 let TEMPLATE = null, FINDER_TEMPLATE = null;
 export function finderTemplate() {
-  if (!FINDER_TEMPLATE) FINDER_TEMPLATE = parseExample(buildFinderPrompt({})) || {};
+  /* Build 33: the screen's example, the deep dive's, and the 3- and 6-month
+     returns that earlier screens carried (still read and shown). */
+  if (!FINDER_TEMPLATE) FINDER_TEMPLATE = union(union(parseExample(buildFinderPrompt({})) || {},
+    parseExample(buildDeepDivePrompt({ sectors: [] })) || {}),
+    { benchmark: { returns: { m3: 0, m6: 0 } }, sectors: [{ returns: { m3: 0, m6: 0 } }] });
   return FINDER_TEMPLATE;
 }
 export function schemaTemplate() {

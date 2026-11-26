@@ -26,7 +26,32 @@ behave and it is not a fault.
 
 ## Current build
 
-`23-11-2026.32` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`26-11-2026.33` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 33, the first of three approved by Tejas on 26-11-2026 to make the
+Sector Finder a professional screen:
+- **Returns over 1, 2 and 3 years** (2 and 3 as an annual rate, the 3-year
+  weighted most), against the **Nifty 500**; the Nifty 50 kept beside it.
+- **Risk measured by the app** from four years of weekly prices
+  (`sector-metrics.js`): volatility, largest fall, distance from the high,
+  quarters beating the index (of 12), relative-strength trend, position
+  against the 52- and 100-week averages, breadth of the bellwethers.
+  Baskets are chain-linked, so a later listing joins without a jump.
+- **Seven pillars**, as in the Independent Sector Research: past performance
+  20, fundamentals 15, outlook 20, government and policy 15, global and
+  regional 10, valuation 10, risk 10.
+- **Two stages.** The screen scores all 41 on the five pillars the app can
+  measure, and shortlists ten. **Deep Dive** asks, for the shortlist only, for
+  the evidence the five ICICI Securities samples rest on: NSDL sector FPI
+  flows, Budget allocation over five years and its use, scheme outlay against
+  money disbursed, national targets, policy and trade measures (safeguard
+  duties, CBAM), global market and India's share, profit drivers now and a
+  year ago, graded risks, thesis/bull/bear/catalysts, five quarters of
+  shareholding, and a macro backdrop. The Top 3 come from the shortlist on all
+  seven pillars.
+- The screen also asks each bellwether's ROE, net debt to EBITDA and the
+  three-month change in consensus EPS.
+- New suite `finder33.mjs`; earlier suites updated to the new model.
 
 Build 32, Tejas's decisions of 23-11-2026 after follow-ups 8 and 9:
 - **The price check is queued.** A check asked for while one runs runs

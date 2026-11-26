@@ -133,7 +133,7 @@ function check(out, group, label, have, want, ask, detail, appOnly) {
   const ok = have >= want;
   /* appOnly (build 31): every gap in it is the application's own to fill from
      prices; it counts as a gap but is not asked of the research tool. */
-  out.push({ group, label, have, want, ok, ask: ok ? '' : ask, detail: ok ? '' : (detail || ''), appOnly: !ok && !!appOnly });
+  out.push({ group, label, have, want, ok, ask: ok ? '' : ask, detail: ok ? '' : (detail || ''), appOnly: !ok && appOnly ? appOnly : false });
 }
 
 /* ── A company ────────────────────────────────────────────────────────── */
@@ -575,6 +575,18 @@ export const SOURCE_HINTS = [
   [/^companies\[[^\]]*\]\.(litigation|governance|management)/, ['NSE/BSE corporate announcements', 'SEBI orders',
     'e-Courts and NCLT cause lists', 'the annual report\u2019s contingent liabilities note']],
   /* The Sector Finder (build 29). Build 31: each company's own figures. */
+  [/^sectors\.deepDive\.flows/, ['NSDL fortnightly sector-wise FPI investment and assets under custody (fpi.nsdl.co.in)', 'CDSL FPI monitor', 'brokerage fund-flow notes']],
+  [/^sectors\.deepDive\.budget/, ['Union Budget Expenditure Profile and demand for grants (indiabudget.gov.in)', 'PRS Legislative Research demand-for-grants analysis', 'the ministry’s annual report']],
+  [/^sectors\.deepDive\.schemes/, ['the scheme’s own dashboard or portal', 'PIB releases of the ministry', 'Parliament questions (sansad.in) on scheme progress']],
+  [/^sectors\.deepDive\.policy/, ['DGTR findings (safeguard and anti-dumping duties)', 'CBIC customs notifications', 'the sector regulator’s circulars', 'EU CBAM and partner-country trade notices']],
+  [/^sectors\.deepDive\.global/, ['global industry bodies (IEA, worldsteel, IATA, GSMA and the like)', 'tradestat.commerce.gov.in (DGCI&S exports and imports)', 'global research-house sector outlooks']],
+  [/^sectors\.deepDive\.drivers/, ['LME, MCX and ICE prices', 'RBI data (DBIE) for rates and the rupee', 'the bellwethers’ earnings-call commentary on input costs']],
+  [/^sectors\.deepDive\.risks/, ['rating-agency sector outlooks (ICRA, CRISIL, CareEdge)', 'the bellwethers’ annual-report risk sections']],
+  [/^sectors\.deepDive\.commentary/, ['brokerage sector notes', 'the bellwethers’ investor presentations and earnings calls']],
+  [/^sectors\.bellwethers\.holding/, ['NSE and BSE shareholding-pattern filings for each quarter', 'Trendlyne or Screener shareholding pages']],
+  [/^sectors\.bellwethers\.roe/, ['the company’s annual report', 'Screener.in or Moneycontrol ratios page']],
+  [/^sectors\.bellwethers\.forecast\.revision3m/, ['Trendlyne forecaster revisions', 'MarketScreener consensus revisions', 'the same site as the estimates, three months ago']],
+  [/^macro/, ['RBI monetary policy statement and DBIE', 'MoSPI CPI and GDP releases', 'NSDL FPI monthly totals', 'MSCI index factsheets']],
   [/^sectors\.bellwethers\.quarter/, ['each bellwether\u2019s quarterly results filing on NSE or BSE (corporate announcements)',
     'the company\u2019s results press release and investor presentation', 'Moneycontrol or Business Standard results pages for the company']],
   [/^sectors\.bellwethers\.forecast/, ['Trendlyne forecaster (consensus EPS and revenue)', 'MarketScreener consensus estimates',
@@ -634,7 +646,8 @@ export function completeness(payload, { now = new Date() } = {}) {
       ? checks.reduce((a, c) => a + Math.max(0, Math.min(1, c.want ? c.have / c.want : 1)), 0) / checks.length : 0;
     const miss = checks.filter((c) => !c.ok);
     annotate(checks, searchLogOf(d));
-    checks.forEach((c) => { if (c.appOnly) c.state = 'app'; });
+    /* appOnly 'deep' (build 33): asked by the Deep dive prompt, not the follow-up. */
+    checks.forEach((c) => { if (c.appOnly) c.state = c.appOnly === 'deep' ? 'deep' : 'app'; });
     return { kind: 'finder', sections: [{ title: 'Sector Finder \u2014 the screen', checks }],
       pct: Math.min(miss.length ? 99 : 100, Math.round(sc * 100)), total: checks.length, met: checks.length - miss.length, missing: miss,
       searched: miss.filter((c) => c.state === 'searched').length, open: miss.filter((c) => c.state === 'open').length };

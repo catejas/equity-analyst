@@ -9334,6 +9334,18 @@ function buildUpdate(p, lang){
    is built. The research supplies figures; every score is the application's. */
 function finderPct(v){ return isNum_(v) ? (v > 0 ? '+' : '') + n(v, 1) + '%' : '—'; }
 function finderPts(v){ return isNum_(v) ? '<span class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v > 0 ? '+' : '') + n(v, 1) + '</span>' : '—'; }
+/* Build 33. The seven pillars. */
+var FINDER_PILLARS = ['performance', 'fundamentals', 'outlook', 'policy', 'global', 'valuation', 'risk'];
+var FINDER_PILLAR_LABEL = { performance: 'past performance', fundamentals: 'business fundamentals', outlook: 'growth outlook', policy: 'government and policy',
+  global: 'global and regional', valuation: 'valuation', risk: 'risk' };
+var FINDER_PILLAR_WHAT = {
+  performance: 'Return against the Nifty 500 over 1, 2 and 3 years (2 and 3 years a year), weighted 20, 25 and 35; quarters ahead of the index, of the last twelve; foreign portfolio flows (shortlist)',
+  fundamentals: 'Profit and sales growth in the latest results; EPS growth over three years; return on equity; change in institutional holding (shortlist)',
+  outlook: 'Forecast earnings and demand growth a year over three years, Published, Guidance or Past; change in consensus over three months',
+  policy: 'Shortlist only: Budget allocation growth and how much was spent; scheme money disbursed of outlay; policy and trade measures, net',
+  global: 'Shortlist only: global market growth; India\u2019s share of it; export growth; the prices that drive profits, moving its way or not',
+  valuation: 'P/E against its own history, and against its forecast growth (PEG); the cheaper, the higher',
+  risk: 'Volatility and largest fall over three years; net debt to EBITDA; graded risks (shortlist); the lower, the higher' };
 /* Build 32. The outlook badge: Published, Guidance or Past. */
 var FINDER_BADGE = { published: ['Published', '#DDF2E6', '#1E7A47'], guidance: ['Guidance', '#DDE9FA', '#24569E'], past: ['Past', '#E7E7E9', '#55565C'] };
 function finderBadge(ol, k) {
@@ -9383,7 +9395,7 @@ function buildFinder(p, lang){
     } else bl.push('The Top 3 is the same as in the previous screen.');
   }
   out += S3('The Bottom Line') + (bl.length ? updList(bl)
-    : '<div class="lead"><p>No sector has all four parts of the score yet. The gaps are listed at the end; the follow-up prompt asks for them.</p></div>');
+    : '<div class="lead"><p>No sector has its past performance and outlook established yet. The gaps are listed at the end; the follow-up prompt asks for them.</p></div>');
 
   /* 02 — the Top 3, one block each */
   if(top.length){
@@ -9396,12 +9408,17 @@ function buildFinder(p, lang){
         + '<h4>' + (i + 1) + '. ' + e(x.name) + (x.subSector ? ' — ' + e(x.subSector) : '') + '</h4>'
         + (x.why ? '<p>' + e(x.why) + '</p>' : '')
         + tbl(['Measure', 'Reading'], [
-          { cells: ['Score', '<b>' + n(x.score, 1) + '</b> of 100 · momentum ' + n(x.parts.momentum, 0) + ', business ' + n(x.parts.business, 0)
-            + ', outlook ' + n(x.parts.outlook, 0) + ', valuation ' + n(x.parts.valuation, 0)] },
-          { cells: ['Return, 3m / 6m / 1y', finderPct(ret.m3) + ' / ' + finderPct(ret.m6) + ' / ' + finderPct(ret.y1)
+          { cells: ['Score', '<b>' + n(x.score, 1) + '</b> of 100 · ' + FINDER_PILLARS.filter(function(k){ return isNum_(x.parts[k]); })
+            .map(function(k){ return FINDER_PILLAR_LABEL[k] + ' ' + n(x.parts[k], 0); }).join(', ')] },
+          { cells: ['Return, 1y / 2y / 3y', finderPct(ret.y1) + ' / ' + finderPct(ret.y2) + ' / ' + finderPct(ret.y3)
+            + '<span class="mut"> (2 and 3 years a year)</span>'
             + '<br><span class="mut">' + (ret.checked ? 'checked by the application from ' + (ret.basis === 'index' ? 'the ' + e(ret.of) + ' index' : 'the prices of ' + e(ret.of))
               : 'as the research states it, not checked') + (ret.asOf ? ', to ' + e(dmy(ret.asOf)) : '') + '</span>'] },
-          { cells: ['Against the Nifty 50', finderPts(x.rel.m3) + ' / ' + finderPts(x.rel.m6) + ' / ' + finderPts(x.rel.y1) + ' points'] },
+          { cells: ['Against the ' + e(x.relativeTo || 'Nifty 500'), finderPts(x.rel.y1) + ' / ' + finderPts(x.rel.y2) + ' / ' + finderPts(x.rel.y3) + ' points'
+            + (isNum_(ret.quartersBeat) ? '<br><span class="mut">ahead in ' + ret.quartersBeat + ' of the last ' + ret.quarters + ' quarters</span>' : '')] },
+          { cells: ['Risk', (isNum_(ret.vol) ? 'volatility ' + n(ret.vol, 1) + '% a year' : 'volatility —')
+            + ' · ' + (isNum_(ret.maxDD) ? 'largest fall in 3 years ' + n(Math.abs(ret.maxDD), 1) + '%' : 'largest fall —')
+            + (isNum_(ret.fromHigh) ? '<br><span class="mut">' + n(Math.abs(ret.fromHigh), 1) + '% below its 3-year high</span>' : '')] },
           { cells: ['Sales and profit growth', finderPct(bz.revenueGrowth) + ' sales, '
             + (bz.lossBase ? 'combined loss ' + (bz.profitGrowth >= 0 ? 'narrowed' : 'widened') + ' by ' + n(Math.abs(bz.profitGrowth), 1) + '%' : finderPct(bz.profitGrowth) + ' net profit')
             + (bz.period || (bz.from && (bz.from.revenue === 'companies' || bz.from.profit === 'companies'))
@@ -9428,22 +9445,23 @@ function buildFinder(p, lang){
   /* 03 — every sector */
   var K = CH_();
   var chartRows = arr(F.rows).filter(function(x){ return isNum_(x.rel && x.rel.y1); }).slice(0, 12);
-  var fig = (K && chartRows.length >= 2) ? K.columns({ title: 'One-year return against the Nifty 50, the twelve highest ranked',
+  var fig = (K && chartRows.length >= 2) ? K.columns({ title: 'One-year return against the ' + (F.relativeTo || 'Nifty 500') + ', the twelve highest ranked',
       source: 'Sector index or bellwether prices', unit: 'percentage points', xTitle: 'Sector',
       yFmt: function(t){ return n(t, 0); }, vFmt: function(t){ return (t > 0 ? '+' : '') + n(t, 1); },
       categories: chartRows.map(function(x){ return S(x.short) || x.name; }),
-      series: [{ name: 'Points above the Nifty 50', values: chartRows.map(function(x){ return x.rel.y1; }) }] }) : '';
+      series: [{ name: 'Points above the index', values: chartRows.map(function(x){ return x.rel.y1; }) }] }) : '';
   out += S3('The Full Ranking')
-    + tbl(['#', 'Sector', 'Score', 'Momentum', 'Business', 'Outlook', 'Valuation', '1y vs Nifty'],
+    + tbl(['#', 'Sector', 'Score', 'Perfor-mance', 'Funda-mentals', 'Outlook', 'Valu-ation', 'Risk', '3y vs index'],
         arr(F.rows).map(function(x){
           return { cells: [String(x.rank), '<b>' + e(x.name) + '</b>' + (x.subSector ? '<br><span class="mut">' + e(x.subSector) + '</span>' : '')
-              + (!x.eligible ? '<br><span class="mut">not ranked among the leaders: no ' + e(arr(x.missingParts).filter(function(k){ return k === 'momentum' || k === 'outlook'; }).join(' or ')) + '</span>'
-                  : arr(x.neutral).length ? '<br><span class="mut">' + e(x.neutral.join(' and ')) + ' counted as average</span>' : ''),
-            n(x.score, 1), n(x.parts.momentum, 0), n(x.parts.business, 0), n(x.parts.outlook, 0), n(x.parts.valuation, 0),
-            finderPts(x.rel.y1) + (x.returns.checked ? '' : '<span class="mut">*</span>')] };
-        }), { num: [0, 2, 3, 4, 5, 6, 7], headWrap: true, widths: ['5%', '31%', '9%', '11%', '11%', '11%', '11%', '11%'], chunk: 14 })
-    + '<p class="mut">Each part is a percentile among the sectors screened, 0 to 100. The Nifty 50 returned '
-    + finderPct(b.m3) + ', ' + finderPct(b.m6) + ' and ' + finderPct(b.y1) + ' over 3 months, 6 months and 1 year'
+              + (x.shortlisted ? '<br><span class="mut">shortlist</span>' : '')
+              + (!x.eligible ? '<br><span class="mut">not ranked among the leaders: no ' + e(arr(x.missing1).filter(function(k){ return k === 'performance' || k === 'outlook'; }).join(' or ')) + '</span>'
+                  : arr(x.neutral).length ? '<br><span class="mut">' + e(x.neutral.map(function(k){ return FINDER_PILLAR_LABEL[k]; }).join(', ')) + ' counted as average</span>' : ''),
+            n(x.score, 1), n(x.parts.performance, 0), n(x.parts.fundamentals, 0), n(x.parts.outlook, 0), n(x.parts.valuation, 0), n(x.parts.risk, 0),
+            finderPts(x.rel.y3 != null ? x.rel.y3 : x.rel.y1) + (x.returns.checked ? '' : '<span class="mut">*</span>')] };
+        }), { num: [0, 2, 3, 4, 5, 6, 7, 8], headWrap: true, widths: ['5%', '29%', '9%', '10%', '10%', '9%', '9%', '9%', '10%'], chunk: 14 })
+    + '<p class="mut">Each pillar is a percentile, 0 to 100; the shortlist is also scored on government and policy and on global and regional. The ' + e(F.relativeTo || 'Nifty 500') + ' returned '
+    + finderPct(b.y1) + ', ' + finderPct(b.y2) + ' and ' + finderPct(b.y3) + ' over 1 year and over 2 and 3 years a year'
     + (b.checked ? ', as the application measured it.' : ', as the research states it.')
     + ' * Returns as the research states them; the application could not check them against prices.</p>'
     + fig;
@@ -9462,15 +9480,11 @@ function buildFinder(p, lang){
   /* 05 — how the score is built */
   var W = F.weights || {};
   out += S3('How the Score Is Built')
-    + tbl(['Part', 'Weight', 'What it measures'], [
-      { cells: ['Past momentum', (W.momentum || 0) + '%', 'Return against the Nifty 50 over 3 months, 6 months and 1 year, weighted 25, 35 and 40'] },
-      { cells: ['Business momentum', (W.business || 0) + '%', 'Net profit and sales growth over the last four reported quarters, weighted 60 and 40'] },
-      { cells: ['Three-year outlook', (W.outlook || 0) + '%', 'Forecast earnings and demand growth over the next three years, weighted 60 and 40'] },
-      { cells: ['Valuation', (W.valuation || 0) + '%', 'The P/E against its own five-year average; the cheaper, the higher'] }
-    ], { num: [1], widths: ['24%', '12%', '64%'] })
-    + '<p class="mut">A sector needs its past momentum and its outlook to be ranked among the leaders. Business momentum '
-    + 'or valuation that the research could not establish counts as average, the 50th percentile, and is marked so; the '
-    + 'follow-up keeps asking for it.</p>'
+    + tbl(['Pillar', 'Weight', 'What it measures'], FINDER_PILLARS.map(function(k){
+        return { cells: [FINDER_PILLAR_LABEL[k].charAt(0).toUpperCase() + FINDER_PILLAR_LABEL[k].slice(1), (W[k] || 0) + '%', FINDER_PILLAR_WHAT[k]] };
+      }), { num: [1], widths: ['24%', '12%', '64%'] })
+    + '<p class="mut">A sector needs its past performance and its outlook to be ranked among the leaders. Any other pillar '
+    + 'that could not be established counts as average, the 50th percentile, and is marked so; the follow-up keeps asking for it.</p>'
     + '<div class="lead"><p>' + e(S(F.basis)) + '</p><p>The research tool supplies the figures and does not rank. The application '
     + 'fetches each sector index, or the sector’s largest stocks where no index answers, and uses its own returns in place of the '
     + 'research’s wherever it can. Strong recent momentum often lasts for months, but it also reverses; that is why the outlook '

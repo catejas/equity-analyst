@@ -108,7 +108,7 @@ const vr = await ev(() => {
     cell: [...document.querySelectorAll('#finderTable tr')].find((tr) => /Banking/.test(tr.innerText)).innerText };
 });
 ok('Upstox was asked for the Nifty 50 and Nifty Bank', upstoxAsked.includes('NSE_INDEX|Nifty 50') && upstoxAsked.includes('NSE_INDEX|Nifty Bank'));
-ok('the message says how many were checked', /Returns checked by the app for 1 sector and the Nifty 50/.test(vr.msg), vr.msg);
+ok('the message says how many were checked', /checked by the app for 1 sector, against the Nifty 50/.test(vr.msg), vr.msg);
 ok('the Nifty 50 figure is the app\'s (+10% over the year), not the research\'s (+6%)', vr.bench.checked && Math.abs(vr.bench.y1 - 9.5) < 1.5, vr.bench.y1);
 ok('Banking\'s return is the index\'s (+30%), not the research\'s (+40%)', vr.bk.ret.checked && vr.bk.ret.basis === 'index' && Math.abs(vr.bk.ret.y1 - 28.5) < 3, vr.bk.ret.y1);
 ok('the table marks it checked against the index', /✓ index/.test(vr.cell), vr.cell.replace(/\s+/g, ' '));
@@ -145,7 +145,7 @@ await ev(() => { if (typeof closePreview === 'function') closePreview(); else { 
 console.log('\nThe Sector Screen document');
 const doc = await ev(() => EQDocTools.buildHTML(window.finderPayload(), 'finder', 'en'));
 ok('it opens on the Top 3 Sectors and the bottom line', /Top 3 Sectors/.test(doc) && /The Bottom Line/.test(doc) && /Banking/.test(doc));
-ok('it carries the full ranking and how the score is built', /The Full Ranking/.test(doc) && /How the Score Is Built/.test(doc) && /35%/.test(doc));
+ok('it carries the full ranking and how the score is built', /The Full Ranking/.test(doc) && /How the Score Is Built/.test(doc) && /Government and policy/.test(doc) && /20%/.test(doc));
 ok('Banking is shown as checked against its index', /checked by the application from the Nifty Bank index/.test(doc));
 ok('the gaps are printed', /Gaps in This Research|Gaps in this research/i.test(doc) && /Retail/.test(doc));
 
@@ -160,7 +160,7 @@ const fs2 = await ev(() => ({ recs: libRead().filter((r) => r.kind === 'finder')
   depth: document.getElementById('finderDepth').innerText, prompt: EQ.completeness.topUpPrompt(libRead().filter((r) => r.kind === 'finder')[0].data) }));
 ok('the follow-up is added to the saved screen', /Follow-up added to the saved screen/.test(rv2) && fs2.recs === 1);
 ok('Aviation\'s valuation is filled; Retail\'s is still asked for', /P\/E against its own history 40\/41/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
-ok('the depth box shows it was searched and not found', /searched, not found ×1/.test(fs2.depth) && /0 not yet searched, 1 searched and not found/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
+ok('the depth box shows it was searched and not found', /searched, not found ×1/.test(fs2.depth) && /1 searched and not found/.test(fs2.depth), fs2.depth.replace(/\s+/g, ' '));
 ok('the next follow-up names the sources tried and others', /NSE index factsheet; Trendlyne sector page/.test(fs2.prompt) && /SEARCH AGAIN/.test(fs2.prompt));
 
 console.log('\nAn update, and two versions');

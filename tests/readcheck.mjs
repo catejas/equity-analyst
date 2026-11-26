@@ -97,9 +97,9 @@ ok('tailwinds written as one string, and risks as objects, become sentences', b.
 ok('"NA" is listed as text that is not a number, and left missing', rm.unreadable.some((u) => /revenueGrowth/.test(u.path)) && b.business.revenueGrowth === 'NA');
 ok('every repair is counted', rm.coerced.length >= 10 && rm.tidied.length >= 2, `${rm.coerced.length} read from text, ${rm.tidied.length} tidied`);
 const scored = scoreFinder(messy).rows[0];
-ok('and the sector is then scored on every part', scored.parts.momentum != null && scored.parts.business != null && scored.parts.outlook != null && scored.parts.valuation != null);
-const dep = completeness(messy).missing.map((c) => c.label);
-ok('its depth no longer lacks returns, outlook or valuation', !dep.includes('Returns over 3 months, 6 months and 1 year')
+ok('and the sector is then scored on every stage-1 pillar', ['performance', 'fundamentals', 'outlook', 'valuation'].every((k) => scored.parts[k] != null) && !scored.neutral.includes('fundamentals') && !scored.neutral.includes('valuation'), JSON.stringify(scored.parts));
+const dep = completeness(messy).missing.filter((c) => !c.appOnly).map((c) => c.label);
+ok('its depth no longer lacks returns, outlook or valuation', !dep.includes('Returns over 1, 2 and 3 years')
   && !dep.includes('P/E against its own history') && !dep.includes('Tailwinds and risks, two of each'), dep.join(' | '));
 const unit = { run: {}, global: { marketSizeUsdBn: 1 }, companies: [{ symbol: 'X', snapshot: { marketCap: '₹2,13,614 crore' } }] };
 const ru = readCheck(unit);
