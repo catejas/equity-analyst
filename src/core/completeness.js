@@ -302,6 +302,47 @@ function companyChecks(c, run, now) {
     + 'are built from these, so a missing block leaves projected columns blank.',
     modelMiss.join(', '));
 
+  /* Build 37: the operating picture, as the broker reports Tejas set as the
+     standard carry it. A lender is asked for its asset-quality trend in place
+     of capacity, unit economics, raw materials and deleveraging. */
+  const G = 'Operating picture';
+  const rows = (v) => arr(v).filter((x) => x && typeof x === 'object');
+  check(out, G, 'Face value of a share', real(c.faceValue) || real(c.snapshot && c.snapshot.faceValue) ? 1 : 0, 1,
+    `${at}.faceValue — the face value of one share in ₹, from the exchange quote page.`);
+  if (!lender) {
+    const cap = rows(c.capacity).filter((x) => S(x.asset) && real(x.capacity));
+    check(out, G, 'Capacity and the expansion pipeline', Math.min(cap.length, 3), 3,
+      `${at}.capacity — each plant or business line: "asset", "location", "capacity" with its "unit", "utilisationPct", "status" (operating, under construction, planned), "commissioning" and "capexCr", from the latest annual report or investor presentation. Projects under construction and planned count.`);
+    const ue = rows(c.unitEconomics).filter((x) => S(x.metric) && real(x.value));
+    check(out, G, 'Unit economics, now, a year ago and guided', Math.min(ue.length, 2), 2,
+      `${at}.unitEconomics — the per-unit measures this business is run on (EBITDA per tonne, realisation per tonne, cost per tonne, ARPU, yield), each with "value", "yearAgo", and management's "guidance" with its "guidancePeriod".`);
+    const rm = rows(c.rawMaterials).filter((x) => S(x.input));
+    check(out, G, 'Raw-material security', Math.min(rm.length, 1), 1,
+      `${at}.rawMaterials — each key input, how much is captive ("captivePct") and how the rest is bought ("supply"). Where the business has no material input, send one row saying so.`);
+    const dl = c.deleveraging || {};
+    check(out, G, 'Debt path: net debt to EBITDA now and in two years', real(dl.netDebtEbitdaNow) && real(dl.netDebtEbitdaY2) ? 1 : 0, 1,
+      `${at}.deleveraging — "netDebtEbitdaNow", "netDebtEbitdaY2" with "y2Label", "cfoNextYear" and "dividendPayoutPct", from guidance or consensus.`);
+  } else {
+    const aq = rows(c.assetQualityTrend).filter((x) => S(x.period) && real(x.gnpa));
+    check(out, G, 'Asset quality from its peak to now', Math.min(aq.length, 5), 5,
+      `${at}.assetQualityTrend — "gnpa", "nnpa" and "pcr" for each year from the last peak in bad loans to the latest quarter, and the share of the book that is government-backed ("governmentBackedPct") where it is stated.`);
+  }
+  const mx = rows(c.mix).filter((x) => S(x.period) && rows(x.lines).length);
+  check(out, G, 'Business mix over five years', Math.min(mx.length, 5), 5,
+    `${at}.mix — the share of revenue (or of the loan book, or of volume, as the company reports it) by business line for each of the last five years: [{ "period", "basis", "lines": [{ "name", "sharePct" }] }].`);
+  const ka = c.keyAssumption || {};
+  check(out, G, 'The key assumption and what a change in it does', (S(ka.driver) ? 1 : 0) + (rows(ka.sensitivity).length >= 2 ? 1 : 0), 2,
+    `${at}.keyAssumption — the one price or volume the earnings turn on, "assumed" in the forecasts and "current", and "sensitivity": the change in EBITDA and EPS for a 10% move each way.`);
+  check(out, G, 'Estimate revisions', Math.min(rows(c.estimateRevisions).filter((x) => S(x.item) && real(x.now)).length, 2), 2,
+    `${at}.estimateRevisions — this year's and next year's EBITDA (or profit) and EPS estimates now, against the same estimates three months ago, from consensus or a named broker.`);
+  const re = c.recentEvent || {};
+  check(out, G, 'The latest quarter and next quarter\u2019s guidance', (arr(re.highlights).filter((x) => S(x).length > 8).length ? 1 : 0) + (S(re.nextQuarterGuidance) ? 1 : 0), 2,
+    `${at}.recentEvent — the latest quarter's results in three lines with figures ("highlights"), and what management guided for the next quarter ("nextQuarterGuidance").`);
+  check(out, G, 'Corporate actions (merger, demerger, stake sale, buyback)', Array.isArray(c.corporateActions) ? 1 : 0, 1,
+    `${at}.corporateActions — every merger, demerger, acquisition, stake sale, buyback or fund raise announced or pending, with "status" and "expected". Send an empty list [] if there is none.`);
+  check(out, G, 'Policy that touches this company', Math.min(rows(c.policyLinks).filter((x) => S(x.item)).length, 2), 2,
+    `${at}.policyLinks — the schemes, duties, regulations or agency roles that touch THIS company (safeguard duty, CBAM, PLI, a nodal-agency role), each with "effect" (helps or hurts) and the amount where it is stated.`);
+
   return { who, symbol: sym, lender, family: panel.label, checks: out };
 }
 

@@ -2319,6 +2319,9 @@ function buildCompany(p, lang){
 
   out += S3('Snapshot') + eqSnapshot(c, lang, p)
     + eqComment(c, 'price') + eqComment(c, 'ownership');
+  /* Build 37: the summary a broker's report opens with. */
+  var invS = eqInvestmentSummary(c, p);
+  if(invS) out += S3('Investment summary') + invS;
 
   if(arr(c.theses).length){
   var sv = (p.standalone ? eqStandaloneVerdict(c, lang) : '');
@@ -2330,6 +2333,8 @@ function buildCompany(p, lang){
           return '<p style="margin-bottom:1.6mm">' + e(S(t)) + '</p>'; }).join('') + '</div>';
   }
   if(S(c.business)) out += S3('The business') + '<p>' + e(S(c.business)) + '</p>';
+  var opS = eqOperating(c, p);
+  if(opS) out += S3('Operations, drivers and what has changed') + opS;
 
   out += pillarHead('Pillar 2 — Industry Context And Competitive Moat');
   out += eqNarrative(c, 'pillar', 2);
@@ -2733,6 +2738,8 @@ function buildCompanyExec(p, lang){
   if(S(c.business)) out += S3('The business') + '<div class="lead"><p>' + e(S(c.business)) + '</p></div>';
 
   /* 04 — the scoring, with the chart that explains itself */
+  var invX = eqInvestmentSummary(c, p);
+  if(invX) out += S3('Investment summary') + invX;
   out += S3('Scoring') + figScoreBullets(c);
 
   /* 05 — valuation, the range and where the price sits in it */
@@ -5991,6 +5998,162 @@ function eqWacc(c){
 /* Sum of the parts. A conglomerate valued on one multiple is valued wrongly:
    the point of this table is that each business is worth what its own kind of
    business is worth. */
+/* Build 37 — from the ICICI Securities reports Tejas set as the standard on
+   26-11-2026 (PFC, Tata Steel, Vedanta Aluminium). They open on a rating with
+   a target and its upside, a box of key facts, and a financial summary with
+   the five-year past and two-year forward growth beside the years. */
+var RATING_BANDS = [[15, 'Buy'], [-5, 'Hold'], [-15, 'Reduce'], [-Infinity, 'Sell']];
+function eqTarget(c){
+  var v = c.valuation || {}, px = Number(v.currentPrice);
+  var src = arr(v.scenarios).length ? arr(v.scenarios) : ['bear', 'base', 'bull'].map(function(k){ return v[k]; });
+  var cs = src.filter(function(x){ return x && x.fairValue != null && isFinite(Number(x.fairValue)) && Number(x.fairValue) > 0; });
+  if(!cs.length || !(px > 0)) return null;
+  var w = cs.reduce(function(a, x){ return a + (isFinite(Number(x.probability)) && Number(x.probability) > 0 ? Number(x.probability) : 0); }, 0);
+  var tgt = w > 0 ? cs.reduce(function(a, x){ return a + Number(x.fairValue) * (Number(x.probability) > 0 ? Number(x.probability) : 0); }, 0) / w
+    : cs.reduce(function(a, x){ return a + Number(x.fairValue); }, 0) / cs.length;
+  var up = (tgt / px - 1) * 100;
+  var band = RATING_BANDS.filter(function(b){ return up >= b[0]; })[0][1];
+  return { price: px, target: tgt, upside: up, band: band, weighted: w > 0, cases: cs.length };
+}
+function eqCagr(a, b, yrs){ a = Number(a); b = Number(b); return a > 0 && b > 0 && yrs > 0 ? (Math.pow(b / a, 1 / yrs) - 1) * 100 : null; }
+function eqInvestmentSummary(c, p){
+  var out = '', t = eqTarget(c), ann = orderedAnn(c), last = ann[ann.length - 1] || {}, sn = c.snapshot || {}, op = c.operating || {};
+  var R = rep$(p);
+  if(t){
+    out += '<div class="vb"><div class="h">Rating by the bands · ' + e(t.band) + '</div><div class="c"><div class="v">'
+      + 'Target ₹' + n(t.target, 0) + ' · price ₹' + n(t.price, 2) + ' · <span class="' + (t.upside >= 0 ? 'pos' : 'neg') + '">'
+      + (t.upside >= 0 ? '+' : '') + n(t.upside, 1) + '%</span></div>'
+      + '<div class="mut" style="margin-top:1.5mm">The target is the ' + (t.weighted ? 'probability-weighted' : 'average') + ' fair value of the '
+      + t.cases + ' valuation case' + (t.cases === 1 ? '' : 's') + ' below. Bands, on the upside to the target: Buy above 15%, Hold −5% to 15%, '
+      + 'Reduce −15% to −5%, Sell below −15%. A research tool’s reading, not investment advice.</div></div></div>';
+  }
+  var mc = Number(sn.marketCap), debt = Number(last.totalDebt), cash = Number(last.cashAndEquivalents);
+  var ev = isFinite(mc) && isFinite(debt) && isFinite(cash) && !c.lender ? mc + debt - cash : null;
+  var facts = [
+    ['Market capitalisation', money(sn.marketCap, R)],
+    [c.lender ? 'Borrowings' : 'Total debt', isFinite(debt) ? money(debt, R) + ' <span class="mut">(' + e(S(last.period)) + ')</span>' : '—'],
+    ['Cash and investments', isFinite(cash) ? money(cash, R) : '—'],
+    ['Enterprise value', ev == null ? (c.lender ? '<span class="mut">not used for a lender</span>' : '—') : money(ev, R)],
+    ['52-week high / low', sn.week52High == null ? '—' : '₹' + n(sn.week52High, 2) + ' / ₹' + n(sn.week52Low, 2)],
+    ['Equity capital', last.shareCapital == null ? '—' : money(last.shareCapital, R)],
+    ['Face value', op.faceValue == null ? '<span class="mut">not stated</span>' : '₹' + n(op.faceValue, 2)]
+  ];
+  out += tbl(['Key facts', ''], facts.map(function(f){ return { cells: f }; }), { kv: true, widths: ['45%', '55%'] });
+  /* The financial summary: five reported years, two forward, and the growth
+     over each. Forward years from consensus where it was given, else from the
+     application's own driver model. */
+  var past = ann.slice(-5);
+  if(past.length >= 2){
+    var cn = c.consensus || {}, mdl = c.model && c.model.model, fwd = [];
+    var py = (function(){ var m = /(\d{2,4})/.exec(S(last.period)); var y = m ? parseInt(m[1], 10) : null; return y == null ? null : (y < 100 ? y : y % 100); })();
+    var fyl = function(k){ return py == null ? 'Year +' + k : 'FY' + (py + k) + 'E'; };
+    if(cn.revenue && isFinite(Number(cn.revenue.y1))){
+      [1, 2].forEach(function(k){ var key = 'y' + k; fwd.push({ period: fyl(k), revenue: cn.revenue && cn.revenue[key], ebitda: cn.ebitda && cn.ebitda[key],
+        netProfit: null, eps: cn.eps && cn.eps[key], src: 'consensus' }); });
+    } else if(mdl && mdl.available && arr(mdl.years).length >= 2 && !c.lender){
+      mdl.years.slice(0, 2).forEach(function(y, k){ fwd.push({ period: fyl(k + 1), revenue: y.revenue, ebitda: y.ebitda, netProfit: y.pat, eps: y.epsDiluted, src: 'the driver model' }); });
+    }
+    var cols = past.map(function(r){ return { period: S(r.period), revenue: r.revenue, ebitda: r.ebitda, netProfit: r.netProfit,
+      eps: r.epsDiluted != null ? r.epsDiluted : r.epsBasic, roe: Number(r.netProfit) && Number(r.shareholdersEquity) ? r.netProfit / r.shareholdersEquity * 100 : null }; }).concat(fwd);
+    var nP = past.length, px = t ? t.price : Number((c.valuation || {}).currentPrice);
+    var line = function(lab, get, dp, unit, cagr){
+      var vals = cols.map(get);
+      if(!vals.some(function(v){ return v != null && isFinite(Number(v)); })) return null;
+      var c5 = cagr ? eqCagr(get(cols[0]), get(cols[nP - 1]), nP - 1) : null;
+      var c2 = cagr && fwd.length ? eqCagr(get(cols[nP - 1]), get(cols[cols.length - 1]), fwd.length) : null;
+      return { cells: ['<b>' + lab + '</b>'].concat(vals.map(function(v){ return v == null || !isFinite(Number(v)) ? '—' : n(v, dp) + (unit || ''); }))
+        .concat([c5 == null ? '—' : n(c5, 1) + '%', c2 == null ? '—' : n(c2, 1) + '%']) };
+    };
+    var rows = [
+      line(c.lender ? 'Total income' : 'Net sales', function(x){ return x.revenue; }, 0, '', true),
+      c.lender ? null : line('EBITDA', function(x){ return x.ebitda; }, 0, '', true),
+      c.lender ? null : line('EBITDA margin', function(x){ return Number(x.revenue) > 0 && x.ebitda != null ? x.ebitda / x.revenue * 100 : null; }, 1, '%', false),
+      line('Net profit', function(x){ return x.netProfit; }, 0, '', true),
+      line('EPS (₹)', function(x){ return x.eps; }, 2, '', true),
+      px > 0 ? line('P/E at today’s price', function(x){ return Number(x.eps) > 0 ? px / x.eps : null; }, 1, 'x', false) : null,
+      line('Return on equity', function(x){ return x.roe; }, 1, '%', false)
+    ].filter(Boolean);
+    out += '<h5 style="margin-top:3mm">Key financial summary</h5>'
+      + tbl(['₹ Crs'].concat(cols.map(function(x){ return e(x.period); })).concat([(nP - 1) + '-year past growth', fwd.length ? fwd.length + '-year forward growth' : 'Forward growth']),
+          rows, { num: cols.map(function(_, i){ return i + 1; }).concat([cols.length + 1, cols.length + 2]), headWrap: true })
+      + '<p class="mut">Growth is compounded a year. ' + (fwd.length ? 'Forward years from ' + e(fwd[0].src) + '.' : 'No forward estimates were supplied.') + '</p>';
+  }
+  return out;
+}
+function eqOperating(c, p){
+  var op = c.operating || {}, out = '', K = CH_();
+  var rows = function(v){ return arr(v).filter(function(x){ return x && typeof x === 'object'; }); };
+  var cap = rows(op.capacity);
+  if(cap.length) out += '<h5>Capacity and the expansion pipeline</h5>' + tbl(['Asset', 'Capacity', 'Utilisation', 'Status', 'Capex'],
+    cap.map(function(x){ return { cells: [e(S(x.asset)) + (x.location ? '<br><span class="mut">' + e(S(x.location)) + '</span>' : ''),
+      x.capacity == null ? '—' : n(x.capacity, 2) + ' ' + e(S(x.unit)), x.utilisationPct == null ? '—' : n(x.utilisationPct, 0) + '%',
+      e(S(x.status) || '—') + (x.commissioning ? '<br><span class="mut">' + e(S(x.commissioning)) + '</span>' : ''),
+      x.capexCr == null ? '—' : '₹' + n(x.capexCr, 0) + ' Crs'] }; }), { num: [2, 4], widths: ['32%', '18%', '14%', '20%', '16%'] });
+  var ue = rows(op.unitEconomics);
+  if(ue.length) out += '<h5>Unit economics</h5>' + tbl(['Measure', 'Now', 'A year ago', 'Change', 'Guided'],
+    ue.map(function(x){ var ch = Number(x.yearAgo) ? (x.value / x.yearAgo - 1) * 100 : null;
+      return { cells: [e(S(x.metric)) + (x.unit ? ' <span class="mut">(' + e(S(x.unit)) + ')</span>' : '') + (x.period ? '<br><span class="mut">' + e(S(x.period)) + '</span>' : ''),
+        x.value == null ? '—' : n(x.value, 0), x.yearAgo == null ? '—' : n(x.yearAgo, 0), ch == null ? '—' : eqSignedPct(ch),
+        x.guidance == null ? '—' : n(x.guidance, 0) + (x.guidancePeriod ? ' <span class="mut">' + e(S(x.guidancePeriod)) + '</span>' : '')] }; }),
+    { num: [1, 2, 3], widths: ['36%', '14%', '14%', '14%', '22%'] });
+  var ka = op.keyAssumption;
+  if(ka && S(ka.driver)){
+    out += '<h5>What the earnings turn on</h5><p><b>' + e(S(ka.driver)) + '</b>' + (ka.assumed != null ? ': assumed at ' + n(ka.assumed, 0) + ' ' + e(S(ka.unit)) : '')
+      + (ka.current != null ? ', against ' + n(ka.current, 0) + ' now' : '') + '.</p>';
+    var sv = rows(ka.sensitivity);
+    if(sv.length) out += tbl(['If it moves', 'EBITDA', 'EPS'], sv.map(function(x){ return { cells: [e(S(x.change)), x.ebitdaChangePct == null ? '—' : eqSignedPct(x.ebitdaChangePct), x.epsChangePct == null ? '—' : eqSignedPct(x.epsChangePct)] }; }),
+      { num: [1, 2], widths: ['40%', '30%', '30%'] });
+  }
+  var mx = rows(op.mix).filter(function(x){ return S(x.period) && rows(x.lines).length; });
+  if(mx.length >= 2 && K){
+    var ord = mx.slice().sort(function(a, b){ return S(a.period) < S(b.period) ? -1 : 1; });
+    var names = []; ord.forEach(function(x){ rows(x.lines).forEach(function(g){ if(names.indexOf(S(g.name)) < 0) names.push(S(g.name)); }); });
+    out += K.columns({ title: (S(c.name) || S(c.symbol)) + ': business mix by year', source: 'Company filings, via the research', unit: '% of ' + (S(ord[0].basis) || 'revenue'),
+      stacked: true, categories: ord.map(function(x){ return S(x.period); }), vFmt: function(t){ return n(t, 0); }, yFmt: function(t){ return n(t, 0); },
+      series: names.slice(0, 7).map(function(nm){ return { name: nm, values: ord.map(function(x){ var g = rows(x.lines).filter(function(y){ return S(y.name) === nm; })[0]; return g ? g.sharePct : null; }) }; }) });
+  }
+  var er = rows(op.estimateRevisions).filter(function(x){ return S(x.item); });
+  if(er.length) out += '<h5>Estimate revisions</h5>' + tbl(['Estimate', 'Now', 'Earlier', 'Revision'], er.map(function(x){
+      var ch = Number(x.earlier) ? (x.now / x.earlier - 1) * 100 : null;
+      return { cells: [e(S(x.item)) + (x.source ? '<br><span class="mut">' + e(S(x.source)) + '</span>' : ''), x.now == null ? '—' : n(x.now, 1),
+        x.earlier == null ? '—' : n(x.earlier, 1) + (x.earlierAsOf ? ' <span class="mut">' + e(S(x.earlierAsOf)) + '</span>' : ''), ch == null ? '—' : eqSignedPct(ch)] }; }),
+    { num: [1, 2, 3], widths: ['40%', '18%', '24%', '18%'] });
+  var rm = rows(op.rawMaterials).filter(function(x){ return S(x.input); });
+  if(rm.length) out += '<h5>Raw-material security</h5>' + tbl(['Input', 'Captive', 'The rest bought', 'Detail'], rm.map(function(x){
+      return { cells: [e(S(x.input)), x.captivePct == null ? '—' : n(x.captivePct, 0) + '%', e(S(x.supply) || '—'), e(S(x.detail) || '')] }; }),
+    { num: [1], widths: ['22%', '12%', '24%', '42%'] });
+  var dl = op.deleveraging;
+  if(dl && (dl.netDebtEbitdaNow != null || dl.netDebtEbitdaY2 != null)) out += '<h5>The debt path</h5>' + tbl(['', ''], [
+      { cells: ['Net debt to EBITDA, now', dl.netDebtEbitdaNow == null ? '—' : n(dl.netDebtEbitdaNow, 1) + 'x'] },
+      { cells: ['Net debt to EBITDA, ' + e(S(dl.y2Label) || 'in two years'), dl.netDebtEbitdaY2 == null ? '—' : n(dl.netDebtEbitdaY2, 1) + 'x'] },
+      { cells: ['Cash from operations, next year', dl.cfoNextYear == null ? '—' : money(dl.cfoNextYear, rep$(p))] },
+      { cells: ['Dividend payout', dl.dividendPayoutPct == null ? '—' : n(dl.dividendPayoutPct, 0) + '%'] }
+    ], { kv: true, widths: ['55%', '45%'] });
+  var aq = rows(op.assetQualityTrend).filter(function(x){ return S(x.period); });
+  if(aq.length){
+    var aqo = aq.slice().sort(function(a, b){ return S(a.period) < S(b.period) ? -1 : 1; });
+    var peak = aqo.reduce(function(m, x){ return Number(x.gnpa) > Number(m.gnpa || -1) ? x : m; }, {});
+    out += '<h5>Asset quality from its peak</h5>' + tbl(['Period', 'Gross NPA', 'Net NPA', 'Provision cover', 'Government-backed'], aqo.map(function(x){
+        return { cells: [e(S(x.period)) + (x === peak ? ' <span class="mut">peak</span>' : ''), x.gnpa == null ? '—' : n(x.gnpa, 2) + '%', x.nnpa == null ? '—' : n(x.nnpa, 2) + '%',
+          x.pcr == null ? '—' : n(x.pcr, 0) + '%', x.governmentBackedPct == null ? '—' : n(x.governmentBackedPct, 0) + '%'] }; }),
+      { num: [1, 2, 3, 4], widths: ['24%', '19%', '19%', '19%', '19%'] });
+  }
+  var ca = arr(op.corporateActions);
+  if(Array.isArray(op.corporateActions)) out += '<h5>Corporate actions</h5>' + (ca.length ? tbl(['Action', 'Status', 'Effect'], rows(ca).map(function(x){
+      return { cells: ['<b>' + e(S(x.action)) + '</b>' + (x.detail ? '<br>' + e(S(x.detail)) : ''), e(S(x.status) || '—') + (x.expected ? '<br><span class="mut">expected ' + e(S(x.expected)) + '</span>' : ''), e(S(x.effect) || '')] }; }),
+      { widths: ['46%', '24%', '30%'] }) : '<p class="mut">None announced or pending, as the research found.</p>');
+  var re = op.recentEvent;
+  if(re && (arr(re.highlights).length || S(re.nextQuarterGuidance))) out += '<h5>The latest quarter' + (re.period ? ', ' + e(S(re.period)) : '') + '</h5>'
+    + eqList(arr(re.highlights).map(S).filter(Boolean))
+    + (S(re.nextQuarterGuidance) ? '<p><b>Guided for the next quarter.</b> ' + e(S(re.nextQuarterGuidance)) + '</p>' : '');
+  var pl = rows(op.policyLinks).filter(function(x){ return S(x.item); });
+  if(pl.length) out += '<h5>Policy that touches the company</h5>' + tbl(['Item', 'Effect', 'Detail'], pl.map(function(x){
+      var h = /help/i.test(S(x.effect)), hu = /hurt/i.test(S(x.effect));
+      return { cells: [e(S(x.item)), h ? '<span class="pos">helps</span>' : hu ? '<span class="neg">hurts</span>' : e(S(x.effect) || '—'), e(S(x.detail)) + (x.quantified ? '<br><span class="mut">' + e(S(x.quantified)) + '</span>' : '')] }; }),
+    { widths: ['30%', '14%', '56%'] });
+  return out;
+}
+
 function eqSotp(c){
   var d = arr(c.valuation && c.valuation.sotp);
   if(!d.length) return '';
@@ -6002,14 +6165,15 @@ function eqSotp(c){
   var rows = d.map(function(x){
     return { cells:[ '<b>'+e(S(x.name))+'</b>', e(S(x.metric)), eqNum(x.metricValue),
       x.multiple==null?'—':n(x.multiple,1)+'x', eqNum(x.enterpriseValue),
-      x.stakePct==null?'—':n(x.stakePct,0)+'%', eqNum(x.perShare) ]};
+      x.stakePct==null?'—':n(x.stakePct,0)+'%',
+      x.holdingDiscountPct==null?'—':n(x.holdingDiscountPct,0)+'%', eqNum(x.perShare) ]};
   });
   if(anyEv || anyPs){
     rows.push({ __cls:'tot', cells:['<b>Total</b>','','','',
-      anyEv?'<b>'+n(totalEv,0)+'</b>':'—','', anyPs?'<b>'+n(totalPs,0)+'</b>':'—'] });
+      anyEv?'<b>'+n(totalEv,0)+'</b>':'—','','', anyPs?'<b>'+n(totalPs,0)+'</b>':'—'] });
   }
-  return tbl(['Business','Metric','Value','Multiple','Enterprise value','Stake','Per share'],
-    rows, { num:[2,3,4,6] });
+  return tbl(['Business','Metric','Value','Multiple','Enterprise value','Stake','Holding discount','Per share'],
+    rows, { num:[2,3,4,6,7], headWrap:true });
 }
 
 /* What the current price already assumes. Read backwards out of the market

@@ -714,6 +714,17 @@ function scoreCompany(c, horizonKey, run) {
     historicalSectors: c.historicalSectors ?? null,
     compensation: c.compensation ?? null,
     timeline: c.timeline ?? null,
+    /* Build 37: the operating picture a broker's report opens with — from
+       the ICICI Securities reports Tejas set as the standard on 26-11-2026
+       (PFC, Tata Steel, Vedanta Aluminium). */
+    operating: {
+      faceValue: c.faceValue ?? c.snapshot?.faceValue ?? null,
+      capacity: c.capacity ?? null, unitEconomics: c.unitEconomics ?? null,
+      keyAssumption: c.keyAssumption ?? null, estimateRevisions: c.estimateRevisions ?? null,
+      mix: c.mix ?? null, rawMaterials: c.rawMaterials ?? null, deleveraging: c.deleveraging ?? null,
+      corporateActions: c.corporateActions ?? null, recentEvent: c.recentEvent ?? null,
+      policyLinks: c.policyLinks ?? null, assetQualityTrend: c.assetQualityTrend ?? null,
+    },
     /* What the market has paid for this company against what it pays now.
        Computed here, like everything else the documents display. A lender is
        banded on book rather than earnings — see multipleBands for why. */

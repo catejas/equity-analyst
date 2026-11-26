@@ -26,6 +26,33 @@ behave and it is not a fault.
 
 ## Current build
 
+`26-11-2026.37` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 37: **company research, to the standard of the ICICI Securities
+reports** Tejas sent on 26-11-2026 (PFC conviction pick, Tata Steel Shubh
+Nivesh, Vedanta Aluminium), reviewed from the company side. In every company
+report — Top 3 and independent — and in each company's Executive Summary:
+- **Investment summary:** a rating by the bands (Buy above 15% upside, Hold
+  −5% to 15%, Reduce −15% to −5%, Sell below −15%) on a target that is the
+  probability-weighted fair value of the three valuation cases; key facts
+  (market cap, debt, cash, enterprise value, 52-week range, equity capital,
+  face value); and a key financial summary of five reported years and two
+  forward (consensus, else the driver model) with the past and forward
+  growth beside them. No EBITDA lines for a lender.
+- **Operations, drivers and what has changed:** capacity and the expansion
+  pipeline; unit economics now, a year ago and guided; the key assumption the
+  earnings turn on and a 10% move each way; estimate revisions; the business
+  mix over five years (chart); raw-material security; the debt path; asset
+  quality from its peak (lenders); corporate actions; the latest quarter and
+  next quarter's guidance; policy that touches the company.
+- **Sum of the parts** carries a holding-company discount.
+- The research prompt asks for all of it, the depth check counts it (a
+  lender is asked for asset quality in place of capacity, unit economics, raw
+  materials and the debt path), and the follow-up asks for what is missing.
+- Tests: `company37.mjs` (17, hand-worked).
+
+## Build 36
+
 `26-11-2026.36` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 36: **replies in parts, imported as one** (Tejas, 26-11-2026: 12 to 15

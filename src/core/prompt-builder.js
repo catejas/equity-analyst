@@ -828,6 +828,36 @@ including pledged shares.
       "shareholding": [ { "period": "Q1FY26", "promoter": 0, "fii": 0, "dii": 0,
         "public": 0, "pledged": 0 } ],
 
+      // THE OPERATING PICTURE — what a broker's report opens with. Every
+      // figure from the company's own filings, presentations or earnings
+      // call, with its period and source. For a bank or NBFC leave out
+      // capacity, unitEconomics, rawMaterials and deleveraging, and send
+      // assetQualityTrend instead.
+      "faceValue": 0,
+      "capacity": [ { "asset": "plant or business line", "location": "", "capacity": 0,
+        "unit": "MTPA, MW, beds, stores, lines", "utilisationPct": 0,
+        "status": "operating, under construction or planned", "commissioning": "FY28",
+        "capexCr": 0, "source": "" } ],
+      "unitEconomics": [ { "metric": "the per-unit measure this industry is run on: EBITDA per tonne, realisation per tonne, cost per tonne, ARPU, yield",
+        "unit": "₹/t", "period": "Q2FY27", "value": 0, "yearAgo": 0,
+        "guidance": 0, "guidancePeriod": "FY28E", "source": "" } ],
+      "keyAssumption": { "driver": "the one price or volume the earnings turn on (LME aluminium, steel realisation, crude, loan growth)",
+        "unit": "", "assumed": 0, "current": 0,
+        "sensitivity": [ { "change": "+10%", "ebitdaChangePct": 0, "epsChangePct": 0 },
+                         { "change": "-10%", "ebitdaChangePct": 0, "epsChangePct": 0 } ], "source": "" },
+      "estimateRevisions": [ { "item": "EBITDA FY28E", "now": 0, "earlier": 0, "earlierAsOf": "", "source": "consensus or a named broker" } ],
+      "mix": [ { "period": "FY26", "basis": "revenue, loan book or volume", "lines": [ { "name": "", "sharePct": 0 } ] } ],
+      "rawMaterials": [ { "input": "", "captivePct": 0, "supply": "captive mine, long-term contract or spot", "detail": "" } ],
+      "deleveraging": { "netDebtEbitdaNow": 0, "netDebtEbitdaY2": 0, "y2Label": "FY28E",
+        "cfoNextYear": 0, "dividendPayoutPct": 0, "source": "" },
+      "corporateActions": [ { "action": "merger, demerger, acquisition, stake sale, buyback or QIP",
+        "detail": "", "status": "", "expected": "", "effect": "" } ],
+      "recentEvent": { "period": "Q2FY27", "highlights": ["the latest quarter's results in three lines, with figures"],
+        "nextQuarterGuidance": "", "source": "" },
+      "policyLinks": [ { "item": "a scheme, duty, regulation or agency role that touches THIS company",
+        "effect": "helps or hurts", "detail": "", "quantified": "" } ],
+      "assetQualityTrend": [ { "period": "FY19", "gnpa": 0, "nnpa": 0, "pcr": 0, "governmentBackedPct": 0 } ],
+
       "theses": [ { "claim": "", "mechanism": "", "evidence": "", "size": "", "by": "when" } ],
       "moat": { "barrier": "", "evidence": "", "testSurvived": "", "durability": "" },
       "management": {
@@ -929,7 +959,7 @@ ${LIT_ROWS}
 
         "sotp": [ { "name": "", "metric": "EBITDA or EV/Sales or book value",
           "metricValue": 0, "multiple": 0.0, "enterpriseValue": 0,
-          "stakePct": 100, "perShare": 0, "basis": "why this multiple" } ],
+          "stakePct": 100, "holdingDiscountPct": 0, "perShare": 0, "basis": "why this multiple; a listed subsidiary held through the parent carries a holding-company discount" } ],
 
         "impliedExpectations": { "impliedRevenueCagr": 0.0, "impliedEbitMargin": 0.0,
           "impliedYears": 0, "reading": "what the current price is assuming, in one sentence" }
