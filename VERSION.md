@@ -26,6 +26,35 @@ behave and it is not a fault.
 
 ## Current build
 
+`26-11-2026.36` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 36: **replies in parts, imported as one** (Tejas, 26-11-2026: 12 to 15
+follow-ups to reach 80%; "at the end, i can get one or two JSON for import").
+A chat reply has a length limit, so asking the tool to join the parts at the
+end only gives one reply that is cut off. The app joins them instead.
+- **The prompts ask for parts.** The screen comes in 6 parts of 7 sectors
+  (the benchmark in part 1), Deep Dive in 5 parts of 2 sectors (the macro
+  block in part 1), follow-ups in parts of up to 8 sectors. The tool sends
+  Part 1, stops, and sends the next when told "next". Each part carries
+  `run.part { n, of, id }`. A part too long is split, and "of" raised.
+- **Or one file.** Where the tool can make a downloadable file, it puts
+  everything in one `.json` file instead; **Import file** reads it at once.
+- **Denser replies:** short sources, one-sentence search reasons, and keys
+  with no value left out, never sent as 0 or "".
+- **The tray.** A part pasted on its own is held on the device until the set
+  is complete, with "Parts waiting: 4 of 6" in the Finder box and "Read them
+  now" / "Discard". The last part joins them all; the screen is saved once
+  and the price check runs once.
+- **Several blocks in one paste** (a whole day's replies, prose between
+  them) are joined at once: your file of 26-11-2026 imports as one.
+- **Export JSON** saves the whole joined screen as one file.
+- A bare JSON object (a file) and a Finder block carrying only "run" and
+  "sectors" are now recognised.
+- New `src/core/parts.js`; `combineBlocks` in `completeness.js`.
+- Tests: `finder36.mjs` (23), `finder36ui.mjs` (12).
+
+## Build 35
+
 `26-11-2026.35` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 35, from Tejas's screenshots and real replies of 26-11-2026.

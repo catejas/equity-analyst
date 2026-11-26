@@ -37,7 +37,8 @@ ok('it states the seven pillars and weights', /past performance over 1, 2 and 3 
 ok('it asks for 1-, 2- and 3-year returns and the Nifty 500\'s', /"y1"/.test(pr) && /"y2"/.test(pr) && /"y3"/.test(pr) && /Nifty 500's return/.test(pr) && !/"m3"/.test(pr));
 ok('it asks each bellwether\'s ROE, leverage and consensus revision', /"roe": 0, "netDebtEbitda": 0/.test(pr) && /"revision3m": 0/.test(pr));
 ok('it asks for bellwether symbols so the app can check prices', /bellwethers/.test(pr) && /NSE symbol/.test(pr));
-ok('it asks for one fenced json block, minified', /ONE fenced code block tagged json/.test(pr) && /ONE LINE, minified/.test(pr));
+/* Build 36: one fenced, minified block per part, six parts, or one file. */
+ok('it asks for one fenced json block per part, minified', /ONE fenced code block tagged json, minified on ONE LINE/.test(pr) && /IN 6 PARTS/.test(pr) && /ONE file named\s+screen-/.test(pr));
 ok('it asks for a search record, never a zero', /run\.searchLog/.test(pr) && /Never write 0/.test(pr));
 ok('it is dated today', /Today is 22-11-2026/.test(pr));
 const prU = F.buildFinderPrompt({ previous: { top3: [{ name: 'Defence and aerospace' }, { name: 'Banking' }] }, previousTs: Date.parse('2026-11-01T00:00:00Z') });

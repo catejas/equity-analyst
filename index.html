@@ -605,7 +605,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="26-11-2026.35";</script>
+<script>window.APP_BUILD="26-11-2026.36";</script>
 </head>
 <body>
 
@@ -656,6 +656,7 @@ body.previewing{overflow:hidden;}
       <button class="btn sm dang" id="btnFinderDelete" style="margin:0;" disabled>Delete</button>
     </div>
     <button class="btn sm pri hidden" id="btnFinderDeep" style="margin:8px 0 0;width:100%;">Deep Dive on the Shortlist</button>
+    <div id="finderTray"></div>
     <div id="finderAge"></div>
     <div id="finderTable"></div>
     <div id="finderReview"></div>
@@ -664,6 +665,10 @@ body.previewing{overflow:hidden;}
         <span class="doc-name">Sector Screen<small>the ranking and the Top 3 &middot; A4 PDF</small></span>
         <button class="ico ico-pdf" data-doc="finder" data-act="make" aria-label="Generate Sector Screen">PDF</button>
         <button class="ico ico-sh" data-doc="finder" data-act="share" aria-label="Share Sector Screen">&#8682;</button>
+      </div>
+      <div class="doc-row">
+        <span class="doc-name">Screen data<small>everything imported, joined &middot; one .json file</small></span>
+        <button class="btn xs" id="btnFinderExport" style="margin:0;">Export JSON</button>
       </div>
     </div>
     <div id="finderMsg" class="note" style="margin-top:8px;"></div>
@@ -822,16 +827,14 @@ body.previewing{overflow:hidden;}
 
 <div class="card hidden" id="importCard">
     <h2>Import Data</h2>
-    <p class="hint">Paste the whole reply, or just the JSON block. The payload comes back inside a fenced <b>json</b> code block, which is what gives your chat app a copy button &mdash; one tap on that and paste here. Marker lines and a bare JSON object read exactly the same, so it does not matter which form your tool produced. The reader repairs what chat models get wrong: a reply cut off mid-JSON, trailing commas, comments, "..." shortcuts, a missing closing fence. Anything still missing is listed for you before saving.</p>
+    <p class="hint"><b>Several parts?</b> Paste them one at a time or all together, or use <b>Import file</b> for a .json file the tool made: the app joins them into one before anything is saved. Paste the whole reply, or just the JSON block. The payload comes back inside a fenced <b>json</b> code block, which is what gives your chat app a copy button &mdash; one tap on that and paste here. Marker lines and a bare JSON object read exactly the same, so it does not matter which form your tool produced. The reader repairs what chat models get wrong: a reply cut off mid-JSON, trailing commas, comments, "..." shortcuts, a missing closing fence. Anything still missing is listed for you before saving.</p>
     <textarea id="importText" placeholder="Paste the whole reply here — the File 7 data block if you have it, otherwise just the report text…" style="min-height:170px;"></textarea>
     <!-- Some mobile chat apps render a very large code block as an empty box with
          a copy button that copies nothing — the Gemini Android app does this. The
          framework therefore asks the model to attach the same payload as a .json
          file, and this reads that file straight into the box. -->
-    <div class="hint" style="margin-top:8px;">Copy button not working in your chat app?
-      Load the <b>.json file</b> the model attached instead:</div>
-    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain"
-           style="margin-top:6px;font-size:12.5px;">
+    <div class="hint" style="margin-top:8px;">Copy button not working in your chat app, or the tool
+      made a <b>.json file</b>? Use <b>Import file</b> below: it is read at once.</div>
     <!-- The tool is stated in the payload and recognised from the reply, so this
          is no longer a question. It stays in the markup, hidden, as the fallback
          for a reply that identifies itself in neither way. -->
@@ -845,10 +848,12 @@ body.previewing{overflow:hidden;}
       <div class="hint" id="srcAuto"></div>
     </div>
 
-    <div class="grid2" style="margin-top:10px;">
+    <div class="grid3" style="margin-top:10px;">
       <button class="btn sm pri" id="btnDoImport" style="margin:0;">READ IT</button>
+      <button class="btn sm" id="btnImportFile" style="margin:0;">Import file</button>
       <button class="btn sm" id="btnCancelImport" style="margin:0;">Cancel</button>
     </div>
+    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
     <div id="importMsg" class="note"></div>
     <div id="reviewBox" class="hidden"></div>
     <button class="btn sm pri hidden" id="btnSaveImport">SAVE TO REPORT &amp; SCORING</button>
@@ -2102,6 +2107,8 @@ function looksLikePayload(j){
   if(j.schema && /equity-analyst/.test(String(j.schema))) return true;  /* any version */
   if(j.run && j.companies) return true;
   if(j.run && j.run.schemaVersion) return true;
+  /* Build 36: a Finder follow-up or part, which may carry only run and sectors. */
+  if(j.run && /sectorScreen/.test(String(j.run.kind || '')) && Array.isArray(j.sectors)) return true;
   if(Array.isArray(j.companies) && j.companies.length) return true;
   return !!(j.meta || j.verdict || j.score_lines || j.schema);
 }
@@ -3699,18 +3706,90 @@ $('#btnCancelImport').addEventListener('click', function(){
 });
 /* A .json attachment goes into the same box and down the same tolerant path,
    so a file and a paste are read identically. */
-$('#importFile').addEventListener('change', function(){
-  var f = this.files && this.files[0];
-  if(!f) return;
-  var r = new FileReader();
-  r.onload = function(){
-    $('#importText').value = String(r.result || '');
-    $('#importMsg').innerHTML = '<b>Loaded ' + esc(f.name) + '.</b> Now tap READ IT.';
-  };
-  r.onerror = function(){ $('#importMsg').textContent = 'That file could not be read.'; };
-  r.readAsText(f);
-  this.value = '';
+/* ============================== build 36: parts ======================
+ * Tejas, 26-11-2026: a reply that needs 12 to 15 follow-ups should end as
+ * one or two JSON to import. Each prompt now asks for numbered parts
+ * (run.part { n, of, id }), or one file. Parts are held in a tray, on the
+ * device, until the set is complete or the reader says to go on; blocks
+ * pasted together are joined at once. What follows sees one payload. */
+var JOIN_NOTE = '', TRAY_KEY = 'eq.partTray';
+function trayRead(){ try{ var t = JSON.parse(get(TRAY_KEY, 'null')); return t && t.parts ? t : null; }catch(e){ return null; } }
+function trayWrite(t){ try{ localStorage.setItem(TRAY_KEY, JSON.stringify(t)); return true; }catch(e){ return false; } }
+function trayClear(){ try{ localStorage.removeItem(TRAY_KEY); }catch(e){} }
+function trayHave(t){ return Object.keys(t.parts).map(Number).filter(function(n){ return n >= 1; }).sort(function(a, b){ return a - b; }); }
+function trayMissing(t){ var h = trayHave(t), m = []; for(var n = 1; n <= t.of; n++) if(h.indexOf(n) < 0) m.push(n); return m; }
+function joined(blocks, label){
+  var C = EQ.completeness, c = C.combineBlocks(blocks);
+  if(!c.ok) return null;
+  JOIN_NOTE = '<b>' + c.joined + ' ' + label + ' joined into one.</b>'
+    + (c.skipped.length ? ' <span class="neg">' + c.skipped.length + ' could not be added: ' + esc(c.skipped.join(' ')) + '</span>' : '');
+  return '```json\n' + JSON.stringify(c.data) + '\n```';
+}
+function partsGate(raw, force){
+  var C = window.EQ && EQ.completeness; if(!C || !C.extractBlocks) return null;
+  var blocks = C.extractBlocks(raw);
+  var marks = C.blockMarks ? C.blockMarks(raw) : 0;
+  var parted = blocks.filter(function(b){ return C.partOf(b); });
+  if(parted.length){
+    var tray = trayRead();
+    parted.forEach(function(b){
+      var p = C.partOf(b);
+      if(!tray || tray.id !== p.id) tray = { id: p.id, of: p.of, parts: {}, extra: [], at: Date.now() };
+      tray.of = Math.max(tray.of, p.of); tray.parts[p.n] = b;
+    });
+    blocks.filter(function(b){ return !C.partOf(b); }).forEach(function(b){ tray.extra.push(b); });
+    trayWrite(tray);
+    var miss = trayMissing(tray), have = trayHave(tray);
+    if(miss.length && !force){
+      var msg = $('#importMsg');
+      if(msg) msg.innerHTML = '<b>Part' + (parted.length > 1 ? 's ' : ' ') + parted.map(function(b){ return C.partOf(b).n; }).join(', ') + ' of ' + tray.of + ' received.</b> '
+        + 'Held: ' + have.join(', ') + '. Still to come: ' + miss.join(', ') + '. Write \u201cnext\u201d in your research tool and paste the next part here.'
+        + (marks > blocks.length ? '<br><span class="neg">' + (marks - blocks.length) + ' block' + (marks - blocks.length === 1 ? '' : 's') + ' in this paste could not be read (cut off?). Copy it again with the copy button.</span>' : '')
+        + '<div class="grid2" style="margin-top:8px;"><button class="btn xs" id="btnPartsNow" style="margin:0;">Read the ' + have.length + ' part' + (have.length === 1 ? '' : 's') + ' now</button>'
+        + '<button class="btn xs dang" id="btnPartsClear" style="margin:0;">Discard the parts</button></div>';
+      var box = $('#importText'); if(box) box.value = '';
+      if(typeof renderFinder === 'function') try{ renderFinder(); }catch(e){}
+      return 'held';
+    }
+    trayClear();
+    if(typeof renderFinder === 'function') try{ renderFinder(); }catch(e){}
+    return joined(have.map(function(n){ return tray.parts[n]; }).concat(tray.extra || []), 'part' + (have.length === 1 ? '' : 's') + (miss.length ? ' of ' + tray.of : ''));
+  }
+  if(blocks.length >= 2){
+    var out = joined(blocks, 'blocks');
+    if(out && marks > blocks.length) JOIN_NOTE += '<br><span class="neg">' + (marks - blocks.length) + ' block(s) in the paste could not be read (cut off?).</span>';
+    return out;
+  }
+  /* A bare JSON object, as in a .json file the tool made, is read like a
+     fenced block. */
+  if(blocks.length === 1 && !marks && /^\s*\{/.test(raw)) return '```json\n' + JSON.stringify(blocks[0]) + '\n```';
+  return null;
+}
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('#btnPartsNow')){
+    var t = trayRead(); if(!t) return;
+    var box = $('#importText'); if(box) box.value = JSON.stringify(t.parts[trayHave(t)[0]]);
+    var out = partsGate(box.value, true);
+    if(out && box){ box.value = out; JOIN_NOTE_KEEP = JOIN_NOTE; $('#btnDoImport').click(); }
+    return;
+  }
+  if(ev.target.closest('#btnPartsClear')){
+    if(!confirm('Discard the parts held so far? They are not saved anywhere else.')) return;
+    trayClear(); if($('#importMsg')) $('#importMsg').textContent = 'Parts discarded.';
+    try{ renderFinder(); }catch(e){}
+    return;
+  }
+  if(ev.target.closest('#btnImportFile')){ var f = $('#importFile'); if(f){ f.value = ''; f.click(); } return; }
 });
+var JOIN_NOTE_KEEP = '';
+if($('#importFile')) $('#importFile').addEventListener('change', function(){
+  var f = this.files && this.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){ var box = $('#importText'); if(box){ box.value = String(rd.result || ''); $('#btnDoImport').click(); } };
+  rd.onerror = function(){ if($('#importMsg')) $('#importMsg').textContent = 'The file could not be read.'; };
+  rd.readAsText(f);
+});
+
 $('#btnDoImport').addEventListener('click', function(){
   /* Every failure in here used to be silent: the button did nothing and there
      was no way to tell whether the paste was wrong, the engine was missing or
@@ -3729,6 +3808,12 @@ $('#btnDoImport').addEventListener('click', function(){
       return;
     }
 
+    /* Build 36: parts are gathered, and several blocks joined into one,
+       before anything below reads the reply. */
+    JOIN_NOTE = JOIN_NOTE_KEEP; JOIN_NOTE_KEEP = '';
+    var gate = partsGate(raw);
+    if(gate === 'held') return;
+    if(gate) raw = gate;
     var res = parseImport(raw);
     if(msg){
       if(res.truncated || (res.warn || []).join(' ').indexOf('CUT OFF') >= 0){
@@ -3739,6 +3824,7 @@ $('#btnDoImport').addEventListener('click', function(){
       } else {
         msg.innerHTML = res.warn && res.warn.length ? '<b>Note.</b> ' + esc(res.warn.join(' ')) : '';
       }
+      if(JOIN_NOTE) msg.innerHTML = JOIN_NOTE + (msg.innerHTML ? '<br>' + msg.innerHTML : '');
     }
     try{ applyDetectedTool(raw, res.data); }catch(e){}
     showReview(res, raw);
@@ -5693,7 +5779,7 @@ function finderStepsHtml(rec, sc){
   var pct = c ? c.pct : 0, v = rec && rec.data.verified, R = sc && sc.review || {};
   var deepAll = sc && sc.counts.shortlist && sc.counts.deepDone >= sc.counts.shortlist;
   var steps = [
-    [!!rec, 'Find Sectors', 'Copy the prompt, paste it in your research tool, then bring the reply back with Import Data.'],
+    [!!rec, 'Find Sectors', 'Copy the prompt and paste it in your research tool. It answers in 6 parts: type \u201cnext\u201d after each. Paste each part with Import Data (one at a time or all together), or use Import file if the tool made a .json file. The app joins the parts and saves once.'],
     [!!(v && !v.error), 'Prices checked by the app', 'Automatic after every import and each time the app opens. Use <b>Check prices again</b> only if the message says the check failed or a sector shows “not checked”, or to refresh before the final PDF on a later day.'],
     [pct >= 90 || deepAll, 'Fill the gaps', 'Copy follow-up prompt (in the depth box) and import the reply, until the screen is about 90% complete' + (rec ? ' (now ' + pct + '%)' : '') + '. The shortlist can still change until then.'],
     [!!deepAll, 'Deep Dive', 'Once the gaps are filled and prices checked, so the shortlist of 10 is settled. Run it again only for a sector that newly enters the shortlist.'],
@@ -5732,6 +5818,13 @@ function renderFinder(){
   if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
   if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
   if($('#finderSteps')) $('#finderSteps').innerHTML = finderStepsHtml(rec, sc);
+  if($('#finderTray')){
+    var tr_ = trayRead();
+    $('#finderTray').innerHTML = tr_ ? '<div class="note" style="margin-top:8px;"><b>Parts waiting: ' + trayHave(tr_).length + ' of ' + tr_.of + '</b>'
+      + ' (' + esc(tr_.id) + '). Still to come: ' + trayMissing(tr_).join(', ') + '. Paste them with Import Data.'
+      + '<div class="grid2" style="margin-top:6px;"><button class="btn xs" id="btnPartsNow" style="margin:0;">Read them now</button>'
+      + '<button class="btn xs dang" id="btnPartsClear" style="margin:0;">Discard</button></div></div>' : '';
+  }
   if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc, rec) : '';
   if($('#finderReview')) $('#finderReview').innerHTML = sc ? finderReviewHtml(rec, sc) : '';
   if($('#finderDocs')) $('#finderDocs').classList.toggle('hidden', !rec);
@@ -6051,6 +6144,19 @@ document.addEventListener('click', function(ev){
     approveTop3(rr);
     var t = finderTop3();
     alert('Top 3 approved: ' + t.map(function(x){ return x.name; }).join(', ') + '.\n\nResearch each sector from the Top 3 Sectors boxes below, then its companies on the Companies page.');
+    return;
+  }
+  if(ev.target.closest('#btnFinderExport')){
+    var xr = finderRecord(); if(!xr) return;
+    var name = 'equity-analyst-screen-' + dmyTs(recAsOf(xr)).replace(/[^0-9-]/g, '') + '.json';
+    var blob = new Blob([JSON.stringify(xr.data, null, 1)], { type: 'application/json' });
+    var file = null; try{ file = new File([blob], name, { type: 'application/json' }); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({ files: [file] })){
+      navigator.share({ files: [file], title: name }).catch(function(){});
+    } else {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    }
     return;
   }
   if(ev.target.closest('#btnFinderRecheck')){

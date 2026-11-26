@@ -1,4 +1,5 @@
 import { weekly, periodReturn, basket, priceMetrics, breadth } from './sector-metrics.js';
+import { partsRule, planSectors, partId } from './parts.js';
 /* The Sector Finder (build 28).
  *
  * Tejas, 22-11-2026: "we can search the Top3 companies of any sector but now I
@@ -366,6 +367,7 @@ const p2 = (v) => (v < 10 ? '0' : '') + v;
 const dmyOf = (t) => { const d = new Date(t); return `${p2(d.getDate())}-${p2(d.getMonth() + 1)}-${d.getFullYear()}`; };
 
 export function buildFinderPrompt({ taxonomy = null, now = new Date(), previous = null, previousTs = null } = {}) {
+  const screenId = partId('screen', now);
   const today = dmyOf(now);
   const subsOf = (name) => {
     const hit = arr(taxonomy).find((x) => Array.isArray(x) && nameKey(x[0]) === nameKey(name));
@@ -512,25 +514,16 @@ THE SECTORS (${FINDER_SECTORS.length})
 
 ${list}
 
-HOW TO SEND IT
+${partsRule({ id: screenId, plan: planSectors(FINDER_SECTORS, 7, 'the benchmark'), what: 'the screen' })}
 
-Return ONE fenced code block tagged json, as the last thing in your reply:
+Each part looks like this, minified on one line:
 
 \`\`\`json
-{"schema":"equity-analyst/5","run":{"kind":"sectorScreen", ... },"benchmark":{ ... },"sectors":[ ... ]}
+{"schema":"equity-analyst/5","run":{"kind":"sectorScreen","part":{"n":1,"of":${Math.ceil(FINDER_SECTORS.length / 7)},"id":"${screenId}"}, ... },"benchmark":{ ... },"sectors":[ ... ]}
 \`\`\`
 
-  1. Put the JSON on ONE LINE, minified, so it renders as a single box with a
-     copy button.
-  2. Put "schema" first.
-  3. Nothing after the closing fence.
-
-If your interface cannot render a code block, wrap the object in a line
+If your interface cannot render a code block, wrap each part in a line
 reading <<<EQUITY-ANALYST-DATA before it and >>>EQUITY-ANALYST-DATA after it.
-
-If it will not all fit in one reply, send as many sectors as fit, in the
-order listed, end the block cleanly and say CONTINUE. The application asks for
-the rest in a follow-up and adds them to what you sent.
 
 THE JSON (shown laid out here; send it minified)
 
@@ -538,6 +531,7 @@ THE JSON (shown laid out here; send it minified)
   "schema": "equity-analyst/5",
   "run": {
     "kind": "sectorScreen",
+    "part": { "n": 1, "of": ${Math.ceil(FINDER_SECTORS.length / 7)}, "id": "${screenId}" },
     "schemaVersion": "5.0.0",
     "generatedAt": "ISO 8601 timestamp",
     "tool": "the name of the AI tool producing this payload",
@@ -579,6 +573,8 @@ THE JSON (shown laid out here; send it minified)
    ten shortlisted sectors only, so the reply stays a size a tool can send. */
 export function buildDeepDivePrompt(d, { now = new Date() } = {}) {
   const sc = scoreFinder(d);
+  const deepId = partId('deep', now);
+  const deepPlan = planSectors(sc.shortlist.map((r) => r.name), 2, 'the macro block');
   const today = dmyOf(now);
   const list = sc.shortlist.map((r, i) => {
     const bws = arr((arr(d && d.sectors).find((x) => nameKey(x && x.name) === nameKey(r.name)) || {}).bellwethers)
@@ -660,14 +656,13 @@ AND ONCE, for the market as a whole, under "macro":
   "msciIndia1y" and "msciEm1y" (1-year returns of MSCI India and MSCI
   Emerging Markets), "asOf", "source".
 
-HOW TO SEND IT
+${deepPlan.length ? partsRule({ id: deepId, plan: deepPlan, what: 'the deep dive' }) : ''}
 
-Return ONE fenced code block tagged json, as the last thing in your reply,
-minified on ONE LINE, "schema" first, nothing after the closing fence:
+Each part looks like this (laid out here; send it minified on one line):
 
 {
   "schema": "equity-analyst/5",
-  "run": { "kind": "sectorScreen", "topUp": true, "stage": "deepDive", "generatedAt": "", "tool": "", "searchLog": [] },
+  "run": { "kind": "sectorScreen", "topUp": true, "stage": "deepDive", "part": { "n": 1, "of": ${deepPlan.length || 1}, "id": "${deepId}" }, "generatedAt": "", "tool": "", "searchLog": [] },
   "macro": { "repoRate": 0, "repoRatePrev": 0, "cpi": 0, "gdpGrowth": 0, "crude": 0, "crudeYearAgo": 0, "usdInr": 0, "usdInrYearAgo": 0,
              "us10y": 0, "fpiIndiaNet3mCr": 0, "msciIndia1y": 0, "msciEm1y": 0, "asOf": "DD-MM-YYYY", "source": "" },
   "sectors": [
@@ -690,8 +685,6 @@ minified on ONE LINE, "schema" first, nothing after the closing fence:
   ]
 }
 
-If it will not all fit in one reply, send as many sectors as fit, in the order
-listed, end the block cleanly and say CONTINUE.
 `;
 }
 

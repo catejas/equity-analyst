@@ -42,6 +42,7 @@ import { industryPanel, industryFamily } from './industry.js';
 import { lenderLines } from './audit.js';
 import { REGISTERS } from './litigation.js';
 import { isFinderPayload, finderChecks } from './finder.js';
+import { extractBlocks, partOf, partId, blockMarks } from './parts.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 /* A reading, as opposed to a placeholder: the schema's example rows are full
@@ -737,6 +738,7 @@ export function topUpPrompt(payload, { now = new Date() } = {}) {
   const unit = d.run && d.run.reporting && S(d.run.reporting.unit)
     ? `${S(d.run.reporting.currency) || 'INR'} ${S(d.run.reporting.unit)}` : 'the unit the earlier payload used';
 
+  const fuId = partId('followup', now instanceof Date ? now : new Date());
   return `FOLLOW-UP — COMPLETE THE PAYLOAD YOU JUST SENT
 
 Today is ${today}. The JSON payload you returned for ${subject} has been read by the
@@ -752,7 +754,14 @@ HOW TO ANSWER
 1. SEARCH for each item. Do not answer from memory, and do not estimate: every
    figure is taken from an annual report, a results presentation, an exchange
    filing or an official release, and carries its period.
-2. Return ONE fenced json block and nothing else. It uses the SAME schema, the
+2. ${comp.kind === 'finder' ? `Send it IN PARTS of at most EIGHT sectors each, one part per reply: send
+   Part 1 now, then STOP; when I write "next", send the next. Each part is ONE
+   fenced json block, minified on one line, with "part": { "n": 1, "of": N,
+   "id": "${fuId}" } in its "run" (N your count of parts; raise it if a part
+   has to be split). Keep "source" to a few words and a searchLog "reason" to
+   one sentence. IF YOU CAN CREATE A DOWNLOADABLE FILE, put it all in ONE file
+   named ${fuId}.json instead, and say so. The application joins the parts.
+   It uses` : 'Return ONE fenced json block and nothing else. It uses'} the SAME schema, the
    same key names and the same unit (${unit}) as the payload you already sent.
 3. Send ONLY the keys listed below. Do not repeat anything you already
    returned — the application merges this block into the earlier one: annual
@@ -761,7 +770,7 @@ HOW TO ANSWER
 4. The block MUST start like this, so the application knows it is an addition
    and not a new run:
 
-   { "run": { "topUp": true,${comp.kind === 'finder' ? ' "kind": "sectorScreen",' : ''} "searchLog": [], "schemaVersion": "${S(d.run && d.run.schemaVersion) || '5.0.0'}"${
+   { "run": { "topUp": true,${comp.kind === 'finder' ? ` "kind": "sectorScreen", "part": { "n": 1, "of": 2, "id": "${fuId}" },` : ''} "searchLog": [], "schemaVersion": "${S(d.run && d.run.schemaVersion) || '5.0.0'}"${
      S(d.run && d.run.sector) ? `, "sector": ${JSON.stringify(d.run.sector)}` : ''}${
      S(d.run && d.run.subSector) ? `, "subSector": ${JSON.stringify(d.run.subSector)}` : ''} },${
      comp.kind === 'finder' ? `
@@ -779,8 +788,7 @@ HOW TO ANSWER
    The item stays on the list and will be asked for again, with the sources
    you name, so name every one. A zero is a reading; a reading you did not
    take is a false statement about the accounts.
-6. If the block will not fit in one reply, send as much as fits, end it
-   cleanly, and say CONTINUE — the rest can be sent the same way.
+6. ${comp.kind === 'finder' ? 'Never repeat a part already sent, and never re-send a figure already sent: the\n   application keeps everything you have sent before.' : 'If the block will not fit in one reply, send as much as fits, end it\n   cleanly, and say CONTINUE — the rest can be sent the same way.'}
 
 WHAT IS MISSING
 
@@ -969,3 +977,30 @@ export function mergeTopUp(base, add, { now = new Date() } = {}) {
   });
   return { ok: true, merged: out, gained };
 }
+
+
+/* ── Build 36: replies in parts, joined into one ───────────────────────── */
+/* Several blocks — the parts of one reply, a follow-up's parts, or a whole
+   day's replies pasted together — joined in order into ONE payload, as if the
+   tool had sent it in one go. The first full (not follow-up) block is the
+   base; with none, the result is itself a follow-up and is added to the
+   saved research on import. Parts of a set go in their own order. */
+export function combineBlocks(blocks, { now = new Date() } = {}) {
+  const list = arr(blocks).filter((b) => b && typeof b === 'object');
+  if (!list.length) return { ok: false, reason: 'No JSON block was found.' };
+  const order = list.map((b, i) => ({ b, i, p: partOf(b) }))
+    .sort((x, y) => (x.p && y.p && x.p.id === y.p.id ? x.p.n - y.p.n : x.i - y.i)).map((x) => x.b);
+  const baseAt = order.findIndex((b) => !isTopUp(b));
+  const base = order[baseAt >= 0 ? baseAt : 0];
+  let out = JSON.parse(JSON.stringify(base));
+  if (!out.run || typeof out.run !== 'object') out.run = {};
+  const skipped = [];
+  order.forEach((b) => {
+    if (b === base) return;
+    const m = mergeTopUp(out, b, { now });
+    if (m.ok) out = m.merged; else skipped.push(m.reason);
+  });
+  delete out.run.part;
+  return { ok: true, data: out, count: list.length, joined: list.length - skipped.length, skipped, topUp: isTopUp(out) };
+}
+export { extractBlocks, partOf, blockMarks };
