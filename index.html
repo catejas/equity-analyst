@@ -202,6 +202,16 @@ details .in{padding:0 14px 14px;}
 .ico:disabled{opacity:.45;}
 .rv{border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-top:12px;background:var(--surf2);}
 .rvh{font-size:14px;font-weight:800;letter-spacing:-.01em;}
+/* Build 35: the Finder's weights, review and track record. */
+.fdet{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surf);}
+.fdet summary{font-weight:700;cursor:pointer;font-size:13px;}
+.fwgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;}
+.fwgrid label{font-size:12px;display:flex;flex-direction:column;gap:2px;}
+.fwgrid input{width:100%;}
+.frtab{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+.frtab th{text-align:left;font-size:11px;color:var(--mut,#666);border-bottom:1px solid var(--line);padding:3px 2px;}
+.frtab td{border-bottom:1px solid var(--line);padding:4px 2px;vertical-align:top;}
+.frtab select,.frtab input{width:100%;font-size:12px;}
 .tagx{font-size:10px;font-weight:700;background:var(--surf);border:1px solid var(--line);
   border-radius:8px;padding:1px 7px;margin-left:6px;color:var(--ink3);vertical-align:2px;}
 .rvm{font-size:12.5px;color:var(--ink3);margin-top:3px;}
@@ -574,7 +584,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="26-11-2026.33";</script>
+<script>window.APP_BUILD="26-11-2026.34";</script>
 </head>
 <body>
 
@@ -623,6 +633,7 @@ body.previewing{overflow:hidden;}
     <button class="btn sm pri hidden" id="btnFinderDeep" style="margin:8px 0 0;width:100%;">Deep Dive on the Shortlist</button>
     <div id="finderAge"></div>
     <div id="finderTable"></div>
+    <div id="finderReview"></div>
     <div id="finderDocs" class="hidden" style="margin-top:12px;">
       <div class="doc-row">
         <span class="doc-name">Sector Screen<small>the ranking and the Top 3 &middot; A4 PDF</small></span>
@@ -5475,7 +5486,87 @@ function finderRecord(){
 }
 function finderScore(rec){
   if(!rec || !window.EQ || !EQ.finder) return null;
-  try{ return EQ.finder.scoreFinder(rec.data); }catch(e){ return null; }
+  /* Build 35: the reader's weights, then the reader's review over the
+     app's ranking. */
+  try{ return EQ.finder.applyReview(EQ.finder.scoreFinder(rec.data, { weights: finderWeights() }), rec.data.review); }catch(e){ return null; }
+}
+var FW_KEY = 'eq.finderWeights', FP_KEY = 'eq.finderPicks';
+function finderWeights(){
+  var w = null; try{ w = JSON.parse(get(FW_KEY, 'null')); }catch(e){}
+  return EQ.finder.normWeights(w);
+}
+/* Every screen's final Top 3 and its date, kept after the screen itself is
+   replaced, so the picks can be followed afterwards. */
+function finderPicks(){ var l = []; try{ l = JSON.parse(get(FP_KEY, '[]')); }catch(e){} return Array.isArray(l) ? l : []; }
+function notePicks(){
+  var l = finderPicks(), changed = false;
+  finderRecords().forEach(function(r){
+    var sc = finderScore(r); if(!sc || !sc.top3.length) return;
+    var e = { id: r.id, asOf: recAsOf(r), top3: sc.top3.map(function(x){ return x.name; }),
+      approved: !!(sc.review && sc.review.approved && sc.review.approved.current) };
+    var i = l.findIndex(function(x){ return x.id === r.id; });
+    if(i < 0){ l.push(e); changed = true; }
+    else if(JSON.stringify(l[i]) !== JSON.stringify(e)){ l[i] = e; changed = true; }
+  });
+  if(changed){ l.sort(function(a, b){ return a.asOf - b.asOf; }); set(FP_KEY, JSON.stringify(l.slice(-60))); }
+  return l;
+}
+function saveReview(rec, fn){
+  var lib = libRead(), hit = lib.filter(function(r){ return r.id === rec.id; })[0]; if(!hit) return false;
+  hit.data.review = hit.data.review || { overrides: [] };
+  fn(hit.data.review);
+  if(!libWrite(lib)) return false;
+  renderReportPage(); return true;
+}
+function approveTop3(rec){
+  var sc = finderScore(rec); if(!sc || !sc.top3.length) return false;
+  return saveReview(rec, function(rv){ rv.approved = { at: Date.now(), top3: sc.top3.map(function(x){ return x.name; }) }; });
+}
+var FPN = { performance: 'Past performance', fundamentals: 'Business fundamentals', outlook: 'Growth outlook', policy: 'Government and policy',
+  global: 'Global and regional', valuation: 'Valuation', risk: 'Risk' };
+function finderReviewHtml(rec, sc){
+  if(!rec || !sc) return '';
+  var w = finderWeights(), dflt = EQ.finder.weightsAreDefault(w), R = sc.review || {};
+  var h = '<details class="fdet" id="fwBox"' + (dflt ? '' : ' open') + '><summary>Weights' + (dflt ? ' (the defaults)' : ' (your own)') + '</summary>'
+    + '<div class="hint" style="margin:6px 0">How much each pillar counts. They are scaled to add to 100 when saved. They apply to every screen on this device.</div>'
+    + '<div class="fwgrid">' + Object.keys(FPN).map(function(k){
+        return '<label>' + esc(FPN[k]) + '<input type="number" min="0" max="100" step="1" class="fwin" data-k="' + k + '" value="' + Math.round(w[k] * 10) / 10 + '"></label>';
+      }).join('') + '</div><div class="note" id="fwSum"></div>'
+    + '<div class="grid2" style="margin-top:6px"><button class="btn sm pri" id="btnFwSave" style="margin:0">Save weights</button>'
+    + '<button class="btn sm" id="btnFwReset" style="margin:0">Back to the defaults</button></div></details>';
+  var pool = (sc.shortlist && sc.shortlist.length ? sc.shortlist : sc.rows.filter(function(x){ return x.eligible; }).slice(0, 10));
+  var ovOf = {}; (R.overrides || []).forEach(function(o){ ovOf[o.name] = o; });
+  h += '<details class="fdet" id="frBox" open><summary>Your review of the Top 3</summary>'
+    + '<div class="hint" style="margin:6px 0">Take a sector out of the Top 3, or put one in, with a note saying why. The Sector Screen prints '
+    + 'the app’s Top 3 and yours side by side. Approve the Top 3 before researching its companies.</div>'
+    + '<table class="frtab"><tr><th>Sector</th><th>Score</th><th>Your call</th><th>Note</th></tr>'
+    + pool.map(function(x){
+        var o = ovOf[x.name] || {};
+        return '<tr data-name="' + esc(x.name) + '"><td>' + esc(x.name) + (R.appTop3 && R.appTop3.indexOf(x.name) >= 0 ? ' <span class="tagx">app Top 3</span>' : '') + '</td>'
+          + '<td>' + x.score.toFixed(1) + '</td><td><select class="frsel"><option value="">as ranked</option>'
+          + '<option value="include"' + (o.action === 'include' ? ' selected' : '') + '>put in Top 3</option>'
+          + '<option value="exclude"' + (o.action === 'exclude' ? ' selected' : '') + '>take out</option></select></td>'
+          + '<td><input class="frnote" type="text" maxlength="240" placeholder="why" value="' + esc(o.note || '') + '"></td></tr>';
+      }).join('') + '</table>'
+    + ((R.ignored || []).length ? '<div class="note neg">' + R.ignored.length + ' call' + (R.ignored.length === 1 ? '' : 's') + ' without a note '
+      + (R.ignored.length === 1 ? 'is' : 'are') + ' not applied.</div>' : '')
+    + '<div class="note">Top 3 now: <b>' + esc(sc.top3.map(function(x){ return x.name; }).join(', ')) + '</b>'
+    + (R.changed ? ' (the app’s: ' + esc((R.appTop3 || []).join(', ')) + ')' : ' (as the app ranked it)') + '. '
+    + (R.approved && R.approved.current ? '<span class="pos">Approved ' + esc(dmyTs(R.approved.at)) + '.</span>'
+      : R.approved ? '<span class="neg">Approved ' + esc(dmyTs(R.approved.at)) + ' as ' + esc(R.approved.top3.join(', ')) + '; it has changed since.</span>'
+      : 'Not yet approved.') + '</div>'
+    + '<div class="grid2" style="margin-top:6px"><button class="btn sm" id="btnFrSave" style="margin:0">Save review</button>'
+    + '<button class="btn sm pri" id="btnFrApprove" style="margin:0">Approve Top 3</button></div></details>';
+  var tr = EQ.finder.trackRecord(notePicks().filter(function(x){ return x.id !== rec.id; }), sc);
+  if(tr.length){
+    h += '<details class="fdet"><summary>Track record of earlier picks</summary><table class="frtab"><tr><th>Screen</th><th>Top 3</th><th>Against the Nifty 500 since</th></tr>'
+      + tr.slice(-8).reverse().map(function(t){
+          return '<tr><td>' + esc(dmyTs(t.asOf)) + (t.approved ? ' ✓' : '') + '</td><td>' + esc(t.picks.map(function(p){ return p.name; }).join(', ')) + '</td><td>'
+            + t.picks.map(function(p){ return p.rel == null ? '—' : (p.rel > 0 ? '+' : '') + p.rel.toFixed(1) + '%'; }).join(' / ')
+            + (t.average != null ? '<br><small>average ' + (t.average > 0 ? '+' : '') + t.average.toFixed(1) + '%, ' + t.ahead + ' of ' + t.of + ' ahead</small>' : '') + '</td></tr>';
+        }).join('') + '</table><div class="hint">From the latest price check: how each pick’s strength against the Nifty 500 has moved since the screen’s date.</div></details>';
+  }
+  return h;
 }
 /* The sector study a Finder row stands for: the same sector and sub-sector
    first, the same sector second; the latest version of it. */
@@ -5565,6 +5656,7 @@ function renderFinder(){
   if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
   if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
   if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc) : '';
+  if($('#finderReview')) $('#finderReview').innerHTML = sc ? finderReviewHtml(rec, sc) : '';
   if($('#finderDocs')) $('#finderDocs').classList.toggle('hidden', !rec);
   if($('#finderDepth')) $('#finderDepth').innerHTML = depthBox(rec);
   box.classList.toggle('done', !!rec);
@@ -5666,6 +5758,8 @@ function saveFinder(d){
     var lib = libRead(), hit = lib.filter(function(r){ return r.id === pendingImport.mergeInto; })[0];
     if(!hit){ alert('The screen this follow-up belongs to is no longer saved.'); return; }
     delete d.verified;
+    /* Build 35: the reader's review stays with the screen it belongs to. */
+    if(hit.data && hit.data.review && !d.review) d.review = hit.data.review;
     hit.data = d;
     if(!libWrite(lib)) return;
     done(hit, 'Follow-up saved into the Sector Finder screen.');
@@ -5769,6 +5863,11 @@ function verifyFinder(id){
 window.verifyFinder = verifyFinder;
 /* The Sector Screen PDF is built from the screen on show, with the one before
    it for what moved. */
+document.addEventListener('input', function(ev){
+  if(!ev.target.classList || !ev.target.classList.contains('fwin')) return;
+  var t = 0; [].forEach.call(document.querySelectorAll('.fwin'), function(i){ t += Number(i.value) || 0; });
+  if($('#fwSum')) $('#fwSum').textContent = 'They add to ' + Math.round(t * 10) / 10 + (Math.abs(t - 100) < 0.05 ? '.' : '; they will be scaled to 100.');
+});
 window.finderPayload = function(){
   var rec = finderRecord(); if(!rec) return null;
   var sc = finderScore(rec); if(!sc) return null;
@@ -5778,7 +5877,15 @@ window.finderPayload = function(){
   return {
     meta: { company: 'Sector Finder', sector: 'Sector Finder', analysis_datetime: new Date(recAsOf(rec)).toISOString() },
     report: {}, finder: sc, previous: psc,
+    /* Build 34: what the report says about the ranking, the macro backdrop
+       and every source the screen names. */
+    analysis: (function(){ try{ return EQ.finder.screenAnalysis(rec.data, sc); }catch(e){ return null; } })(),
+    macro: rec.data.macro || null,
+    sources: (function(){ try{ return EQ.finder.screenSources(rec.data); }catch(e){ return []; } })(),
     compare: psc ? EQ.finder.compareScreens(psc, sc) : null,
+    /* Build 35: the reader's review, own weights and earlier picks. */
+    review: sc.review || null, ownWeights: !EQ.finder.weightsAreDefault(sc.weights),
+    track: (function(){ try{ return EQ.finder.trackRecord(notePicks().filter(function(x){ return x.id !== rec.id; }), sc); }catch(e){ return []; } })(),
     asOf: recAsOf(rec), prevAsOf: prev ? recAsOf(prev) : null,
     notes: (rec.data.run && rec.data.run.researchNotes) || '',
     warnings: depth ? depth.missing.map(function(c){
@@ -5809,6 +5916,31 @@ document.addEventListener('click', function(ev){
       + 'Pick a tool — the four buttons are highlighted below. Paste, send, and bring the reply back with Import Data in the Sector Finder box: it is added to the saved screen.');
     return;
   }
+  if(ev.target.closest('#btnFwSave') || ev.target.closest('#btnFwReset')){
+    if(ev.target.closest('#btnFwReset')){ try{ localStorage.removeItem(FW_KEY); }catch(e){} renderReportPage(); return; }
+    var nw = {}; [].forEach.call(document.querySelectorAll('.fwin'), function(i){ nw[i.getAttribute('data-k')] = Number(i.value); });
+    var ok = Object.keys(nw).every(function(k){ return isFinite(nw[k]) && nw[k] >= 0; }) && Object.keys(nw).some(function(k){ return nw[k] > 0; });
+    if(!ok){ alert('Each weight must be 0 or more, and at least one above 0.'); return; }
+    set(FW_KEY, JSON.stringify(EQ.finder.normWeights(nw))); renderReportPage(); return;
+  }
+  if(ev.target.closest('#btnFrSave') || ev.target.closest('#btnFrApprove')){
+    var rr = finderRecord(); if(!rr) return;
+    var calls = [], missing = [];
+    [].forEach.call(document.querySelectorAll('#frBox tr[data-name]'), function(tr){
+      var a = tr.querySelector('.frsel').value, nt = tr.querySelector('.frnote').value.trim(), nm = tr.getAttribute('data-name');
+      if(!a) return;
+      if(nt.length < 3){ missing.push(nm); return; }
+      calls.push({ name: nm, action: a, note: nt, at: Date.now() });
+    });
+    if(missing.length){ alert('Add a note for: ' + missing.join(', ') + '.\n\nEvery change to the ranking needs a reason, printed in the Sector Screen.'); return; }
+    saveReview(rr, function(rv){ rv.overrides = calls; });
+    if(ev.target.closest('#btnFrApprove')){
+      approveTop3(rr);
+      var t = finderTop3();
+      alert('Top 3 approved: ' + t.map(function(x){ return x.name; }).join(', ') + '.\n\nResearch its companies from the Top 3 Sectors boxes below.');
+    }
+    return;
+  }
   if(ev.target.closest('#btnFinderRecheck')){
     var fr = finderRecords().filter(function(r){ return r.id === SEL.finder; })[0] || finderRecords().slice(-1)[0];
     if(fr) verifyFinder(fr.id);
@@ -5834,6 +5966,14 @@ document.addEventListener('click', function(ev){
     var x = finderTop3()[Number(sb.getAttribute('data-rank')) - 1]; if(!x) return;
     var st = studyForSector(x.name, x.subSector);
     var what = 'the ' + x.name + (x.subSector ? ' — ' + x.subSector : '') + ' sector study';
+    if(sb.classList.contains('sec-search') || sb.classList.contains('sec-update')){
+      var frc = finderRecord(), fsc = finderScore(frc);
+      if(fsc && fsc.review && !(fsc.review.approved && fsc.review.approved.current)){
+        if(!confirm('The Top 3 is not yet approved:\n\n' + fsc.top3.map(function(t, j){ return (j + 1) + '. ' + t.name; }).join('\n')
+          + '\n\nApprove it and go on? Cancel to review it first.')) return;
+        approveTop3(frc);
+      }
+    }
     if(sb.classList.contains('sec-search')){ researchNow({ sector: x.name, subSector: x.subSector || '' }, what); return; }
     if(sb.classList.contains('sec-update')){ if(st) updateNow(st, 'the ' + (st.sector || x.name) + (st.subSector ? ' — ' + st.subSector : '') + ' sector study'); return; }
     if(sb.classList.contains('sec-import')){ openImport({ kind:'sector', rank:0 }); return; }

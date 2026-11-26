@@ -34,7 +34,7 @@ const flat = (k) => S(k).toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /* Keys the application reads that the brief's example does not print. */
 const EXTRA = {
-  '': ['schema', 'changes', 'thesisCheck', 'warnings', 'screen', 'report', 'meta', 'verified', 'companies'],
+  '': ['schema', 'changes', 'thesisCheck', 'warnings', 'screen', 'report', 'meta', 'verified', 'companies', 'review'],
   run: ['topUp', 'update', 'kind', 'searchLog', 'searchLogSetAside', 'asOf', 'company', 'mode', 'line'],
 };
 

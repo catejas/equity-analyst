@@ -1533,6 +1533,110 @@ function reasonOf(r, bench) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : '';
 }
 
+/* ── What the report says about the ranking (build 34) ─────────────────
+   Tejas, 26-11-2026: "all the selection work is currently done inside the
+   application and user have very limited understanding of how ranking is
+   done and why". These turn the score into things a reader can check: a
+   stance, where each sector sits, why the near misses missed, how much the
+   Top 3 depends on the weights, and how much of each score is evidence. */
+export const STANCES = Object.freeze({ overweight: 'Overweight', neutral: 'Neutral', underweight: 'Underweight', none: 'Not rated' });
+
+function weightsWith(base, key, delta) {
+  const w = { ...base };
+  const others = Object.keys(w).filter((k) => k !== key);
+  const rest = others.reduce((a, k) => a + w[k], 0);
+  const nk = Math.max(0, w[key] + delta);
+  const scale = rest ? (100 - nk) / rest : 0;
+  others.forEach((k) => { w[k] = w[k] * scale; });
+  w[key] = nk;
+  return w;
+}
+
+export function screenAnalysis(d, sc0) {
+  const sc = sc0 || scoreFinder(d);
+  const rows = sc.rows;
+  const top = sc.top3.map((r) => r.name);
+  const eligible = rows.filter((r) => r.eligible).sort((a, b) => (b.stage1Score - a.stage1Score));
+  const quart = Math.max(1, Math.floor(eligible.length / 4));
+  const under = new Set(eligible.slice(-quart).map((r) => r.name));
+  const w = sc.weights || PILLAR_WEIGHTS;
+  const out = { stance: {}, quadrant: {}, confidence: {}, whyNot: [], sensitivity: null };
+  rows.forEach((r) => {
+    out.stance[r.name] = top.includes(r.name) ? 'overweight' : r.shortlisted ? 'neutral' : under.has(r.name) ? 'underweight' : r.eligible ? 'neutral' : 'none';
+    /* Past performance against the outlook, both percentiles: the standard
+       sector-rotation view. */
+    const x = r.parts.performance, y = r.parts.outlook;
+    out.quadrant[r.name] = !isNum(x) || !isNum(y) ? null
+      : x >= 50 && y >= 50 ? 'leading' : x < 50 && y >= 50 ? 'improving' : x >= 50 ? 'fading' : 'lagging';
+    /* Confidence: how much of the score rests on figures found, checked
+       returns, and an outlook that is a forecast rather than history. */
+    /* A sector off the shortlist is never asked for the deep-dive measures,
+       so they are not counted against it (build 34). */
+    const ms = Object.values(MEASURES).flat().filter(([, , stage]) => r.shortlisted || stage === 1);
+    const have = ms.filter(([m]) => isNum(r.sub[m])).length;
+    const cover = ms.length ? have / ms.length : 0;
+    const tier = r.outlook.tier || {};
+    const forecast = tier.earnings === 'published' || tier.earnings === 'guidance';
+    const pts = cover * 60 + (r.returns.checked ? 20 : 0) + (forecast ? 20 : tier.earnings === 'past' ? 8 : 0);
+    out.confidence[r.name] = { level: pts >= 70 ? 'High' : pts >= 45 ? 'Medium' : 'Low', points: Math.round(pts),
+      coverage: Math.round(cover * 100), checked: !!r.returns.checked, outlook: tier.earnings || '' };
+  });
+  /* Why the next three are not in the Top 3: the pillars where each trails
+     the third by most, in points of score. */
+  const third = sc.top3[2];
+  if (third) {
+    const off = new Set(arr(sc.review && sc.review.excluded));
+    sc.shortlist.filter((r) => !top.includes(r.name) && !off.has(r.name)).slice(0, 3).forEach((r) => {
+      const gaps = Object.keys(w).map((k) => ({ k, pts: isNum(third.parts[k]) && isNum(r.parts[k]) ? +((third.parts[k] - r.parts[k]) * w[k] / 100).toFixed(1) : 0 }))
+        .sort((a, b) => b.pts - a.pts);
+      out.whyNot.push({ name: r.name, rank: r.rank, behind: +(third.score - r.score).toFixed(1),
+        trails: gaps.filter((g) => g.pts > 0).slice(0, 2), leads: gaps.filter((g) => g.pts < 0).sort((a, b) => a.pts - b.pts).slice(0, 1) });
+    });
+  }
+  /* Sensitivity: every pillar's weight five points up and five down (the rest
+     scaled to keep 100), and all seven equal. */
+  if (d && top.length) {
+    const variants = [];
+    Object.keys(w).forEach((k) => { [5, -5].forEach((dl) => variants.push({ label: `${PILLAR_NAMES[k]} ${dl > 0 ? '+' : ''}${dl}`, w: weightsWith(w, k, dl) })); });
+    const eq = {}; Object.keys(w).forEach((k) => { eq[k] = 100 / Object.keys(w).length; });
+    variants.push({ label: 'All seven equal', w: eq });
+    const res = variants.map((v) => ({ label: v.label, top3: scoreFinder(d, { weights: v.w }).top3.map((r) => r.name) }));
+    /* Against the app's own Top 3: the reader's overrides are a separate
+       matter, shown in their own section. */
+    const appTop = sc.review && arr(sc.review.appTop3).length ? sc.review.appTop3 : top;
+    const same = res.filter((x) => x.top3.length === appTop.length && x.top3.every((n) => appTop.includes(n))).length;
+    const seen = {};
+    res.forEach((x) => x.top3.forEach((n) => { seen[n] = (seen[n] || 0) + 1; }));
+    out.sensitivity = { variants: res, same, of: res.length,
+      holds: appTop.map((n) => ({ name: n, in: seen[n] || 0 })),
+      entrants: Object.keys(seen).filter((n) => !appTop.includes(n)).map((n) => ({ name: n, in: seen[n] })).sort((a, b) => b.in - a.in) };
+  }
+  return out;
+}
+
+/* Every source the screen names, once. */
+export function screenSources(d) {
+  const out = new Map();
+  const add = (src, what) => { const t = S(src); if (!t || t.length < 3) return; if (!out.has(t)) out.set(t, new Set()); out.get(t).add(what); };
+  add(d && d.benchmark && d.benchmark.source, 'benchmark');
+  add(d && d.macro && d.macro.source, 'macro backdrop');
+  arr(d && d.sectors).forEach((r) => {
+    if (!r) return;
+    const n = S(r.name);
+    ['returns', 'business', 'outlook', 'valuation'].forEach((k) => add(r[k] && r[k].source, `${n}: ${k}`));
+    const dd = r.deepDive || {};
+    add(dd.flows && dd.flows.source, `${n}: flows`); add(dd.global && dd.global.source, `${n}: global`);
+    arr(dd.schemes).forEach((x) => add(x && x.source, `${n}: schemes`));
+    arr(dd.targets).forEach((x) => add(x && x.source, `${n}: targets`));
+    arr(dd.drivers).forEach((x) => add(x && x.source, `${n}: drivers`));
+    bwOf(r).forEach((b) => {
+      add(b.quarter && b.quarter.source, `${n}: results`); add(b.epsSource, `${n}: EPS`);
+      add(b.forecast && b.forecast.source, `${n}: estimates`); add(b.guidance && b.guidance.source, `${n}: guidance`);
+    });
+  });
+  return [...out.entries()].map(([source, w]) => ({ source, for: [...w] })).sort((a, b) => b.for.length - a.for.length);
+}
+
 /* ── Two screens compared ─────────────────────────────────────────────── */
 export function compareScreens(prev, cur) {
   if (!prev || !cur) return null;
@@ -1541,10 +1645,101 @@ export function compareScreens(prev, cur) {
     const p = pr[nameKey(r.name)];
     return { name: r.name, rankThen: p ? p.rank : null, rankNow: r.rank,
       scoreThen: p ? p.score : null, scoreNow: r.score,
-      move: p && isNum(p.rank) ? p.rank - r.rank : null };
+      move: p && isNum(p.rank) ? p.rank - r.rank : null,
+      /* Build 35: each pillar's change of rank, and the largest, so the
+         reader sees why a sector moved. */
+      pillars: p ? Object.fromEntries(Object.keys(PILLAR_WEIGHTS).filter((k) => isNum(r.parts && r.parts[k]) && isNum(p.parts && p.parts[k])
+        && !arr(r.neutral).includes(k) && !arr(p.neutral).includes(k)).map((k) => [k, +(r.parts[k] - p.parts[k]).toFixed(1)])) : {} };
+  });
+  rows.forEach((x) => {
+    const e = Object.entries(x.pillars).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+    x.biggest = e && Math.abs(e[1]) >= 0.5 ? { k: e[0], d: e[1] } : null;
   });
   const names = (x) => arr(x.top3).map((r) => r.name);
   const was = names(prev), now = names(cur);
   return { rows, entered: now.filter((n) => !was.includes(n)), left: was.filter((n) => !now.includes(n)),
     stayed: now.filter((n) => was.includes(n)) };
+}
+
+
+/* ── Build 35: the reader's own weights, review and track record ──────────
+   Tejas, 26-11-2026: "there is no human judgement or review on what and why
+   application has selected." The weights can be set; a sector can be taken
+   out of the Top 3 or put into it, always with a note; the Top 3 is approved
+   before its companies are researched; and every screen's picks are followed
+   afterwards against the Nifty 500. */
+
+/* Seven weights of 0 or more, scaled to add to 100. Anything else gives the
+   defaults back. */
+export function normWeights(w) {
+  const keys = Object.keys(PILLAR_WEIGHTS);
+  if (!w || typeof w !== 'object') return { ...PILLAR_WEIGHTS };
+  const v = keys.map((k) => Number(w[k]));
+  if (v.some((x) => !Number.isFinite(x) || x < 0)) return { ...PILLAR_WEIGHTS };
+  const sum = v.reduce((a, x) => a + x, 0);
+  if (!(sum > 0)) return { ...PILLAR_WEIGHTS };
+  const out = {}; keys.forEach((k, i) => { out[k] = +(v[i] * 100 / sum).toFixed(4); });
+  return out;
+}
+export function weightsAreDefault(w) {
+  return Object.keys(PILLAR_WEIGHTS).every((k) => Math.abs((w && w[k]) - PILLAR_WEIGHTS[k]) < 0.01);
+}
+
+/* The reader's review laid over the app's ranking. An override needs a note;
+   one without is ignored and listed. "exclude" takes a sector out of the Top
+   3; "include" puts a ranked sector into it, ahead of the app's picks. The
+   app's own Top 3 is kept beside the result. */
+export function applyReview(sc, review) {
+  if (!sc) return sc;
+  const rv = review && typeof review === 'object' ? review : {};
+  const byName = {}; arr(sc.rows).forEach((r) => { byName[nameKey(r.name)] = r; });
+  const valid = [], ignored = [];
+  arr(rv.overrides).forEach((o) => {
+    if (!o || !byName[nameKey(o.name)] || !['exclude', 'include'].includes(o.action)) return;
+    if (S(o.note).length < 3) { ignored.push({ ...o, why: 'no note' }); return; }
+    if (o.action === 'include' && !byName[nameKey(o.name)].eligible) { ignored.push({ ...o, why: 'not ranked' }); return; }
+    valid.push({ name: byName[nameKey(o.name)].name, action: o.action, note: S(o.note), at: o.at || null });
+  });
+  /* The last word on a sector stands. */
+  const last = {}; valid.forEach((o) => { last[nameKey(o.name)] = o; });
+  const ov = Object.values(last);
+  const excluded = ov.filter((o) => o.action === 'exclude').map((o) => o.name);
+  const included = ov.filter((o) => o.action === 'include').map((o) => byName[nameKey(o.name)]).sort((a, b) => a.rank - b.rank);
+  const appTop3 = arr(sc.top3).map((r) => r.name);
+  const pool = arr(sc.shortlist).length ? sc.shortlist : arr(sc.rows).filter((r) => r.eligible);
+  const take = [...included, ...pool.filter((r) => !excluded.includes(r.name) && !included.includes(r))];
+  const top3 = [];
+  take.forEach((r) => { if (top3.length < 3 && !top3.includes(r)) top3.push(r); });
+  const finalNames = top3.map((r) => r.name);
+  const changed = finalNames.length !== appTop3.length || finalNames.some((n, i) => n !== appTop3[i]);
+  const ap = rv.approved && arr(rv.approved.top3).length ? rv.approved : null;
+  const approvedNow = !!ap && ap.top3.length === finalNames.length && ap.top3.every((n, i) => nameKey(n) === nameKey(finalNames[i]));
+  return { ...sc, top3, review: { appTop3, overrides: ov, ignored, excluded, changed,
+    approved: ap ? { at: ap.at || null, top3: ap.top3.slice(), current: approvedNow, by: S(ap.by) } : null } };
+}
+
+/* Each past screen's Top 3, followed since: the change of the sector's
+   strength against the Nifty 500 (its monthly ratio to the index, from the
+   app's price check) from the screen's date to the latest month. */
+export function trackRecord(history, sc) {
+  const rs = {}; arr(sc && sc.rows).forEach((r) => { if (arr(r.returns && r.returns.rs).length) rs[nameKey(r.name)] = r.returns.rs; });
+  const t = (x) => { const v = typeof x === 'number' ? x : Date.parse(x); return Number.isFinite(v) ? v : null; };
+  return arr(history).filter((h) => h && arr(h.top3).length && t(h.asOf) != null)
+    .sort((a, b) => t(a.asOf) - t(b.asOf))
+    .map((h) => {
+      const at = t(h.asOf);
+      const picks = h.top3.map((name) => {
+        const s = rs[nameKey(name)];
+        if (!s) return { name, rel: null, months: null };
+        const pts = s.map((p) => ({ t: t(p.date), v: p.v })).filter((p) => p.t != null && isNum(p.v)).sort((a, b) => a.t - b.t);
+        const base = pts.filter((p) => p.t <= at).pop();
+        const end = pts[pts.length - 1];
+        if (!base || !end || end.t <= base.t) return { name, rel: null, months: null };
+        return { name, rel: +((end.v / base.v - 1) * 100).toFixed(1), months: Math.round((end.t - base.t) / (30.44 * 864e5)) };
+      });
+      const got = picks.filter((p) => isNum(p.rel));
+      return { asOf: h.asOf, approved: !!h.approved, picks,
+        average: got.length ? +(got.reduce((a, p) => a + p.rel, 0) / got.length).toFixed(1) : null,
+        ahead: got.filter((p) => p.rel > 0).length, of: got.length };
+    });
 }

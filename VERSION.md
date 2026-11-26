@@ -26,9 +26,44 @@ behave and it is not a fault.
 
 ## Current build
 
-`26-11-2026.33` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+`26-11-2026.34` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
-Build 33, the first of three approved by Tejas on 26-11-2026 to make the
+Build 34, the second and last of the builds Tejas approved on 26-11-2026 (the
+planned third was folded in): the **Sector Screen report rebuilt** so a reader
+can see how the ranking was reached and judge it, and the **reader's own
+judgement** added to the app.
+- A **stance** for every sector, 12 months ahead: Overweight (the Top 3),
+  Neutral, Underweight (the bottom quarter of the screen).
+- A **confidence grade** (High, Medium, Low) from the measures found, whether
+  returns were checked against prices, and whether the outlook is a forecast.
+  Deep-dive measures are not counted against sectors off the shortlist.
+- New sections: how the ranking is reached; each Top 3 sector's score taken
+  apart with its deep-dive evidence (thesis, targets and scheme money, Budget
+  chart, policy and trade measures, profit drivers, bull and bear, catalysts,
+  graded risks); the shortlist's score by pillar; a heat map of every sector
+  against every pillar; returns and relative strength against the Nifty 500
+  with volatility, falls and breadth; the rotation quadrant; valuation against
+  growth; why the next three missed; how far the Top 3 depends on the
+  weights (15 variants); the macro backdrop; the full ranking with stance and
+  confidence; every source.
+- **Your own weights** for the seven pillars (Sector page, Weights), scaled to
+  100 and kept on the device; the report says when they are in use.
+- **Your review**: take a sector out of the Top 3 or put one in, always with a
+  note; a call without a note is not applied. The report prints the app's Top
+  3 and yours side by side with every reason. The review stays with the
+  screen when a follow-up is merged.
+- **Approve the Top 3** before researching its companies; researching an
+  unapproved Top 3 asks first. An approval is marked "changed since" if the
+  Top 3 later moves.
+- **Track record**: each screen's final Top 3 and date is kept on the device
+  and followed afterwards against the Nifty 500 from the app's price check.
+- **What moved** now names each sector's largest pillar change.
+- `charts.js` scatter: the tinted corner can be chosen and split at a value.
+- Tests: `finder34.mjs` (51 checks, worked by hand), `finder34ui.mjs` (35).
+
+## Build 33
+
+`26-11-2026.33`. Build 33, the first of three approved by Tejas on 26-11-2026 to make the
 Sector Finder a professional screen:
 - **Returns over 1, 2 and 3 years** (2 and 3 as an annual rate, the 3-year
   weighted most), against the **Nifty 500**; the Nifty 50 kept beside it.

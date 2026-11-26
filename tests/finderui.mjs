@@ -145,8 +145,8 @@ await ev(() => { if (typeof closePreview === 'function') closePreview(); else { 
 console.log('\nThe Sector Screen document');
 const doc = await ev(() => EQDocTools.buildHTML(window.finderPayload(), 'finder', 'en'));
 ok('it opens on the Top 3 Sectors and the bottom line', /Top 3 Sectors/.test(doc) && /The Bottom Line/.test(doc) && /Banking/.test(doc));
-ok('it carries the full ranking and how the score is built', /The Full Ranking/.test(doc) && /How the Score Is Built/.test(doc) && /Government and policy/.test(doc) && /20%/.test(doc));
-ok('Banking is shown as checked against its index', /checked by the application from the Nifty Bank index/.test(doc));
+ok('it carries the full ranking and how the score is built', /The Full Ranking/.test(doc) && /How the Ranking Is Reached/.test(doc) && /Government and policy/.test(doc) && /20%/.test(doc));
+ok('Banking is shown as checked against its index', /measured by the application from the Nifty Bank index/.test(doc));
 ok('the gaps are printed', /Gaps in This Research|Gaps in this research/i.test(doc) && /Retail/.test(doc));
 
 console.log('\nA follow-up keeps asking, and says what was tried');

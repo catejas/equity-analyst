@@ -648,7 +648,15 @@
     var Y = function (v) { return top + plotH - ((v - yr[0]) / ((yr[1] - yr[0]) || 1)) * plotH; };
     var body = '';
     /* The quadrant that wants attention, as a flat tint. */
-    body += R(X((xr[0] + xr[1]) / 2), top, plotW / 2, plotH / 2, '#FBEFEE');
+    /* Build 34: the tinted corner can be chosen (shade 'tr', 'tl', 'none')
+       and split at given values (xMid, yMid) rather than the middle. */
+    var sh = opts.shade || 'tr';
+    if (sh !== 'none') {
+      var xm = isNum(opts.xMid) ? Math.min(Math.max(opts.xMid, xr[0]), xr[1]) : (xr[0] + xr[1]) / 2;
+      var ym = isNum(opts.yMid) ? Math.min(Math.max(opts.yMid, yr[0]), yr[1]) : (yr[0] + yr[1]) / 2;
+      body += sh === 'tl' ? R(padL, top, X(xm) - padL, Y(ym) - top, '#EAF4EE')
+        : R(X(xm), top, padL + plotW - X(xm), Y(ym) - top, '#FBEFEE');
+    }
     yt.forEach(function (t) { body += Ln(padL, Y(t), w - padR, Y(t), C.grid, 0.6) + T(padL - 4, Y(t) + 3, fmt(t), 'ax', 'end'); });
     xt.forEach(function (t) { body += Ln(X(t), top, X(t), top + plotH, C.grid, 0.6) + T(X(t), top + plotH + 11, fmt(t), 'ax', 'middle'); });
     body += Ln(padL, top + plotH, w - padR, top + plotH, C.rule, 0.9) + Ln(padL, top, padL, top + plotH, C.rule, 0.9);
