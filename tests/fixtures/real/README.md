@@ -56,3 +56,13 @@ Where a suite's assertion depended on a September run's particular facts
 peer), it was changed in build 24 to check the rule. Either the expected
 answer is worked out from the payload in the test, or a thin case is derived
 from the real run in the open. Each such place carries a comment saying so.
+
+## `finder-26-11-2026-replies.txt` (build 35)
+
+Tejas's real research-tool replies of 26-11-2026, pasted as one text file:
+seventeen JSON blocks (Deep Dive for the shortlist, the macro block, five
+years of EPS for 64 bellwethers twice, and "no change" blocks), with the
+tool's own prose notes between them. The notes report that follow-ups kept
+asking for EPS already sent. Replayed in build 35, the merge kept every
+figure; the repeated ask came from the app's own price check failing on the
+device and being reported as missing EPS. `finder35.mjs` replays the file.

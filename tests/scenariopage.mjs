@@ -53,10 +53,11 @@ await page.evaluate(async (j) => {
 /* --- the page exists and is reachable --------------------------------- */
 ok('a Scenario tab sits in the navigation',
    await page.$eval('nav', (n) => [...n.querySelectorAll('button')].some((b) => b.dataset.tab === 'scenario')));
-ok('it comes after Company and before Score Card',
+/* Build 35: Sectors, Companies, Solo, then Scenario and Score. */
+ok('it comes after Companies and Solo, and before Score',
    await page.$eval('nav', (n) => {
      const t = [...n.querySelectorAll('button')].map((b) => b.dataset.tab);
-     return t.indexOf('scenario') === t.indexOf('company') + 1 && t.indexOf('scenario') < t.indexOf('score');
+     return t.indexOf('scenario') === t.indexOf('solo') + 1 && t.indexOf('solo') === t.indexOf('company') + 1 && t.indexOf('scenario') < t.indexOf('score');
    }));
 
 await page.evaluate(() => [...document.querySelectorAll('nav button')]

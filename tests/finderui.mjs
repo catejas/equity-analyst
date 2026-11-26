@@ -67,8 +67,11 @@ const imp = async (obj, btn) => {
 
 console.log('\nThe Sector page, top to bottom');
 const order = await ev(() => [...document.querySelectorAll('#tab-sector > .card, #tab-sector > #secBoxes')].map((x) => x.id));
-ok('Sector Finder, Top 3 Sectors, Independent Sector Research, then the AI tools',
-  order.join(',') === 'finderBox,secBoxes,segBox,toolBox', order.join(','));
+/* Build 35 (Tejas, 26-11-2026): the independent boxes moved to the Solo page. */
+ok('Sector Finder, Top 3 Sectors, then the AI tools', order.join(',') === 'finderBox,secBoxes,toolBox', order.join(','));
+const solo = await ev(() => [...document.querySelectorAll('#tab-solo > .card, #tab-solo > #soloCoBoxes')].map((x) => x.id));
+ok('Solo: Independent Company Research, Independent Sector Research with its own Top 3, then the AI tools',
+  solo.join(',') === 'soloCoBox,segBox,soloCoBoxes,toolBoxSolo', solo.join(','));
 ok('the independent box is named Independent Sector Research', await ev(() => document.getElementById('segBoxName').textContent) === 'Independent Sector Research');
 ok('the Company page no longer has the Saved company research picker',
   await ev(() => !document.getElementById('coPick') && !/Saved company research/.test(document.getElementById('tab-company').innerText)));

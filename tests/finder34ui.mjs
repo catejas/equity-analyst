@@ -67,19 +67,21 @@ ok('no NaN or undefined in the text', !/\bNaN\b|\bundefined\b/.test(text), (text
 await page.evaluate(() => { const b = document.querySelector('nav button[data-tab="sector"]'); if (b) b.click(); });
 await page.waitForTimeout(400);
 const app3 = await page.evaluate(() => finderTop3().map((x) => x.name));
-ok('the review panel is on the Sector page', await page.evaluate(() => !!document.getElementById('frBox') && !!document.getElementById('fwBox')));
+ok('the review sits on the ranking: an Approve button and a call on each row', await page.evaluate(() => !!document.getElementById('btnFrApprove') && document.querySelectorAll('#finderTable .fedit').length >= 3 && !!document.getElementById('fwBox')));
 /* A call without a note is refused. */
 let alerts = [];
 page.removeAllListeners('dialog'); page.on('dialog', (x) => { alerts.push(x.message()); x.accept(); });
-await page.evaluate((n) => { const tr = [...document.querySelectorAll('#frBox tr[data-name]')].find((t) => t.getAttribute('data-name') === n);
-  tr.querySelector('.frsel').value = 'exclude'; document.getElementById('btnFrSave').click(); }, app3[1]);
-await page.waitForTimeout(300);
+const call = (n, note) => page.evaluate(([n, note]) => {
+  document.querySelectorAll('.fedrow').forEach((r) => r.remove()); document.querySelector('#finderTable .fedit[data-fname="' + n + '"]').click();
+  const box = document.querySelector('.fedrow .fedit-box'); box.querySelector('.fedsel').value = 'exclude'; box.querySelector('.fednote').value = note;
+  box.querySelector('.fedsave').click(); }, [n, note]);
+await call(app3[1], ''); await page.waitForTimeout(300);
 ok('taking a sector out without a note is refused', alerts.some((a) => /Add a note/.test(a)) && (await page.evaluate(() => finderTop3().map((x) => x.name))).join() === app3.join());
-await page.evaluate((n) => { const tr = [...document.querySelectorAll('#frBox tr[data-name]')].find((t) => t.getAttribute('data-name') === n);
-  tr.querySelector('.frsel').value = 'exclude'; tr.querySelector('.frnote').value = 'TEST: valuation already full'; document.getElementById('btnFrApprove').click(); }, app3[1]);
-await page.waitForTimeout(500);
+await call(app3[1], 'TEST: valuation already full'); await page.waitForTimeout(400);
+await page.evaluate(() => document.getElementById('btnFrApprove').click()); await page.waitForTimeout(400);
 const after = await page.evaluate(() => finderTop3().map((x) => x.name));
 ok('with a note, the sector leaves the Top 3', !after.includes(app3[1]) && after.includes(app3[0]), after.join());
+ok('the row says what you did and why', await page.evaluate(() => /You took it out: TEST: valuation already full/.test(document.getElementById('finderTable').textContent)));
 ok('the Top 3 is approved', alerts.some((a) => /Top 3 approved/.test(a)) && await page.evaluate(() => { const sc = finderScore(finderRecord()); return sc.review.approved.current; }));
 ok('the review is stored with the screen', await page.evaluate(() => (finderRecord().data.review.overrides || []).length === 1));
 /* Own weights: risk only. */

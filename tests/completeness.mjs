@@ -181,7 +181,7 @@ const REPLY = { run: { topUp: true, schemaVersion: '5.0.0', sector: 'banking', s
     return review; };
 
   await p.click('nav button[data-tab="sector"]');
-  const secReview = await imp(THIN, () => p.click('#btnImport'));
+  const secReview = await imp(THIN, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
   ok('the sector review no longer reports "Sources — no companies" as missing',
     !/Sources with tier and date/.test(secReview));
   ok('it lists what is thin', /Still thin or missing/i.test(secReview) && /Global peers/.test(secReview));

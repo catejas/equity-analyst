@@ -26,6 +26,47 @@ behave and it is not a fault.
 
 ## Current build
 
+`26-11-2026.35` — methodology 2.0.0, payload schema 5.0.0, framework v5.
+
+Build 35, from Tejas's screenshots and real replies of 26-11-2026.
+
+**The repeated EPS request, found and fixed.** His research tool said the app
+"isn't saving" the EPS it sent and kept asking for it. Replayed in the app,
+all seventeen blocks save and no figure is lost. The cause was the app's own
+price check: it sent about thirty requests to Upstox at once, some were
+refused, and each sector it then could not price was asked of the tool as
+"EPS missing"; when the whole check failed, every sector was. Now:
+- requests go four at a time, and a refused (429), failed or timed-out one is
+  tried again after a pause; a not-found is not;
+- a company priced before keeps its P/E when the feed fails, on the same EPS;
+  a sector checked before keeps its returns, marked with their date;
+- each company the app cannot price carries its reason (feed refused, not in
+  the instrument list, under two years of prices), shown in the depth box;
+- EPS already sent is never asked again; only companies with under three
+  years of EPS are;
+- a check that cannot run at all keeps the last one, rather than asking for
+  everything again;
+- one company's search-log entry no longer marks a 41-sector item
+  "searched" or lends it that company's reason.
+
+**Pages:** Sectors (the Finder and the Top 3 Sectors), Companies (the
+companies of the Finder's Top 3 sectors), Solo (Independent Company Research,
+and Independent Sector Research with its own Top 3 companies), Scenario,
+Score, Setup.
+
+**The Finder:** the Top 3 on show with Sectors 4 to 41 folded (★ the rest of
+the shortlist); the review on the ranking itself (Approve Top 3 above it,
+Take out / Put in with a note on each row); the seven weights in aligned rows;
+a "How to use the Finder" guide, each step marked done, saying when to use
+Deep Dive and Check prices again.
+
+Tests: new `finder35.mjs` (24) and `finder35ui.mjs` (9), on the real replies,
+now a fixture (`tests/fixtures/real/finder-26-11-2026-replies.txt`);
+`finder31`, `finder34ui`, `finderui`, `scenariopage`, `versions`,
+`twosectors` and `completeness` updated for the moved boxes and new rule.
+
+## Build 34
+
 `26-11-2026.34` — methodology 2.0.0, payload schema 5.0.0, framework v5.
 
 Build 34, the second and last of the builds Tejas approved on 26-11-2026 (the

@@ -64,8 +64,8 @@ const slots = () => p.evaluate(() => [...document.querySelectorAll('#coBoxes .ru
 const heading = () => p.evaluate(() => (document.querySelector('#coHead') || {}).innerText || '');
 
 /* ---- version 1 of the study, with two of its Top 3 ---- */
-await tab('sector');
-await imp(v1, () => p.click('#btnImport'));
+await tab('solo');
+await imp(v1, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 await tab('company'); await p.waitForTimeout(200);
 let s1 = await slots();
 const rankOf = (sl, word) => (sl.find((x) => x.text.includes(word)) || {}).rank;
@@ -79,7 +79,7 @@ ok('  a study with one version offers no version choice', await p.evaluate(() =>
 ok('  and no Update Summary yet', await p.evaluate(() => document.querySelector('#segUpdRow').classList.contains('hidden')));
 
 /* ---- Update on the study copies the update brief ---- */
-await tab('sector');
+await tab('solo');
 await p.click('#btnSegUpdate'); await p.waitForTimeout(300);
 const brief = await p.evaluate(() => LAST_PROMPT);
 ok('Update copies the update brief, not a blank research prompt', /^UPDATE OF SAVED RESEARCH/.test(brief), brief.slice(0, 40));
@@ -100,8 +100,8 @@ v2.changes = [
   { area: 'top3', item: 'Punjab National Bank', previous: 'rank 1', current: 'rank 7', direction: 'worse', significance: 'high',
     why: 'Growth and quality ratings cut on Q2 FY27 numbers.', source: 'PNB Q2 FY27 results', date: '16-10-2026' } ];
 alerts.length = 0;
-await tab('sector');
-await imp(v2, () => p.click('#btnImport'));
+await tab('solo');
+await imp(v2, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 let L = await lib();
 const secs = L.filter((r) => r.kind !== 'company');
 ok('version 2 is saved beside version 1, not over it', secs.length === 2, secs.length + ' sector records');
@@ -135,8 +135,8 @@ const sbiUp = coOf('SBIN');
 sbiUp.run = JSON.parse(JSON.stringify(NOV.run));
 sbiUp.run.update = { line: (coBrief.match(/"line": "(T\|[^"]+)"/) || [])[1], previousAsOf: '2026-09-21', previousVersion: 1 };
 sbiUp.companies[0].valuation.currentPrice = Math.round(sbiUp.companies[0].valuation.currentPrice * 1.12 * 100) / 100;
-await tab('sector');
-await imp(sbiUp, () => p.click('#btnImport'));
+await tab('solo');
+await imp(sbiUp, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 await tab('company'); await p.waitForTimeout(250);
 s2 = await slots();
 const sbiNow = s2.find((x) => /State Bank/.test(x.text));
@@ -146,7 +146,7 @@ L = await lib();
 ok('  and the sector study did not gain a stray version', L.filter((r) => r.kind !== 'company').length === 2);
 
 /* ---- an older version brings back its own Top 3 ---- */
-await tab('sector');
+await tab('solo');
 const v1id = await p.evaluate(() => sectorRecords().sort((a, b) => a.ts - b.ts)[0].id);
 await p.selectOption('#segVer', v1id); await p.waitForTimeout(300);
 await tab('company'); await p.waitForTimeout(250);
@@ -159,7 +159,7 @@ ok('  and the heading says it is the previous version, as it was then', /previou
 const docsOld = await p.evaluate(() => { const pl = window.EQDocTools.currentPayload('sector');
   return pl ? pl.report.full.map((c) => c.symbol) : []; });
 ok('  and its sector documents are built from version 1 and its companies', docsOld.includes('PNB') && docsOld.includes('SBIN'), docsOld.join(', '));
-await tab('sector');
+await tab('solo');
 const v2id = await p.evaluate(() => sectorRecords().sort((a, b) => b.ts - a.ts)[0].id);
 await p.selectOption('#segVer', v2id); await p.waitForTimeout(300);
 
@@ -196,7 +196,7 @@ ok('  with no code reaching the page', !/\bundefined\b|\bNaN\b|\[object Object\]
 
 /* ---- an independent company, two real versions ---- */
 alerts.length = 0;
-await tab('company'); await p.waitForTimeout(150);
+await tab('solo'); await p.waitForTimeout(150);
 await imp(PNB_SEP, () => p.click('#btnSoloImport'));
 const soloLine = await p.evaluate(() => recLine(soloRecord()));
 await p.click('#btnSoloUpdate'); await p.waitForTimeout(300);
@@ -210,9 +210,9 @@ nov.thesisCheck = [{ thesis: 'Asset quality keeps improving', status: 'holds', e
 nov.changes = [{ area: 'price', item: 'Share price', previous: '117.39', current: '141.79', direction: 'neutral', significance: 'high',
   why: 'Re-rating after Q2.', source: 'NSE', date: '12-11-2026' },
   { area: 'valuation', item: 'Base case fair value', previous: '145', current: '150', direction: 'better', significance: 'medium', why: 'test', source: 'model', date: '16-11-2026' }];
-await tab('sector');
-await imp(nov, () => p.click('#btnImport'));
-await tab('company'); await p.waitForTimeout(250);
+await tab('solo');
+await imp(nov, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
+await tab('solo'); await p.waitForTimeout(250);
 const sv = await p.evaluate(() => ({ n: versionsOf(soloRecord()).length, opts: [...document.querySelectorAll('#soloVer option')].map((o) => o.textContent),
   dis: document.querySelector('#soloVer').disabled, docs: [...document.querySelectorAll('#soloDocs .dn')].map((x) => x.textContent),
   picks: document.querySelectorAll('#soloPick option').length }));
@@ -230,8 +230,8 @@ ok('  with no code reaching the page', !/\bundefined\b|\bNaN\b|\[object Object\]
 
 /* ---- the same reply twice is not a third version ---- */
 alerts.length = 0;
-await tab('sector');
-await imp(nov, () => p.click('#btnImport'));
+await tab('solo');
+await imp(nov, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 ok('the identical reply pasted again is refused, not saved as version 3',
   await p.evaluate(() => versionsOf(soloRecord()).length) === 2 && alerts.some((a) => /already saved/.test(a)), alerts[0]);
 
@@ -254,8 +254,8 @@ third.run.update = { line: soloLine, previousAsOf: '2026-11-16', previousVersion
 third.companies[0].valuation.currentPrice = 150.5;
 third.changes = [{ area: 'price', item: 'currentPrice', previous: '141.79 (12-11-2026)', current: '150.5 (20-11-2026)', significance: 'high', why: 'test' },
   { area: 'price', item: 'marketCap', previous: '162958', current: '172000', significance: 'low', why: 'test' }];
-await tab('sector');
-await imp(third, () => p.click('#btnImport'));
+await tab('solo');
+await imp(third, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 await tab('company'); await p.waitForTimeout(250);
 const kept = await p.evaluate(() => versionsOf(soloRecord()).map((r) => r.data.run.generatedAt.slice(0, 10)));
 ok('a third version keeps two: the latest and the previous', kept.length === 2 && kept[0] === '2026-11-16' && kept[1] === '2026-11-20', JSON.stringify(kept));
@@ -271,8 +271,8 @@ ok('  the versions are called latest and previous', await p.evaluate(() =>
 const v3 = JSON.parse(JSON.stringify(NOV));
 v3.run.generatedAt = '2026-11-20T09:00:00Z';
 v3.run.update = { line: line1, previousAsOf: '2026-11-16', previousVersion: 2 };
-await tab('sector');
-await imp(v3, () => p.click('#btnImport'));
+await tab('solo');
+await imp(v3, () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
 const st = await p.evaluate(() => ({ secs: sectorRecords().map((r) => r.data.run.generatedAt.slice(0, 10)).sort(),
   pnb: companyRecords().filter((r) => !r.standalone && /PNB/.test(recLine(r))).map((r) => ({ line: r.line, orphan: !recById(r.parentId) })),
   sbi: companyRecords().filter((r) => !r.standalone && /SBIN/.test(recLine(r))).length }));

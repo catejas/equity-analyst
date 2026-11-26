@@ -646,6 +646,24 @@ export function completeness(payload, { now = new Date() } = {}) {
       ? checks.reduce((a, c) => a + Math.max(0, Math.min(1, c.want ? c.have / c.want : 1)), 0) / checks.length : 0;
     const miss = checks.filter((c) => !c.ok);
     annotate(checks, searchLogOf(d));
+    /* Build 35. A Finder check covers many sectors, so one company's log
+       entry (Ambuja's EPS, in Tejas's real run) must not mark the whole item
+       "searched" or lend it that company's reason. The item is searched only
+       when every sector it still lacks has its own entry; the reasons shown
+       are those entries' alone. */
+    const log = searchLogOf(d);
+    checks.forEach((c) => {
+      if (c.ok || c.state !== 'searched') return;
+      const names = S(c.detail).split('; ').map((x) => x.replace(/\s*[([].*$/, '').trim()).filter(Boolean);
+      if (names.length < 2) return;
+      const key = (n) => n.toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const hitsFor = (n) => log.filter((e) => logMatches(e, c) && key(S(e.path)).includes('sectors' + key(n)));
+      const covered = names.filter((n) => hitsFor(n).length);
+      const hits = covered.flatMap(hitsFor);
+      c.reasons = hits.map((h) => (S(h.path).match(/sectors\[([^\]]+)\]/) || [])[1] ? (S(h.path).match(/sectors\[([^\]]+)\]/)[1] + ': ' + h.reason) : h.reason).filter(Boolean);
+      c.tries = hits.length; c.searchedFor = covered.length; c.of = names.length;
+      if (covered.length < names.length) c.state = 'open';
+    });
     /* appOnly 'deep' (build 33): asked by the Deep dive prompt, not the follow-up. */
     checks.forEach((c) => { if (c.appOnly) c.state = c.appOnly === 'deep' ? 'deep' : 'app'; });
     return { kind: 'finder', sections: [{ title: 'Sector Finder \u2014 the screen', checks }],

@@ -789,17 +789,25 @@ export function finderChecks(d0) {
     /* Valuation: the research's own history, else the app's from the
        companies' prices and EPS. A sector whose companies sent their EPS is
        the app's to work out (until its check fails); the rest are asked. */
-    const ask = [], app = [];
+    /* Build 35: EPS the research already sent is never asked again. A
+       sector whose companies have it is the app's to price; if the app's
+       check could not, the reason is shown and the check is run again. Only
+       companies with fewer than three years of EPS are asked. */
+    const ask = [], app = [], why = (d && d.verified && d.verified.valuationWhy) || {};
     rows.forEach((r) => {
       if (isNum(eff(r).valuation.ratio)) return;
-      if (bwOf(r).some(canPrice) && !(ran && vfailed.has(nameKey(r.name)))) app.push(S(r.name));
-      else ask.push(`${S(r.name)} (EPS history of ${syms(r) || 'its bellwethers'})`);
+      const lack = bwOf(r).filter((b) => !canPrice(b)).map((b) => S(b.symbol)).filter(Boolean);
+      if (bwOf(r).some(canPrice)) {
+        const w = arr(why[nameKey(r.name)]);
+        app.push({ name: S(r.name), note: ran && vfailed.has(nameKey(r.name)) && w.length
+          ? `the app could not price ${w.map((x) => x.symbol + ': ' + x.why).join('; ')} \u2014 tap Check prices again` : 'the app works it out from prices and EPS' });
+      } else ask.push(`${S(r.name)} (EPS history of ${lack.join(', ') || syms(r) || 'its bellwethers'})`);
     });
     add('Every sector', 'P/E against its own history', rows.length - ask.length - app.length, rows.length,
       'sectors.bellwethers.eps — the sector index\'s trailing "pe" and its five-year average "pe5yAvg" where the index factsheet publishes both. Where it does not (no index, or a series under three years old), do NOT look for P/E averages: send EACH bellwether\'s earnings per share, consolidated and diluted, for each of the last five financial years and the trailing twelve months, under sectors[].bellwethers[]: "eps": [ { "fy": "FY26", "eps": 0 }, … ], "epsTtm": 0, "epsSource". Every annual report and results filing states it. The application works out each company\'s P/E history from its own price feed.'
       + (ask.length ? ` Missing: ${ask.join('; ')}.` : '')
-      + (app.length ? ` Not needed for ${app.join(', ')}: the application works these out from the EPS already sent.` : ''),
-      ask.concat(app.map((n) => `${n} (the app works it out from prices and EPS)`)).join('; '),
+      + (app.length ? ` Do NOT send EPS again for ${app.map((a) => a.name).join(', ')}: the application already has it and works these out itself.` : ''),
+      ask.concat(app.map((a) => `${a.name} (${a.note})`)).join('; '),
       !ask.length && app.length > 0);
   }
   /* Build 33: the companies' return on equity and leverage, and the change
@@ -885,10 +893,46 @@ export function finderStamp(d) {
   return (h >>> 0).toString(36) + '.' + t.length.toString(36);
 }
 
-export async function verifyReturns(d, { fetchBars, keyFor, now = new Date(), onProgress } = {}) {
+/* Build 35. Tejas's real run of 26-11-2026: the check sent some thirty
+   requests at once to Upstox, some were refused, and each refused sector was
+   then asked of the research tool as "EPS missing" although its EPS was
+   saved. Requests now go four at a time, a refused or timed-out one is tried
+   again after a pause, and a not-found (404) is not retried. */
+export function politeFetch(fn, { limit = 4, tries = 3, backoff = [800, 2000, 4000], sleep } = {}) {
+  const wait = sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let active = 0; const queue = [];
+  const pump = () => {
+    while (active < limit && queue.length) {
+      active++; const job = queue.shift();
+      job().then(() => { active--; pump(); }, () => { active--; pump(); });
+    }
+  };
+  return (...args) => new Promise((resolve, reject) => {
+    queue.push(async () => {
+      let last;
+      for (let t = 0; t < tries; t++) {
+        try { resolve(await fn(...args)); return; } catch (e) {
+          last = e;
+          const m = String(e && e.message || '');
+          /* Only what a pause can cure is tried again: a refusal for too many
+             requests, a server error, a dropped connection or a timeout. */
+          if (!/HTTP 429|HTTP 5\d\d|failed to fetch|networkerror|load failed|network|abort|timed? ?out/i.test(m + ' ' + (e && e.name || ''))) break;
+          if (t < tries - 1) await wait(backoff[t] != null ? backoff[t] : 4000);
+        }
+      }
+      reject(last);
+    });
+    pump();
+  });
+}
+const epsSig = (b) => arr(b && b.eps).filter((e) => e && isNum(e.eps)).map((e) => S(e.fy != null ? e.fy : e.year) + ':' + e.eps).sort().join('|') + '|' + (isNum(b && b.epsTtm) ? b.epsTtm : '');
+
+export async function verifyReturns(d, { fetchBars: rawFetch, keyFor, now = new Date(), onProgress, previous = null, limit = 4, sleep } = {}) {
   const result = { at: now.toISOString(), benchmark: null, sectors: {}, failed: [], stamp: finderStamp(d) };
   const tell = (phase, done, total) => { try { if (typeof onProgress === 'function') onProgress(phase, done, total); } catch (e) { /* the page's display only */ } };
-  if (!d || typeof fetchBars !== 'function') return result;
+  if (!d || typeof rawFetch !== 'function') return result;
+  const fetchBars = politeFetch(rawFetch, { limit, sleep });
+  const prev = previous && typeof previous === 'object' && !previous.error ? previous : (previous || {});
   d = JSON.parse(JSON.stringify(d)); normaliseFinder(d);
   /* Build 33. Four years of weekly closes for every index and stock, so the
      1-, 2- and 3-year returns, volatility, largest fall, consistency and
@@ -937,7 +981,13 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date(), on
     const pm = bk.length >= 8 ? priceMetrics(bk, benchW) : null;
     if (pm && (isNum(pm.y1) || isNum(pm.m6))) {
       result.sectors[nameKey(r.name)] = { ...pm, basis: 'basket', of: stocks.map((x) => x.sym).join(', '), breadth: br };
-    } else result.failed.push(S(r.name));
+    } else {
+      /* Build 35: a sector checked before keeps that check, marked with its
+         date, rather than falling back to the research's figures. */
+      const old = prev.sectors && prev.sectors[nameKey(r.name)];
+      if (old && (isNum(old.y1) || isNum(old.y3))) result.sectors[nameKey(r.name)] = { ...old, carried: true };
+      else result.failed.push(S(r.name));
+    }
   };
   const list = arr(d.sectors).slice();
   for (let i = 0; i < list.length; i += 6) { tell('returns', i, list.length); await Promise.all(list.slice(i, i + 6).map(one)); }
@@ -948,28 +998,45 @@ export async function verifyReturns(d, { fetchBars, keyFor, now = new Date(), on
      priced month by month over five years from its own price feed. The
      sector is the median of its companies: their P/E now, their own
      five-year average, and how far each stands from its own average. */
-  result.valuation = {}; result.valuationFailed = [];
+  result.valuation = {}; result.valuationFailed = []; result.valuationWhy = {};
+  /* Build 35: each company priced before, on the same EPS, is kept if its
+     prices cannot be fetched this time; and every company that cannot be
+     priced carries the reason, shown in the app instead of a request to the
+     research tool for EPS it already sent. */
+  const prevCo = {};
+  Object.values(prev.valuation || {}).forEach((v) => arr(v && v.companies).forEach((c) => { if (c && c.symbol) prevCo[S(c.symbol).toUpperCase()] = c; }));
+  const sane = (v) => isNum(v) && v >= 1 && v <= 1000;
   const priceOne = async (b) => {
-    const key = typeof keyFor === 'function' ? keyFor(S(b.symbol), S(b.isin)) : null;
-    if (!key) return null;
-    try {
-      const h = peHistory(await fetchBars(key, { unit: 'months', interval: 1, years: 6 }), b.eps, b.epsTtm);
-      /* A P/E under 1 or over 1,000 is not a valuation: the EPS was sent in
-         another unit (paise, lakh) or for another company. Left out. */
-      const sane = (v) => isNum(v) && v >= 1 && v <= 1000;
-      return h && sane(h.pe) && sane(h.avg) ? { sym: S(b.symbol), ...h, ratio: h.pe / h.avg } : null;
-    } catch (e) { return null; }
+    const sym = S(b.symbol), sig = epsSig(b), old = prevCo[sym.toUpperCase()];
+    const carry = (why) => (old && old.sig === sig && sane(old.pe) && sane(old.avg)
+      ? { sym, pe: old.pe, avg: old.avg, months: old.months, asOf: old.asOf, ratio: old.pe / old.avg, sig, carried: true }
+      : { sym, why });
+    const key = typeof keyFor === 'function' ? keyFor(sym, S(b.isin)) : null;
+    if (!key) return { sym, why: 'not in the app\u2019s list of NSE instruments' };
+    let bars;
+    try { bars = await fetchBars(key, { unit: 'months', interval: 1, years: 6 }); }
+    catch (e) { return carry('the price feed did not answer' + (/HTTP (\d+)/.test(String(e && e.message)) ? ' (' + String(e.message).match(/HTTP \d+/)[0] + ')' : '')); }
+    const h = peHistory(bars, b.eps, b.epsTtm);
+    if (!h || !sane(h.pe)) return { sym, why: h && isNum(h.pe) ? 'P/E of ' + h.pe + ' is not a valuation (EPS in another unit?)' : 'no positive EPS to price against' };
+    /* A P/E under 1 or over 1,000 is not a valuation: the EPS was sent in
+       another unit (paise, lakh) or for another company. Left out. */
+    if (!sane(h.avg)) return { sym, why: h.months < 24 ? 'only ' + h.months + ' months of prices with EPS behind them; two years are needed' : 'its average P/E is not a valuation' };
+    return { sym, ...h, ratio: h.pe / h.avg, sig };
   };
   const valOne = async (r) => {
     if (!r || !S(r.name) || toolHistory(r.valuation) && real(r.valuation && r.valuation.pe)) return;
     const picks = bwOf(r).filter(canPrice).slice(0, 5);
     if (!picks.length) return;
-    const got = (await Promise.all(picks.map(priceOne))).filter(Boolean);
+    const all = await Promise.all(picks.map(priceOne));
+    const got = all.filter((x) => x && !x.why);
+    const why = all.filter((x) => x && x.why).map((x) => ({ symbol: x.sym, why: x.why }));
+    if (why.length) result.valuationWhy[nameKey(r.name)] = why;
     got.sort((a, b) => picks.findIndex((p) => S(p.symbol) === a.sym) - picks.findIndex((p) => S(p.symbol) === b.sym));
     if (!got.length) { result.valuationFailed.push(S(r.name)); return; }
     result.valuation[nameKey(r.name)] = { pe: r2(medianOf(got.map((x) => x.pe))), history: r2(medianOf(got.map((x) => x.avg))),
       ratio: +medianOf(got.map((x) => x.ratio)).toFixed(3), of: got.map((x) => x.sym).join(', '),
-      companies: got.map((x) => ({ symbol: x.sym, pe: x.pe, avg: x.avg, months: x.months })), asOf: got.map((x) => x.asOf).sort().pop() };
+      companies: got.map((x) => ({ symbol: x.sym, pe: x.pe, avg: x.avg, months: x.months, asOf: x.asOf, sig: x.sig, carried: x.carried || undefined })),
+      asOf: got.map((x) => x.asOf).sort().pop() };
   };
   const toPrice = list.filter((r) => r && S(r.name) && !(toolHistory(r.valuation) && real(r.valuation && r.valuation.pe)) && bwOf(r).some(canPrice));
   for (let i = 0; i < toPrice.length; i += 6) { tell('valuation', i, toPrice.length); await Promise.all(toPrice.slice(i, i + 6).map(valOne)); }

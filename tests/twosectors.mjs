@@ -125,7 +125,7 @@ const card = async (p) => { await tab(p, 'score'); await p.waitForTimeout(250);
 
   for (const [sec, sub, cos] of STUDIES) {
     await tab(p, 'sector');
-    await imp(p, sector(sec, sub, cos), () => p.click('#btnImport'));
+    await imp(p, sector(sec, sub, cos), () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
     const afterSector = await card(p);
     ok(`${sec}: with no company in yet, the Score Card says so rather than showing another study's`,
       /none of its Top 3 has been imported/.test(afterSector.sheet), afterSector.sheet.slice(0, 70));
@@ -245,7 +245,7 @@ const card = async (p) => { await tab(p, 'score'); await p.waitForTimeout(250);
   ok('without IndexedDB the library falls back to localStorage',
     await p.evaluate(() => window.EQLib.backend()) === 'localstorage');
   await tab(p, 'sector');
-  await imp(p, sector(...STUDIES[0]), () => p.click('#btnImport'));
+  await imp(p, sector(...STUDIES[0]), () => p.evaluate(() => document.querySelector('nav button[data-tab="solo"]').click()).then(() => p.click('#btnImport')));
   await tab(p, 'company'); await p.waitForTimeout(150);
   alerts.length = 0;
   await imp(p, company(STUDIES[0][2][0]), () => p.click('.co-import[data-rank="1"]'));

@@ -534,6 +534,27 @@ body.previewing{overflow:hidden;}
    next thing to tap — say so visually. */
 /* Build 28: the Sector Finder's ranking. */
 .ftbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;}
+/* Build 35: review on the ranking, aligned weights, the steps. */
+.frbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:8px 10px;border:1px solid var(--line,#2A3550);border-radius:10px;background:var(--surf);}
+.frbar .sub2{display:block;}
+.frbar .btn{width:auto !important;flex:0 0 auto;padding:7px 14px;font-size:12.5px;}
+.frbar > div{flex:1;min-width:0;}
+.sub2{font-size:11px;color:var(--ink2,#9AA4B8);font-weight:500;}
+.fedit{display:block;margin:6px 0 0 auto;font-size:10.5px;padding:2px 7px;border-radius:7px;border:1px solid var(--line,#2A3550);background:transparent;color:var(--ink2,#9AA4B8);cursor:pointer;}
+.fedit-box{display:grid;grid-template-columns:1fr;gap:6px;padding:6px 0;}
+.fedit-box input,.fedit-box select{width:100%;font-size:13px;}
+.fcall{color:var(--gold,#F2B233) !important;}
+.fwgrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px 14px;}
+.fwrow{display:flex !important;flex-direction:row !important;align-items:center;justify-content:space-between;gap:8px;margin:0;font-size:12.5px;}
+.fwrow span{flex:1;min-width:0;}
+.fwrow input{width:64px !important;flex:0 0 64px;text-align:right;padding:6px 8px;}
+@media (max-width:520px){ .fwgrid{grid-template-columns:1fr;} }
+.fsteplist{margin:8px 0 6px;padding-left:20px;font-size:12.5px;}
+.fsteplist li{margin:0 0 7px;}
+.fsteplist li > b{display:block;}
+.fsteplist li span{color:var(--ink2,#9AA4B8);}
+.fsteplist li.done > b::after{content:'  \2713';color:#4CAF6E;}
+.fsteplist li.now > b{color:var(--gold,#F2B233);}
 .ftbl th{text-align:left;font-weight:700;color:var(--ink2,#9AA4B8);font-size:11px;padding:5px 4px;border-bottom:1px solid var(--line,#2A3550);}
 .ftbl td{padding:6px 4px;border-bottom:1px solid var(--line,#2A3550);vertical-align:top;}
 .ftbl td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
@@ -584,7 +605,7 @@ body.previewing{overflow:hidden;}
 .lg-row i{flex:0 0 auto;}
 .footer{font-size:11.5px;color:var(--ink3);text-align:center;padding:24px 8px;line-height:1.6;}
 </style>
-<script>window.APP_BUILD="26-11-2026.34";</script>
+<script>window.APP_BUILD="26-11-2026.35";</script>
 </head>
 <body>
 
@@ -598,10 +619,13 @@ body.previewing{overflow:hidden;}
     </div>
   </div>
   <nav>
-    <button class="on" data-tab="sector">Sector</button>
-    <button data-tab="company">Company</button>
+    <!-- Build 35 (Tejas, 26-11-2026): Top 3 Sectors, Top 3 Companies, then
+         Solo Search for anything researched on its own. -->
+    <button class="on" data-tab="sector">Sectors</button>
+    <button data-tab="company">Companies</button>
+    <button data-tab="solo">Solo</button>
     <button data-tab="scenario">Scenario</button>
-    <button data-tab="score">Score Card</button>
+    <button data-tab="score">Score</button>
     <button data-tab="setup">Setup</button>
   </nav>
  </div>
@@ -622,6 +646,7 @@ body.previewing{overflow:hidden;}
     outlook and its valuation. The app shortlists the best ten. <b>Deep Dive</b> then studies the
     shortlist: government policy and Budgets, global and regional trends, money flows and risks.
     The app scores all seven pillars and names the Top 3.</p>
+    <div id="finderSteps"></div>
     <label for="finderVer">Version</label>
     <div class="selwrap"><select id="finderVer" disabled><option value="">— no saved screen —</option></select></div>
     <div class="grid4" style="margin-top:11px;">
@@ -648,11 +673,73 @@ body.previewing{overflow:hidden;}
 
   <div id="secBoxes"></div>
 
+  <div class="card runbox" id="toolBox">
+    <label style="margin-top:0;">Open AI tool</label>
+    <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
+    pick a tool. The prompt is already on the clipboard: the tool opens, you paste, send, and
+    bring the reply back with Import Data.</p>
+    <div class="grid2" id="toolRow">
+      <button class="btn sm" data-tool="claude">Claude</button>
+      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
+      <button class="btn sm" data-tool="gemini">Gemini</button>
+      <button class="btn sm" data-tool="perplexity">Perplexity</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMPANY ============ -->
+<section id="tab-company" class="hidden">
+
+  <div id="coBoxes"></div>
+
+  <!-- Build 28: the "Saved company research" picker was removed (Tejas: that
+       selection is useless). Each box has its own documents; the Score Card and
+       Scenario pages have their own pickers. -->
+  <div class="card runbox" id="toolBoxCo">
+    <div id="coMsg" class="note" style="margin-top:0;"></div>
+    <label style="margin-top:6px;">Open AI tool</label>
+    <p class="hint" id="toolHintCo" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
+    The prompt is already on the clipboard.</p>
+    <div class="grid2" id="toolRowCo">
+      <button class="btn sm" data-tool="claude">Claude</button>
+      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
+      <button class="btn sm" data-tool="gemini">Gemini</button>
+      <button class="btn sm" data-tool="perplexity">Perplexity</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SOLO SEARCH (build 35) ============ -->
+<section id="tab-solo" class="hidden">
+  <div class="card runbox" id="soloCoBox">
+    <h2>Independent Company Research</h2>
+    <p class="hint">No sector needed. Name any listed company and research it; its report
+    stands alone.</p>
+    <label for="soloCo">Company name</label>
+    <input type="text" id="soloCo" placeholder="e.g. Punjab National Bank"
+           autocomplete="off" autocapitalize="words" enterkeyhint="done">
+
+    <label for="soloPick" style="margin-top:10px;">Imported independently</label>
+    <div class="selwrap"><select id="soloPick"><option value="">— none imported —</option></select></div>
+    <label for="soloVer" style="margin-top:8px;">Version</label>
+    <div class="selwrap"><select id="soloVer" disabled><option value="">— no saved versions —</option></select></div>
+    <div class="grid4" style="margin-top:11px;">
+      <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
+      <button class="btn xs" id="btnSoloUpdate" style="margin:0;" disabled>Update</button>
+      <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
+      <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
+    </div>
+    <div id="soloAge"></div>
+    <div id="soloDocs"></div>
+    <div id="soloDepth"></div>
+    <div id="soloMsg" class="note" style="margin-top:8px;"></div>
+  </div>
+
   <div class="card runbox" id="segBox">
     <h2><span id="segBoxName">Independent Sector Research</span>
         <span class="tag" id="segBoxTag">empty</span></h2>
-    <p class="hint">Any sector, whether or not the Finder ranks it. Choose it, research it, and its
-    Top 3 companies appear on the Company page.</p>
+    <p class="hint">Any sector, whether or not the Finder ranks it. Choose it and research it;
+    its own Top 3 companies appear below it, on this page.</p>
 
     <label for="segSel">Sector</label>
     <div class="selwrap"><select id="segSel"><option value="">— choose a sector —</option></select></div>
@@ -718,58 +805,12 @@ body.previewing{overflow:hidden;}
       <div id="addMoreMsg"></div></div>
   </div>
 
-  <div class="card runbox" id="toolBox">
+  <div id="soloCoBoxes"></div>
+  <div class="card runbox" id="toolBoxSolo">
     <label style="margin-top:0;">Open AI tool</label>
-    <p class="hint" id="toolHint" style="margin-top:0;margin-bottom:8px;">Research first, then
-    pick a tool. The prompt is already on the clipboard: the tool opens, you paste, send, and
-    bring the reply back with Import Data.</p>
-    <div class="grid2" id="toolRow">
-      <button class="btn sm" data-tool="claude">Claude</button>
-      <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
-      <button class="btn sm" data-tool="gemini">Gemini</button>
-      <button class="btn sm" data-tool="perplexity">Perplexity</button>
-    </div>
-  </div>
-</section>
-
-<!-- ============ COMPANY ============ -->
-<section id="tab-company" class="hidden">
-
-  <div class="card runbox">
-    <h2>Independent Company Research</h2>
-    <p class="hint">No sector needed. Name any listed company and research it; its report
-    stands alone.</p>
-    <label for="soloCo">Company name</label>
-    <input type="text" id="soloCo" placeholder="e.g. Punjab National Bank"
-           autocomplete="off" autocapitalize="words" enterkeyhint="done">
-
-    <label for="soloPick" style="margin-top:10px;">Imported independently</label>
-    <div class="selwrap"><select id="soloPick"><option value="">— none imported —</option></select></div>
-    <label for="soloVer" style="margin-top:8px;">Version</label>
-    <div class="selwrap"><select id="soloVer" disabled><option value="">— no saved versions —</option></select></div>
-    <div class="grid4" style="margin-top:11px;">
-      <button class="btn sm pri" id="btnSoloSearch" style="margin:0;">Research</button>
-      <button class="btn xs" id="btnSoloUpdate" style="margin:0;" disabled>Update</button>
-      <button class="btn xs" id="btnSoloImport" style="margin:0;">Import</button>
-      <button class="btn xs dang" id="btnSoloDelete" style="margin:0;">Delete</button>
-    </div>
-    <div id="soloAge"></div>
-    <div id="soloDocs"></div>
-    <div id="soloDepth"></div>
-    <div id="soloMsg" class="note" style="margin-top:8px;"></div>
-  </div>
-
-  <div id="coBoxes"></div>
-
-  <!-- Build 28: the "Saved company research" picker was removed (Tejas: that
-       selection is useless). Each box has its own documents; the Score Card and
-       Scenario pages have their own pickers. -->
-  <div class="card runbox" id="toolBoxCo">
-    <div id="coMsg" class="note" style="margin-top:0;"></div>
-    <label style="margin-top:6px;">Open AI tool</label>
-    <p class="hint" id="toolHintCo" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
+    <p class="hint" id="toolHintSolo" style="margin-top:0;margin-bottom:8px;">Research first, then pick a tool.
     The prompt is already on the clipboard.</p>
-    <div class="grid2" id="toolRowCo">
+    <div class="grid2" id="toolRowSolo">
       <button class="btn sm" data-tool="claude">Claude</button>
       <button class="btn sm" data-tool="chatgpt">ChatGPT</button>
       <button class="btn sm" data-tool="gemini">Gemini</button>
@@ -777,6 +818,7 @@ body.previewing{overflow:hidden;}
     </div>
   </div>
 </section>
+
 
 <div class="card hidden" id="importCard">
     <h2>Import Data</h2>
@@ -1067,7 +1109,7 @@ $$('nav button').forEach(function(b){
   b.addEventListener('click', function(){
     $$('nav button').forEach(function(x){ x.classList.remove('on'); });
     b.classList.add('on');
-    ['sector','company','scenario','score','setup'].forEach(function(t){
+    ['sector','company','solo','scenario','score','setup'].forEach(function(t){
       var el = $('#tab-'+t); if(!el) return;
       el.classList.toggle('hidden', t !== b.dataset.tab);
       /* The import card is shared by every page, so it is put away on a tab
@@ -1076,6 +1118,15 @@ $$('nav button').forEach(function(b){
       if($('#importCard')) $('#importCard').classList.add('hidden');
     });
     if(b.dataset.tab === 'scenario'){ try{ renderScenarioPage(); }catch(e){} }
+    /* Build 35: the Top 3 company boxes follow the page. Companies shows the
+       Finder's Top 3 sectors; Solo shows the sector researched on its own. */
+    if(b.dataset.tab === 'company' || b.dataset.tab === 'solo'){
+      CO_HOST = b.dataset.tab;
+      if(CO_HOST === 'solo'){ if(SEL.soloSector && recById(SEL.soloSector)) selectSector(SEL.soloSector); }
+      else if(finderRecord()){ var t3 = top3Studies(), cur = segRecord();
+        if(t3.length && !t3.some(function(r){ return cur && recLine(r) === recLine(cur); })) selectSector(t3[0].id); }
+      try{ renderReportPage(); renderScoreTab(); }catch(e){}
+    }
     window.scrollTo(0,0);
   });
 });
@@ -1321,7 +1372,9 @@ function setPending(kind){
       + '<b>Import Data</b> on the Report tab.'
     : 'One tap copies the prompt and opens the tool \u2014 its app if you have it installed, '
       + 'otherwise the website. Paste, send, then bring the reply back under Import.';
-  ['#toolRow', '#toolRowCo'].forEach(function(id){
+  var lblSo = $('#toolHintSolo');
+  if(lblSo) lblSo.innerHTML = lblCo ? lblCo.innerHTML : '';
+  ['#toolRow', '#toolRowCo', '#toolRowSolo'].forEach(function(id){
     var row = $(id);
     if(row) row.classList.toggle('armed', kind === 'armed');
   });
@@ -5406,16 +5459,29 @@ function renderCompanyPage(){
      The report buttons a reader actually presses are the docRows on the Top 3
      slot boxes below, and on the independent-company box above. */
 
-  var slots = $('#coBoxes'); if(!slots) return;
+  /* Build 35: one set of Top 3 company boxes, drawn on whichever of the
+     Companies and Solo pages is open; the other is cleared, so no id is on
+     the page twice. */
+  var other = $(CO_HOST === 'solo' ? '#coBoxes' : '#soloCoBoxes'); if(other) other.innerHTML = '';
+  var slots = $(CO_HOST === 'solo' ? '#soloCoBoxes' : '#coBoxes'); if(!slots) return;
   var seg = segRecord();
-  if(!seg){ slots.innerHTML = '<div class="note" style="margin:16px 2px;">Top 3 companies appear here once a sector study '
-    + 'is saved. Find or choose a sector on the Sector page and research it.</div>'; return; }
+  if(!seg){ slots.innerHTML = '<div class="note" style="margin:16px 2px;">' + (CO_HOST === 'solo'
+      ? 'The sector\u2019s own Top 3 companies appear here once you research a sector above.'
+      : 'Top 3 companies appear here once a Top 3 sector is researched on the Sectors page.') + '</div>'; return; }
   var nVer = versionsOf(seg).length, vNo = versionNo(seg);
   /* Build 28: which sector's Top 3 this is, and a way to switch, in place of
      the "Saved company research" picker. Studies are listed by their latest
      version; the version picker on the Sector page chooses within one. */
-  var studies = latestOnly(sectorRecords());
+  var studies = CO_HOST === 'solo' || !finderRecord() ? latestOnly(sectorRecords()) : top3Studies();
   var curLine = recLine(seg);
+  if(CO_HOST !== 'solo' && finderRecord() && !studies.some(function(r){ return recLine(r) === curLine; })){
+    slots.innerHTML = '<div class="note" style="margin:16px 2px;">' + (studies.length
+      ? 'Choose one of the Top 3 sectors.' : 'Research a Top 3 sector on the Sectors page; its Top 3 companies appear here.')
+      + ' A sector researched on its own is on the Solo page.</div>'
+      + (studies.length ? '<div class="selwrap"><select id="coSectorPick"><option value="">\u2014 choose \u2014</option>' + studies.map(function(r){
+          return '<option value="' + esc(r.id) + '">' + esc((r.sector || 'Sector') + (r.subSector ? ' \u2014 ' + r.subSector : '')) + '</option>'; }).join('') + '</select></div>' : '');
+    return;
+  }
   slots.innerHTML = '<div id="coHead"><div class="cosecbar"><h2>Top 3 companies of</h2><div class="selwrap"><select id="coSectorPick">'
       + studies.map(function(r){
           return '<option value="' + esc(r.id) + '"' + (recLine(r) === curLine ? ' selected' : '') + '>'
@@ -5522,41 +5588,20 @@ function approveTop3(rec){
   var sc = finderScore(rec); if(!sc || !sc.top3.length) return false;
   return saveReview(rec, function(rv){ rv.approved = { at: Date.now(), top3: sc.top3.map(function(x){ return x.name; }) }; });
 }
+var FPN_SHORT = { performance: 'Past performance', fundamentals: 'Fundamentals', outlook: 'Growth outlook', policy: 'Policy',
+  global: 'Global', valuation: 'Valuation', risk: 'Risk' };
 var FPN = { performance: 'Past performance', fundamentals: 'Business fundamentals', outlook: 'Growth outlook', policy: 'Government and policy',
   global: 'Global and regional', valuation: 'Valuation', risk: 'Risk' };
 function finderReviewHtml(rec, sc){
   if(!rec || !sc) return '';
-  var w = finderWeights(), dflt = EQ.finder.weightsAreDefault(w), R = sc.review || {};
+  var w = finderWeights(), dflt = EQ.finder.weightsAreDefault(w);
   var h = '<details class="fdet" id="fwBox"' + (dflt ? '' : ' open') + '><summary>Weights' + (dflt ? ' (the defaults)' : ' (your own)') + '</summary>'
-    + '<div class="hint" style="margin:6px 0">How much each pillar counts. They are scaled to add to 100 when saved. They apply to every screen on this device.</div>'
+    + '<div class="hint" style="margin:6px 0">How much each pillar counts. Scaled to add to 100 when saved; used for every screen on this device.</div>'
     + '<div class="fwgrid">' + Object.keys(FPN).map(function(k){
-        return '<label>' + esc(FPN[k]) + '<input type="number" min="0" max="100" step="1" class="fwin" data-k="' + k + '" value="' + Math.round(w[k] * 10) / 10 + '"></label>';
-      }).join('') + '</div><div class="note" id="fwSum"></div>'
+        return '<label class="fwrow"><span>' + esc(FPN_SHORT[k]) + '</span><input type="number" inputmode="decimal" min="0" max="100" step="1" class="fwin" data-k="' + k + '" value="' + Math.round(w[k] * 10) / 10 + '"></label>';
+      }).join('') + '</div><div class="note" id="fwSum">They add to ' + Math.round(Object.keys(w).reduce(function(a, k){ return a + w[k]; }, 0)) + '.</div>'
     + '<div class="grid2" style="margin-top:6px"><button class="btn sm pri" id="btnFwSave" style="margin:0">Save weights</button>'
     + '<button class="btn sm" id="btnFwReset" style="margin:0">Back to the defaults</button></div></details>';
-  var pool = (sc.shortlist && sc.shortlist.length ? sc.shortlist : sc.rows.filter(function(x){ return x.eligible; }).slice(0, 10));
-  var ovOf = {}; (R.overrides || []).forEach(function(o){ ovOf[o.name] = o; });
-  h += '<details class="fdet" id="frBox" open><summary>Your review of the Top 3</summary>'
-    + '<div class="hint" style="margin:6px 0">Take a sector out of the Top 3, or put one in, with a note saying why. The Sector Screen prints '
-    + 'the app’s Top 3 and yours side by side. Approve the Top 3 before researching its companies.</div>'
-    + '<table class="frtab"><tr><th>Sector</th><th>Score</th><th>Your call</th><th>Note</th></tr>'
-    + pool.map(function(x){
-        var o = ovOf[x.name] || {};
-        return '<tr data-name="' + esc(x.name) + '"><td>' + esc(x.name) + (R.appTop3 && R.appTop3.indexOf(x.name) >= 0 ? ' <span class="tagx">app Top 3</span>' : '') + '</td>'
-          + '<td>' + x.score.toFixed(1) + '</td><td><select class="frsel"><option value="">as ranked</option>'
-          + '<option value="include"' + (o.action === 'include' ? ' selected' : '') + '>put in Top 3</option>'
-          + '<option value="exclude"' + (o.action === 'exclude' ? ' selected' : '') + '>take out</option></select></td>'
-          + '<td><input class="frnote" type="text" maxlength="240" placeholder="why" value="' + esc(o.note || '') + '"></td></tr>';
-      }).join('') + '</table>'
-    + ((R.ignored || []).length ? '<div class="note neg">' + R.ignored.length + ' call' + (R.ignored.length === 1 ? '' : 's') + ' without a note '
-      + (R.ignored.length === 1 ? 'is' : 'are') + ' not applied.</div>' : '')
-    + '<div class="note">Top 3 now: <b>' + esc(sc.top3.map(function(x){ return x.name; }).join(', ')) + '</b>'
-    + (R.changed ? ' (the app’s: ' + esc((R.appTop3 || []).join(', ')) + ')' : ' (as the app ranked it)') + '. '
-    + (R.approved && R.approved.current ? '<span class="pos">Approved ' + esc(dmyTs(R.approved.at)) + '.</span>'
-      : R.approved ? '<span class="neg">Approved ' + esc(dmyTs(R.approved.at)) + ' as ' + esc(R.approved.top3.join(', ')) + '; it has changed since.</span>'
-      : 'Not yet approved.') + '</div>'
-    + '<div class="grid2" style="margin-top:6px"><button class="btn sm" id="btnFrSave" style="margin:0">Save review</button>'
-    + '<button class="btn sm pri" id="btnFrApprove" style="margin:0">Approve Top 3</button></div></details>';
   var tr = EQ.finder.trackRecord(notePicks().filter(function(x){ return x.id !== rec.id; }), sc);
   if(tr.length){
     h += '<details class="fdet"><summary>Track record of earlier picks</summary><table class="frtab"><tr><th>Screen</th><th>Top 3</th><th>Against the Nifty 500 since</th></tr>'
@@ -5602,33 +5647,64 @@ function outlookBadges(x){
   return '<span class="sub obadges">outlook' + out + '</span>' + notes;
 }
 var PILLAR_SHORT = { performance:'performance', fundamentals:'fundamentals', outlook:'outlook', policy:'policy', global:'global', valuation:'valuation', risk:'risk' };
-function finderTableHtml(sc){
+function finderTableHtml(sc, rec){
   if(!sc || !sc.rows.length) return '';
-  var b = sc.benchmark || {}, bn = sc.relativeTo || 'Nifty 500';
+  var b = sc.benchmark || {}, bn = sc.relativeTo || 'Nifty 500', R = sc.review || {};
+  var ovOf = {}; (R.overrides || []).forEach(function(o){ ovOf[o.name] = o; });
   var row = function(x){
-    var top = sc.top3.some(function(t){ return t.name === x.name; });
-    return '<tr class="' + (top ? 'top' : '') + (x.shortlisted ? ' short' : '') + '"><td class="n">' + x.rank + '</td>'
+    var top = sc.top3.some(function(t){ return t.name === x.name; }), o = ovOf[x.name];
+    return '<tr class="' + (top ? 'top' : '') + (x.shortlisted ? ' short' : '') + '" data-fname="' + esc(x.name) + '"><td class="n">' + x.rank + (x.shortlisted && !top ? '<span class="sub">★</span>' : '') + '</td>'
       + '<td><b>' + esc(x.name) + '</b>' + (x.subSector ? '<span class="sub">' + esc(x.subSector) + '</span>' : '')
       + (!x.eligible ? '<span class="sub">not ranked among the leaders: no ' + esc(x.missing1.filter(function(k){ return k === 'performance' || k === 'outlook'; }).map(function(k){ return PILLAR_SHORT[k]; }).join(' or ')) + '</span>'
           : (x.neutral && x.neutral.length ? '<span class="sub">' + esc(x.neutral.map(function(k){ return PILLAR_SHORT[k]; }).join(', ')) + ' counted as average</span>' : ''))
-      + outlookBadges(x) + '</td>'
+      + outlookBadges(x)
+      + (o ? '<span class="sub fcall">' + (o.action === 'exclude' ? 'You took it out' : 'You put it in') + ': ' + esc(o.note) + '</span>' : '') + '</td>'
       + '<td class="n"><b>' + (x.score == null ? '—' : x.score.toFixed(1)) + '</b><span class="sub">' + (x.shortlisted ? '7 pillars' : 'screen') + '</span></td>'
       + '<td class="n">' + pctCell(x.rel.y1) + '<br>' + pctCell(x.rel.y2) + '<br>' + pctCell(x.rel.y3) + '</td>'
       + '<td class="n fchk">' + (x.returns.checked ? '✓ ' + esc(x.returns.basis === 'index' ? 'index' : 'stocks') : 'not checked')
-      + (x.returns.maxDD != null ? '<span class="sub">fall ' + Math.abs(x.returns.maxDD).toFixed(0) + '%</span>' : '') + '</td></tr>';
+      + (x.returns.maxDD != null ? '<span class="sub">fall ' + Math.abs(x.returns.maxDD).toFixed(0) + '%</span>' : '')
+      + (x.eligible ? '<button class="fedit" data-fname="' + esc(x.name) + '" aria-label="Your call on ' + esc(x.name) + '">' + (top ? 'Take out' : 'Put in') + '</button>' : '') + '</td></tr>';
   };
   var head = '<tr><th>#</th><th>Sector</th><th style="text-align:right">Score</th>'
     + '<th style="text-align:right">vs ' + esc(bn) + '<br>1y/2y/3y</th><th style="text-align:right">Returns</th></tr>';
-  var short = sc.rows.filter(function(x){ return x.shortlisted; }), rest = sc.rows.filter(function(x){ return !x.shortlisted; });
-  return '<div class="fmore" style="margin-top:10px;"><b>Shortlist</b> — scored on all seven pillars</div>'
-    + '<table class="ftbl">' + head + short.map(row).join('') + '</table>'
-    + (rest.length ? '<details class="fmore"><summary>The other ' + rest.length + ' sectors (screen score)</summary>'
+  var topNames = sc.top3.map(function(x){ return x.name; });
+  var topRows = sc.top3, rest = sc.rows.filter(function(x){ return topNames.indexOf(x.name) < 0; });
+  /* Build 35 (Tejas, 26-11-2026): the review sits on the ranking itself. One
+     line says whether the Top 3 is approved; each row has its own call. */
+  var ap = R.approved;
+  var bar = '<div class="frbar"><div><b>Top 3</b> ' + (R.changed ? '<span class="sub2">after your review · the app’s: ' + esc((R.appTop3 || []).join(', ')) + '</span>' : '<span class="sub2">as the app ranked it</span>')
+    + '<span class="sub2">' + (ap && ap.current ? '<span class="pos">Approved ' + esc(dmyTs(ap.at)) + '</span>'
+      : ap ? '<span class="neg">Approved ' + esc(dmyTs(ap.at)) + ' as ' + esc(ap.top3.join(', ')) + '; changed since</span>' : 'Not yet approved') + '</span></div>'
+    + '<button class="btn xs ' + (ap && ap.current ? '' : 'pri') + '" id="btnFrApprove" style="margin:0;">' + (ap && ap.current ? 'Approved ✓' : 'Approve Top 3') + '</button></div>';
+  return bar + '<table class="ftbl">' + head + topRows.map(row).join('') + '</table>'
+    + ((R.ignored || []).length ? '<div class="note neg">' + R.ignored.length + ' call' + (R.ignored.length === 1 ? '' : 's') + ' without a note not applied.</div>' : '')
+    + (rest.length ? '<details class="fmore fdet"><summary>Sectors ' + (topRows.length + 1) + ' to ' + sc.rows.length
+        + ' <span class="sub2">★ the rest of the shortlist of ' + (sc.counts.shortlist || 10) + '</span></summary>'
         + '<table class="ftbl">' + head + rest.map(row).join('') + '</table></details>' : '')
     + '<div class="fmore">' + esc(bn) + ': ' + pctCell(b.y1) + ' / ' + pctCell(b.y2) + ' / ' + pctCell(b.y3) + '% over 1y / 2y a year / 3y a year'
     + (b.checked ? ' · checked by the app' : ' · as the research states it')
     + '. Columns show points above or below the ' + esc(bn) + '. ' + sc.counts.complete + ' of ' + sc.counts.screened
     + ' sectors fully scored' + (sc.counts.neutral ? ', ' + sc.counts.neutral + ' with a pillar counted as average' : '')
     + '; returns checked for ' + sc.counts.checked + '; deep dive done for ' + sc.counts.deepDone + ' of ' + sc.counts.shortlist + '.</div>';
+}
+/* Build 35: the steps, in order, each marked done as the screen gets there. */
+function finderStepsHtml(rec, sc){
+  var c = null; try{ c = rec ? EQ.completeness.completeness(rec.data) : null; }catch(e){}
+  var pct = c ? c.pct : 0, v = rec && rec.data.verified, R = sc && sc.review || {};
+  var deepAll = sc && sc.counts.shortlist && sc.counts.deepDone >= sc.counts.shortlist;
+  var steps = [
+    [!!rec, 'Find Sectors', 'Copy the prompt, paste it in your research tool, then bring the reply back with Import Data.'],
+    [!!(v && !v.error), 'Prices checked by the app', 'Automatic after every import and each time the app opens. Use <b>Check prices again</b> only if the message says the check failed or a sector shows “not checked”, or to refresh before the final PDF on a later day.'],
+    [pct >= 90 || deepAll, 'Fill the gaps', 'Copy follow-up prompt (in the depth box) and import the reply, until the screen is about 90% complete' + (rec ? ' (now ' + pct + '%)' : '') + '. The shortlist can still change until then.'],
+    [!!deepAll, 'Deep Dive', 'Once the gaps are filled and prices checked, so the shortlist of 10 is settled. Run it again only for a sector that newly enters the shortlist.'],
+    [!!(R.approved && R.approved.current), 'Review and approve the Top 3', 'Take a sector out or put one in with a note, then Approve Top 3.'],
+    [false, 'Research the Top 3 sectors, then their companies', 'From the Top 3 Sectors boxes below, then the Companies page.']
+  ];
+  var next = steps.findIndex(function(x){ return !x[0]; });
+  return '<details class="fdet fsteps"' + (R.approved && R.approved.current ? '' : ' open') + '><summary>How to use the Finder'
+    + (next >= 0 ? ' <span class="sub2">next: step ' + (next + 1) + '</span>' : '') + '</summary><ol class="fsteplist">'
+    + steps.map(function(x, i){ return '<li class="' + (x[0] ? 'done' : i === next ? 'now' : '') + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></li>'; }).join('')
+    + '</ol><div class="hint">Some figures are published nowhere (sector money flows from NSDL, disbursement of small schemes, forecasts for small companies). The app keeps asking for them, and the depth box says which are still being searched.</div></details>';
 }
 function renderFinder(){
   var box = $('#finderBox'); if(!box) return;
@@ -5655,7 +5731,8 @@ function renderFinder(){
   }
   if($('#btnFinderDelete')) $('#btnFinderDelete').disabled = !rec;
   if($('#finderAge')) $('#finderAge').innerHTML = rec ? ageBox(rec) : '';
-  if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc) : '';
+  if($('#finderSteps')) $('#finderSteps').innerHTML = finderStepsHtml(rec, sc);
+  if($('#finderTable')) $('#finderTable').innerHTML = sc ? finderTableHtml(sc, rec) : '';
   if($('#finderReview')) $('#finderReview').innerHTML = sc ? finderReviewHtml(rec, sc) : '';
   if($('#finderDocs')) $('#finderDocs').classList.toggle('hidden', !rec);
   if($('#finderDepth')) $('#finderDepth').innerHTML = depthBox(rec);
@@ -5695,6 +5772,13 @@ function renderSectorSlots(sc){
   }).join('');
 }
 function finderTop3(){ var sc = finderScore(finderRecord()); return sc ? sc.top3 : []; }
+/* Build 35: the studies of the Finder's Top 3 sectors, for the Companies page. */
+var CO_HOST = 'company';
+function top3Studies(){
+  var out = [];
+  finderTop3().forEach(function(x){ var r = studyForSector(x.name, x.subSector); if(r){ r = latestVersion(r); if(out.indexOf(r) < 0) out.push(r); } });
+  return out;
+}
 
 /* The Finder's own review, in place of the study review. */
 function showFinderReview(d, merged, rc, raw, res){
@@ -5814,7 +5898,9 @@ function verifyFinder(id){
          companies' P/E history (build 31). */
       fetchBars: function(key, o){ return EQ.prices.fetchUpstox(key, o || { unit:'days', interval:1, years:2 }); },
       keyFor: function(sym, isin){ return EQ.prices.instrumentKeyFor(sym, map, isin || null); },
-      onProgress: finderProgress
+      onProgress: finderProgress,
+      /* Build 35: what the last check priced is kept where the feed fails. */
+      previous: rec.data.verified || null
     });
   }).then(function(v){
     FINDER_BUSY = false;
@@ -5836,7 +5922,7 @@ function verifyFinder(id){
         + (v.benchmark500 ? ', against the Nifty 500' : v.benchmark ? ', against the Nifty 50' : '')
         + (v.failed.length ? '; ' + v.failed.length + ' could not be checked and use the research’s figures' : '')
         + (nv ? '. P/E history worked out from company prices and EPS for ' + nv + ' sector' + (nv === 1 ? '' : 's') : '')
-        + ((v.valuationFailed || []).length ? '; ' + v.valuationFailed.length + ' could not be priced and are asked again' : '') + '.'
+        + ((v.valuationFailed || []).length ? '; ' + v.valuationFailed.length + ' could not be priced this time (the reason is in the depth box): tap Check prices again later' : '') + '.'
       : 'The price source could not be reached, so the returns are the research’s own, marked "not checked".';
     renderFinder();
     finderAfter();
@@ -5850,8 +5936,13 @@ function verifyFinder(id){
     var lib = libRead(), hit = lib.filter(function(r){ return r.id === id; })[0];
     if(hit){
       var names = (hit.data.sectors || []).map(function(x){ return x && x.name; }).filter(Boolean);
-      hit.data.verified = { at: new Date().toISOString(), benchmark: null, sectors: {}, failed: names,
-        valuation: {}, valuationFailed: names, error: true, stamp: EQ.finder.finderStamp(hit.data) };
+      var old = hit.data.verified;
+      /* Build 35: a check that could not run keeps the last one it had, and
+         never asks the research tool for EPS it has already sent. */
+      hit.data.verified = old && !old.error && Object.keys(old.sectors || {}).length
+        ? Object.assign({}, old, { error: true, errorAt: new Date().toISOString(), stamp: EQ.finder.finderStamp(hit.data) })
+        : { at: new Date().toISOString(), benchmark: null, sectors: {}, failed: names,
+            valuation: {}, valuationFailed: [], error: true, stamp: EQ.finder.finderStamp(hit.data) };
       libWrite(lib);
     }
     if($('#finderMsg')) $('#finderMsg').textContent = 'The price source could not be reached, so the returns are the research’s own, marked "not checked". The next follow-up asks the research for them. Tap Check prices again to retry.';
@@ -5923,22 +6014,43 @@ document.addEventListener('click', function(ev){
     if(!ok){ alert('Each weight must be 0 or more, and at least one above 0.'); return; }
     set(FW_KEY, JSON.stringify(EQ.finder.normWeights(nw))); renderReportPage(); return;
   }
-  if(ev.target.closest('#btnFrSave') || ev.target.closest('#btnFrApprove')){
-    var rr = finderRecord(); if(!rr) return;
-    var calls = [], missing = [];
-    [].forEach.call(document.querySelectorAll('#frBox tr[data-name]'), function(tr){
-      var a = tr.querySelector('.frsel').value, nt = tr.querySelector('.frnote').value.trim(), nm = tr.getAttribute('data-name');
-      if(!a) return;
-      if(nt.length < 3){ missing.push(nm); return; }
-      calls.push({ name: nm, action: a, note: nt, at: Date.now() });
+  /* Build 35: a call is made on the row itself. */
+  var fe = ev.target.closest('.fedit');
+  if(fe){
+    var nm = fe.getAttribute('data-fname'), tr0 = fe.closest('tr');
+    var open = tr0.nextElementSibling && tr0.nextElementSibling.classList.contains('fedrow');
+    $$('.fedrow').forEach(function(x){ x.parentNode.removeChild(x); });
+    if(open) return;
+    var rr0 = finderRecord(), ov = ((rr0 && rr0.data.review && rr0.data.review.overrides) || []).filter(function(o){ return o.name === nm; })[0] || {};
+    var isTop = tr0.classList.contains('top');
+    var ed = document.createElement('tr'); ed.className = 'fedrow';
+    ed.innerHTML = '<td colspan="5"><div class="fedit-box"><div class="selwrap"><select class="fedsel">'
+      + '<option value="">as the app ranked it</option>'
+      + '<option value="exclude"' + (ov.action === 'exclude' || (!ov.action && isTop) ? ' selected' : '') + '>take it out of the Top 3</option>'
+      + '<option value="include"' + (ov.action === 'include' || (!ov.action && !isTop) ? ' selected' : '') + '>put it in the Top 3</option></select></div>'
+      + '<input type="text" class="fednote" maxlength="240" placeholder="Why? (printed in the Sector Screen)" value="' + esc(ov.note || '') + '">'
+      + '<button class="btn xs pri fedsave" data-fname="' + esc(nm) + '" style="margin:0;">Save</button></div></td>';
+    tr0.parentNode.insertBefore(ed, tr0.nextSibling);
+    var ni = ed.querySelector('.fednote'); if(ni) ni.focus();
+    return;
+  }
+  var fs_ = ev.target.closest('.fedsave');
+  if(fs_){
+    var rr1 = finderRecord(); if(!rr1) return;
+    var box = fs_.closest('.fedit-box'), nm1 = fs_.getAttribute('data-fname');
+    var act = box.querySelector('.fedsel').value, note = box.querySelector('.fednote').value.trim();
+    if(act && note.length < 3){ alert('Add a note saying why.\n\nEvery change to the ranking needs a reason, printed in the Sector Screen.'); return; }
+    saveReview(rr1, function(rv){
+      rv.overrides = (rv.overrides || []).filter(function(o){ return o.name !== nm1; });
+      if(act) rv.overrides.push({ name: nm1, action: act, note: note, at: Date.now() });
     });
-    if(missing.length){ alert('Add a note for: ' + missing.join(', ') + '.\n\nEvery change to the ranking needs a reason, printed in the Sector Screen.'); return; }
-    saveReview(rr, function(rv){ rv.overrides = calls; });
-    if(ev.target.closest('#btnFrApprove')){
-      approveTop3(rr);
-      var t = finderTop3();
-      alert('Top 3 approved: ' + t.map(function(x){ return x.name; }).join(', ') + '.\n\nResearch its companies from the Top 3 Sectors boxes below.');
-    }
+    return;
+  }
+  if(ev.target.closest('#btnFrApprove')){
+    var rr = finderRecord(); if(!rr) return;
+    approveTop3(rr);
+    var t = finderTop3();
+    alert('Top 3 approved: ' + t.map(function(x){ return x.name; }).join(', ') + '.\n\nResearch each sector from the Top 3 Sectors boxes below, then its companies on the Companies page.');
     return;
   }
   if(ev.target.closest('#btnFinderRecheck')){
@@ -6324,7 +6436,7 @@ function openImport(target){
 document.addEventListener('change', function(ev){
   var id = ev.target.id;
   if(id === 'segSel'){ fillSubSelect(); return; }
-  if(id === 'segPick'){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
+  if(id === 'segPick'){ SEL.soloSector = ev.target.value; selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }
   if(id === 'soloPick'){ SEL.solo = ev.target.value; renderCompanyPage(); renderScoreTab(); }
   /* Build 25: a version of the study selected brings its own Top 3 with it. */
   if(id === 'segVer' && ev.target.value){ selectSector(ev.target.value); renderReportPage(); renderScoreTab(); }

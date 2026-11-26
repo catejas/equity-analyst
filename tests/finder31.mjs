@@ -142,7 +142,13 @@ console.log('\nThe follow-up asks the companies');
   d.verified = { sectors: {}, failed: ['Aviation'], valuation: {}, valuationFailed: ['Aviation'] };
   const ch2 = F.finderChecks(d);
   ok('a return the app could not measure is asked of the tool', /Missing: [^.]*Aviation/.test(ch2.find((c) => c.label.startsWith('Returns')).ask));
-  ok('a valuation the app could not work out is asked again', /Missing: [^.]*Aviation \(EPS history/.test(ch2.find((c) => c.label.startsWith('P/E')).ask));
+  /* Build 35 (Tejas's real run of 26-11-2026): EPS already sent is never
+     asked again when the app's own pricing fails; the app shows why and
+     prices it again. */
+  d.verified.valuationWhy = { aviation: [{ symbol: 'INDIGO', why: 'the price feed did not answer (HTTP 429)' }] };
+  const va2 = F.finderChecks(d).find((c) => c.label.startsWith('P/E'));
+  ok('a valuation the app could not work out is not asked of the tool again', !/Missing: [^.]*Aviation/.test(va2.ask) && /Do NOT send EPS again for [^.]*Aviation/.test(va2.ask), va2.ask.slice(-200));
+  ok('the reason is shown in the app instead', /Aviation \(the app could not price INDIGO: the price feed did not answer \(HTTP 429\)/.test(va2.detail), va2.detail.slice(0, 200));
 }
 
 console.log('\nReading the companies\' figures as tools write them');
